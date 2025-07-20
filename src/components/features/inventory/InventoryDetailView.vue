@@ -125,14 +125,6 @@ function formatDate(dateString) {
         </div>
       </div>
       
-      <div class="flex justify-end space-x-3">
-        <button 
-          @click="$emit('edit', item)" 
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-        >
-          Edit Item
-        </button>
-      </div>
     </div>
     
     <div v-else-if="activeTab === 'history'" class="space-y-4">

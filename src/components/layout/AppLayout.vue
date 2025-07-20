@@ -1,11 +1,28 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import OfflineIndicator from '../ui/OfflineIndicator.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+
+// Get user role - perbaiki untuk menangani berbagai format nama role
+const userRole = computed(() => {
+  const roleName = authStore.role?.name?.toLowerCase() || ''
+  console.log('Role name processed:', roleName)
+  
+  // Normalisasi nama role (hapus spasi, ubah ke lowercase)
+  return roleName.replace(/\s+/g, '').toLowerCase()
+})
+
+// Debugging untuk melihat nilai role
+watch(() => authStore.role, (newRole) => {
+  console.log('Role dari Directus:', newRole)
+  console.log('Role name:', newRole?.name)
+  console.log('User role computed:', userRole.value)
+  console.log('Permissions:', authStore.permissions)
+}, { immediate: true })
 
 // Change default to true so sidebar is open by default
 const isSidebarOpen = ref(true)
@@ -31,20 +48,105 @@ function logout() {
   router.push('/login')
 }
 
-// Navigation items based on user role
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: 'chart-pie' },
-  { name: 'Supplier', path: '/suppliers', icon: 'users' },
-  { name: 'Purchase', path: '/purchase-orders', icon: 'shopping-cart' },
-  { name: 'Inventory', path: '/inventory', icon: 'package' },
-  { name: 'Kitchen Prep', path: '/kitchen', icon: 'utensils' },
-  { name: 'Products', path: '/products', icon: 'chef-hat' },
-  { name: 'Penjualan', path: '/pos', icon: 'dollar-sign' },
-  { name: 'Pengeluaran', path: '/expenses', icon: 'receipt' },
-  { name: 'Laporan', path: '/reports', icon: 'bar-chart-3' },
+// Define all navigation items with collections they need access to
+const allNavItems = [
+  { 
+    name: 'Dashboard', 
+    path: '/dashboard', 
+    icon: 'chart-pie',
+    collections: ['dashboard'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Supplier', 
+    path: '/suppliers', 
+    icon: 'users',
+    collections: ['suppliers', ''] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Purchase', 
+    path: '/purchase-orders', 
+    icon: 'shopping-cart',
+    collections: ['purchase_orders', 'po_items', 'suppliers'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Inventory', 
+    path: '/inventory', 
+    icon: 'package',
+    collections: ['raw_materials', 'item_categories', 'suppliers', 'units'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Kitchen Prep', 
+    path: '/kitchen', 
+    icon: 'utensils',
+    collections: ['kitchen_prep', 'inventory_ready_materials'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Products', 
+    path: '/products', 
+    icon: 'chef-hat',
+    collections: ['products', 'product_categories'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Penjualan', 
+    path: '/pos', 
+    icon: 'dollar-sign',
+    collections: ['sales', 'sales_items'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Pengeluaran', 
+    path: '/expenses', 
+    icon: 'receipt',
+    collections: ['expenses'] // Collection yang perlu diakses
+  },
+  { 
+    name: 'Laporan', 
+    path: '/reports', 
+    icon: 'bar-chart-3',
+    collections: ['reports'] // Collection yang perlu diakses
+  },
 ]
+
+// Filter navigation items based on user permissions
+const navItems = computed(() => {
+  console.log('Filtering menu based on permissions:', authStore.permissions)
+  
+  // Jika tidak ada permissions, tampilkan menu kosong
+  if (!authStore.permissions) {
+    console.log('No permissions found, showing empty menu')
+    return []
+  }
+  
+  // Jika user adalah admin, tampilkan semua menu
+  if (userRole.value === 'admin' || userRole.value === 'superadmin' || userRole.value === 'administrator') {
+    console.log('Admin user, showing all menu items')
+    return allNavItems
+  }
+  
+  // Filter menu berdasarkan permissions
+  const filteredItems = allNavItems.filter(item => {
+    console.log(`Checking menu item: ${item.name}`)
+    
+    // Log semua permission untuk debugging
+    item.collections.forEach(collection => {
+      if (collection) { // Skip empty collection names
+        const hasPermission = authStore.hasPermission(collection, 'read')
+        console.log(`Checking permission for ${collection}: ${hasPermission}`)
+      }
+    })
+    
+    // Periksa apakah user memiliki akses read ke SEMUA collection yang diperlukan
+    const hasAccess = authStore.hasPermissionForAll(item.collections, 'read')
+    console.log(`Final access for ${item.name}: ${hasAccess}`)
+    
+    return hasAccess
+  })
+  
+  console.log('Filtered menu items:', filteredItems.map(i => i.name))
+  return filteredItems
+})
 </script>
 
+<!-- Template tidak berubah -->
 <template>
   <div class="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-indigo-50">
     <!-- Sidebar with improved transition -->

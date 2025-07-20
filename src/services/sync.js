@@ -85,7 +85,9 @@ export const syncService = {
             query.params.fields = '*,kategori.*,resep.cooked_items_id.*,supplier_konsinyasi.*'
             break
           case 'purchase_orders':
-            query.params.fields = '*,supplier.*,items.*,items.item.*'
+            query.params.fields = ['supplier.nama_pt_toko', 'catatan_pembelian', 'status', 
+                                 'total_pembayaran', 'tanggal_pembayaran', 'pembuat_po.first_name', 
+                                 'date_created', 'date_updated', 'id']
             break
           default:
             query.params.fields = '*'
@@ -133,11 +135,12 @@ export const syncService = {
       
       // Pull item_categories directly
       await this.pullData('item_categories')
-      await this.pullData('units') // Add this line to fetch units
+      await this.pullData('units')
       await this.pullData('raw_materials')
       await this.pullData('expense_categories')
       await this.pullData('products')
       await this.pullData('recipe_items')
+      await this.pullData('purchase_orders') // Tambahkan ini
       
       // Process any pending sync items
       return this.processSyncQueue()
@@ -157,6 +160,56 @@ export const syncService = {
     window.addEventListener('offline', () => {
       console.log('Device is offline')
     })
+  },
+  
+  // Fetch purchase orders from API
+  async fetchPurchaseOrders() {
+    if (!this.isOnline()) {
+      return { success: false, message: 'Device is offline' }
+    }
+    
+    try {
+      // Langsung gunakan pullData untuk purchase_orders
+      // Data akan disimpan ke database lokal dengan struktur yang sama dari API
+      return await this.pullData('purchase_orders', {
+        params: {
+          fields: ['*', 'supplier.nama_pt_toko', 'pembuat_po.first_name'],
+          sort: ['-date_created']
+        }
+      })
+    } catch (error) {
+      console.error('Failed to fetch purchase orders:', error)
+      return { success: false, message: error.message }
+    }
+  },
+  
+  // Fetch purchase order detail from API
+  async fetchPurchaseOrderDetail(id) {
+    if (!this.isOnline()) {
+      return { success: false, message: 'Device is offline' }
+    }
+    
+    try {
+      const response = await api.get(`/items/purchase_orders/${id}`, {
+        params: {
+          fields: ['*', 'supplier.*', 'pembuat_po.*', 'po_items.*']
+        }
+      })
+      
+      const order = response.data.data
+      const timestamp = new Date().getTime()
+      
+      // Simpan ke database lokal
+      await db.purchase_orders.put({
+        ...order,
+        cached_at: timestamp
+      })
+      
+      return { success: true, data: order }
+    } catch (error) {
+      console.error(`Failed to fetch purchase order ${id}:`, error)
+      return { success: false, message: error.message }
+    }
   }
 }
 

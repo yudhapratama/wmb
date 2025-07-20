@@ -24,7 +24,7 @@
               <div>
                 <span class="text-gray-500 font-normal">Stock: </span>
                 <span :class="`font-semibold ${stockStatus.color}`">
-                  {{ item.total_stock }} {{ item.unit?.abbreviation || '' }}
+                  {{ item.total_stock }} {{ getUnitName(item.unit) }}
                 </span>
               </div>
               <div>

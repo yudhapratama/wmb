@@ -159,12 +159,25 @@ initFormData()
 
 // Watch for changes in the item prop
 watch(() => props.item, (newItem) => {
-  initFormData()
+  // Hindari pembaruan rekursif dengan memeriksa apakah nilai sudah sama
+  if (JSON.stringify(formData.value) !== JSON.stringify({
+    nama_item: newItem.nama_item || '',
+    kategori: newItem.kategori || '',
+    total_stock: newItem.total_stock || 0,
+    unit: newItem.unit || '',
+    minimum_stock_level: newItem.minimum_stock_level || 0,
+    harga_rata_rata: newItem.harga_rata_rata || 0,
+    supplier_utama: newItem.supplier_utama || ''
+  })) {
+    initFormData()
+  }
 }, { deep: true })
 
 // Watch for changes in form data and emit update events
 watch(formData, (newData) => {
-  emit('update:item', { ...props.item, ...newData })
+  // Hindari update rekursif dengan hanya mengirim data yang berubah
+  // tanpa menggabungkan dengan props.item
+  emit('update:item', newData)
 }, { deep: true })
 
 function handleSubmit() {

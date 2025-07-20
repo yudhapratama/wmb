@@ -43,7 +43,7 @@ onUnmounted(() => {
         'max-w-sm': size === 'sm',
         'max-w-md': size === 'md',
         'max-w-lg': size === 'lg',
-        'max-w-4xl': size === 'xl'
+        'max-w-2xl': size === 'xl'
       }"
     >
       <div class="px-4 py-3 border-b flex justify-between items-center">

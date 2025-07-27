@@ -11,13 +11,13 @@
             :value="searchQuery"
             @input="$emit('update:searchQuery', $event.target.value)"
             type="text" 
-            placeholder="Cari nama item atau kode..." 
+            placeholder="Cari nama supplier..." 
             class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>
       <div class="md:col-span-1">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori Supplier</label>
         <Select
           :modelValue="selectedCategory"
           @update:modelValue="$emit('update:selectedCategory', $event)"
@@ -34,7 +34,7 @@ import { computed } from 'vue'
 import Select from '../../ui/Select.vue'
 
 const props = defineProps({
-  categories: {
+  suppliers: {
     type: Array,
     required: true
   },
@@ -50,11 +50,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:selectedCategory', 'update:searchQuery'])
 
-const categoryOptions = computed(() => [
-  { value: 'all', label: 'Semua Kategori' },
-  ...props.categories.map(category => ({
-    value: category.id,
-    label: category.name  // Ubah dari category.nama_kategori ke category.name
-  }))
-])
+const categoryOptions = computed(() => {
+  const categories = [...new Set(props.suppliers.map(s => s.kategori_supplier).filter(Boolean))]
+  return [
+    { value: 'all', label: 'Semua Kategori' },
+    ...categories.map(category => ({
+      value: category,
+      label: category
+    }))
+  ]
+})
 </script>

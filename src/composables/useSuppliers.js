@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import db from '../services/db'
 import syncService from '../services/sync'
 
-export function useSuppliers() {
+export function useSuppliers(autoLoad = true) {
   // State
   const isLoading = ref(true)
   const suppliers = ref([])
@@ -89,8 +89,8 @@ export function useSuppliers() {
       
       return { success: true }
     } catch (err) {
-      console.log('Supplier data:', supplier)
-      console.error('Error updating supplier:', err)
+      // console.log('Supplier data:', supplier)
+      // console.error('Error updating supplier:', err)
       error.value = `Failed to update supplier: ${err.message}`
       return { success: false, error: err.message }
     } finally {
@@ -148,6 +148,11 @@ export function useSuppliers() {
     } finally {
       isLoading.value = false
     }
+  }
+  
+  // Auto-load data when composable is used
+  if (autoLoad) {
+    loadData()
   }
   
   return {

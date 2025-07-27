@@ -12,10 +12,11 @@ const api = axios.create({
 })
 
 // Request interceptor for API calls
+// Request interceptor untuk memastikan token selalu ada
 api.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore()
-    if (authStore.token) {
+    if (authStore.token && !config.headers['Authorization']) {
       config.headers['Authorization'] = `Bearer ${authStore.token}`
     }
     return config

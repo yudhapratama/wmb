@@ -1,25 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import Modal from '../../../ui/Modal.vue'
-import InventoryForm from '../InventoryForm.vue'
+import SupplierForm from '../SupplierForm.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 
 const props = defineProps({
   isOpen: {
     type: Boolean,
     default: false
-  },
-  categories: {
-    type: Array,
-    default: () => []
-  },
-  suppliers: {
-    type: Array,
-    default: () => []
-  },
-  unitOptions: {
-    type: Array,
-    default: () => []
   },
   isLoading: {
     type: Boolean,
@@ -29,61 +17,54 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
-const newItem = ref({
-  nama_item: '',
-  kategori: '',
-  total_stock: 0,
-  unit: '',
-  minimum_stock_level: 0,
-  harga_rata_rata: 0,
-  supplier_utama: ''
+const newSupplier = ref({
+  nama_pt_toko: '',
+  no_telp_pic: '',
+  kategori_supplier: '',
+  alamat_pt_toko: '',
+  status: 'active'
 })
 
 // Reset form when modal opens
 function resetForm() {
-  newItem.value = {
-    nama_item: '',
-    kategori: '',
-    total_stock: 0,
-    unit: '',
-    minimum_stock_level: 0,
-    harga_rata_rata: 0,
-    supplier_utama: ''
+  newSupplier.value = {
+    nama_pt_toko: '',
+    no_telp_pic: '',
+    kategori_supplier: '',
+    alamat_pt_toko: '',
+    status: 'active'
   }
 }
 
 // Submit form
 function handleSubmit() {
-  emit('submit', newItem.value)
+  emit('submit', newSupplier.value)
 }
 </script>
 
 <template>
   <Modal 
     :isOpen="isOpen" 
-    title="Tambah Item Baru" 
+    title="Tambah Supplier Baru" 
     size="xl"
     @close="$emit('close')"
   >
-    <PermissionBasedAccess collection="raw_materials" action="create">
-      <InventoryForm
-        :categories="categories"
-        :suppliers="suppliers"
-        :unitOptions="unitOptions"
+    <PermissionBasedAccess collection="suppliers" action="create">
+      <SupplierForm
+        :supplier="newSupplier"
         :isLoading="isLoading"
-        @update:item="newItem = $event"
-        @save="handleSubmit"
+        @update:supplier="newSupplier = $event"
       />
     </PermissionBasedAccess>
     
     <template v-slot:fallback>
       <div class="p-6 text-center text-gray-500">
-        Anda tidak memiliki akses untuk menambahkan item baru.
+        Anda tidak memiliki akses untuk menambahkan supplier baru.
       </div>
     </template>
     
     <template #footer>
-      <PermissionBasedAccess collection="raw_materials" action="create">
+      <PermissionBasedAccess collection="suppliers" action="create">
         <div class="flex gap-2 w-full">
           <button
             @click="$emit('close')"
@@ -94,7 +75,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !newItem?.nama_item || !newItem?.kategori"
+            :disabled="isLoading || !newSupplier?.nama_pt_toko || !newSupplier?.no_telp_pic"
           >
             <svg v-if="isLoading" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

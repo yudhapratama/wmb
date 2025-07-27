@@ -86,3 +86,68 @@ export function truncate(str, length = 30) {
   if (!str) return ''
   return str.length > length ? str.substring(0, length) + '...' : str
 }
+
+/**
+ * Format datetime to Indonesian format (dd mm yyyy hh:mm)
+ * @param {Date|string} datetime - The datetime to format
+ * @param {boolean} includeTime - Whether to include time (default: true)
+ * @returns {string} Formatted datetime string
+ */
+export function formatDateTime(datetime, includeTime = true) {
+  if (!datetime) return ''
+  
+  const d = new Date(datetime)
+  
+  // Check if date is valid
+  if (isNaN(d.getTime())) return ''
+  
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  
+  const dateString = `${day}/${month}/${year}`
+  
+  if (!includeTime) {
+    return dateString
+  }
+  
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  
+  return `${dateString} ${hours}:${minutes}`
+}
+
+/**
+ * Format datetime to Indonesian format with month name
+ * @param {Date|string} datetime - The datetime to format
+ * @param {boolean} includeTime - Whether to include time (default: true)
+ * @returns {string} Formatted datetime string with month name
+ */
+export function formatDateTimeIndonesian(datetime, includeTime = true) {
+  if (!datetime) return ''
+  
+  const d = new Date(datetime)
+  
+  // Check if date is valid
+  if (isNaN(d.getTime())) return ''
+  
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ]
+  
+  const day = d.getDate()
+  const month = monthNames[d.getMonth()]
+  const year = d.getFullYear()
+  
+  const dateString = `${day} ${month} ${year}`
+  
+  if (!includeTime) {
+    return dateString
+  }
+  
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  
+  return `${dateString} ${hours}:${minutes}`
+}

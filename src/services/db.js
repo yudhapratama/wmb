@@ -10,13 +10,13 @@ class WarungDatabase extends Dexie {
     
     // Define version 1 schema (original)
     this.version(1).stores({
-      suppliers: '++id, nama_pt_toko, status',  // Menggunakan nama field Directus
+      suppliers: '++id, nama_pt_toko, status',
       item_categories: 'id, name, status',
       expense_categories: 'id, name, status',
       raw_materials: 'id, nama_item, kategori, total_stock, status',
       products: 'id, nama_produk, harga_jual, tipe_produk, status',
       recipe_items: 'id, recipe_id, cooked_items_id, quantity',
-      purchase_orders: 'id, supplier, status, date, sync_status',
+      purchase_orders: '++id, supplier, status, date, sync_status',
       po_items: 'id, purchase_order_id, item, jumlah_pesan, harga_satuan',
       stock_opname: 'id, raw_material_id, date, sync_status',
       kitchen_preparations: 'id, raw_material_id, date, sync_status',
@@ -46,7 +46,7 @@ class WarungDatabase extends Dexie {
       raw_materials: 'id, nama_item, kategori, total_stock, status, cached_at',
       products: 'id, nama_produk, harga_jual, tipe_produk, status, cached_at',
       recipe_items: 'id, recipe_id, cooked_items_id, quantity, cached_at',
-      purchase_orders: 'id, supplier, status, date, sync_status, cached_at',
+      purchase_orders: '++id, supplier, status, date, sync_status, cached_at',
       po_items: 'id, purchase_order_id, item, jumlah_pesan, harga_satuan, cached_at',
       stock_opname: 'id, raw_material_id, date, sync_status, cached_at',
       kitchen_preparations: 'id, raw_material_id, date, sync_status, cached_at',
@@ -60,6 +60,38 @@ class WarungDatabase extends Dexie {
     // Define version 5 to add units table
     this.version(5).stores({
       units: 'id, name, value, cached_at'
+    })
+    
+    // Define version 6 untuk sinkronisasi dengan Directus
+    this.version(6).stores({
+      purchase_orders: '++id, status, pembuat_po, supplier, catatan_pembelian, tanggal_penerimaan, penerima_barang, tanggal_pembayaran, total_pembayaran, bukti_bayar, Tempo, batas_waktu_bayar, date_created, date_updated, sync_status, cached_at',
+      po_items: '++id, purchase_order, item, item_name, unit_id, unit_name, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at'
+    })
+    
+    // Define version 7 untuk denormalisasi lengkap
+    this.version(7).stores({
+      // Purchase Orders dengan denormalisasi supplier
+      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, catatan_pembelian, tanggal_penerimaan, penerima_barang, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
+      
+      // PO Items dengan denormalisasi lengkap - PERBAIKAN: gunakan purchase_order konsisten
+      po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
+      
+      // Raw Materials dengan denormalisasi kategori dan unit
+      raw_materials: 'id, nama_item, kategori, kategori_name, unit, unit_name, unit_abbreviation, supplier_utama, supplier_name, total_stock, harga_rata_rata, status, cached_at',
+      
+      // Suppliers dengan kategori denormalisasi
+      suppliers: '++id, nama_pt_toko, kategori_supplier, status, cached_at'
+    })
+    
+    // Define version 8 untuk menambahkan log_inventory
+    this.version(8).stores({
+      // Tambahkan tabel log_inventory
+      
+      // Menjadi (sesuaikan dengan struktur backend):
+      log_inventaris: '++id, item, tipe_transaksi, perubahan_jumlah, stok_sebelum, stok_setelah, dokumen_sumber, pengguna, waktu_log, sync_status, cached_at',
+      
+      // Tambahkan juga tabel waste untuk penyusutan
+      waste: '++id, item, jumlah, alasan, bukti, tanggal, pengguna, unit, sync_status, cached_at'
     })
     
     // Define tables
@@ -80,8 +112,11 @@ class WarungDatabase extends Dexie {
     this.expenses = this.table('expenses')
     this.sync_queue = this.table('sync_queue')
     this.units = this.table('units')
+    // Tambahkan referensi tabel baru
+    this.log_inventaris = this.table('log_inventaris')
+    this.waste = this.table('waste')
   }
-
+  
   async purgeOldCache() {
     const oneDayAgo = new Date().getTime() - (1 * 24 * 60 * 60 * 1000);
 
@@ -102,14 +137,17 @@ class WarungDatabase extends Dexie {
       'sales_items',
       'expenses',
       'units',
+      // Tambahkan tabel baru ke purge list
+      'log_inventaris',
+      'waste'
     ];
 
     for (const tableName of tablesToPurge) {
         try {
             await this[tableName].where('cached_at').below(oneDayAgo).delete();
-            console.log(`Purged old cache from ${tableName}`);
+            // console.log(`Purged old cache from ${tableName}`);
         } catch (error) {
-            console.error(`Failed to purge cache for ${tableName}:`, error);
+            // console.error(`Failed to purge cache for ${tableName}:`, error);
         }
     }
   }

@@ -15,17 +15,11 @@
       
       <div>
         <label for="kategori" class="block text-sm font-medium text-gray-700">Kategori</label>
-        <select
-          id="kategori"
+        <Select
           v-model="formData.kategori"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          required
-        >
-          <option value="" disabled>Pilih Kategori</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">
-            {{ category.name }}
-          </option>
-        </select>
+          :options="categoryOptions"
+          placeholder="Pilih Kategori"
+        />
       </div>
       
       <div>
@@ -44,17 +38,11 @@
       <div>
       <div>
         <label for="unit" class="block text-sm font-medium text-gray-700">Unit</label>
-        <select
-          id="unit"
+        <Select
           v-model="formData.unit"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          required
-        >
-          <option value="" disabled>Pilih Unit</option>
-          <option v-for="unit in unitOptions" :key="unit.id" :value="unit.id">
-            {{ unit.text }}
-          </option>
-        </select>
+          :options="unitOptionsFormatted"
+          placeholder="Pilih Unit"
+        />
       </div>
       </div>
       
@@ -86,16 +74,11 @@
       
       <div>
         <label for="supplier_utama" class="block text-sm font-medium text-gray-700">Supplier Utama</label>
-        <select
-          id="supplier_utama"
+        <Select
           v-model="formData.supplier_utama"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="">Tidak Ada</option>
-          <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-            {{ supplier.nama_pt_toko }}
-          </option>
-        </select>
+          :options="supplierOptions"
+          placeholder="Pilih Supplier"
+        />
       </div>
     </div>
     
@@ -104,7 +87,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import Select from '../../ui/Select.vue'
 
 const props = defineProps({
   item: {
@@ -144,6 +128,7 @@ const formData = ref({
 // Initialize form data from props
 function initFormData() {
   formData.value = {
+    id: props.item.id, // Tambahkan ini
     nama_item: props.item.nama_item || '',
     kategori: props.item.kategori || '',
     total_stock: props.item.total_stock || 0,
@@ -184,4 +169,17 @@ function handleSubmit() {
   const data = { ...props.item, ...formData.value }
   emit('save', data)
 }
+
+const categoryOptions = computed(() => 
+  props.categories.map(cat => ({ value: cat.id, label: cat.name }))
+)
+
+const unitOptionsFormatted = computed(() => 
+  props.unitOptions.map(unit => ({ value: unit.id, label: unit.text }))
+)
+
+const supplierOptions = computed(() => [
+  { value: '', label: 'Tidak Ada' },
+  ...props.suppliers.map(supplier => ({ value: supplier.id, label: supplier.nama_pt_toko }))
+])
 </script>

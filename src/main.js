@@ -6,6 +6,7 @@ import router from './router'
 import './style.css'
 import App from './App.vue'
 import { registerServiceWorker } from './services/serviceWorker'
+import { useAuthStore } from './stores/auth'
 
 // Initialize Pinia with persistence
 const pinia = createPinia()
@@ -26,6 +27,12 @@ app.use(VueQueryPlugin, {
     }
   }
 })
+
+// ✅ Pulihkan session setelah pinia diinisialisasi
+const authStore = useAuthStore()
+if (authStore.token) {
+  authStore.restoreSession()
+}
 
 // Global error handler
 app.config.errorHandler = (err, instance, info) => {

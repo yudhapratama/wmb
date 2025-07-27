@@ -2,54 +2,28 @@
   <AppLayout title="Purchase Orders Management">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Purchase Orders Management</h1>
-      <button
-        @click="openAddModal"
-        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-      >
-        <PlusIcon class="w-5 h-5" />
-        Tambah Order
-      </button>
+      <h1 class="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+      <PermissionBasedAccess collection="purchase_orders" action="create">
+        <button
+          @click="showAddModal = true"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+        >
+          <PlusIcon class="w-5 h-5" />
+          Tambah Purchase Order
+        </button>
+      </PermissionBasedAccess>
     </div>
     
     <!-- Filters -->
-    <div class="bg-white shadow rounded-lg border border-gray-200 p-6">
-      <div class="flex gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="Cari nomor order atau supplier..." 
-              class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-        
-        <select 
-          v-model="selectedStatus" 
-          class="w-64 px-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="all">Semua Status</option>
-          <option value="Dibuat">Dibuat</option>
-          <option value="Diterima">Diterima</option>
-          <option value="Selesai">Selesai</option>
-        </select>
-        
-        <select 
-          v-model="selectedSupplier" 
-          class="w-64 px-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="all">Semua Supplier</option>
-          <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.nama_pt_toko">
-            {{ supplier.nama_pt_toko }}
-          </option>
-        </select>
-      </div>
-    </div>
+    <PurchaseOrderFilters
+      :suppliers="suppliers"
+      :selectedStatus="selectedStatus"
+      @update:selectedStatus="selectedStatus = $event"
+      :selectedSupplier="selectedSupplier"
+      @update:selectedSupplier="selectedSupplier = $event"
+      :searchQuery="searchQuery"
+      @update:searchQuery="searchQuery = $event"
+    />
     
     <!-- Purchase Orders List -->
     <div class="mt-6 grid grid-cols-1 gap-6">
@@ -64,80 +38,25 @@
       <div v-else-if="filteredOrders.length === 0" class="col-span-full text-center py-12">
         <ArchiveBoxIcon class="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <p class="text-gray-600">Tidak ada purchase order yang ditemukan</p>
-        <button
-          @click="openAddModal"
-          class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
-        >
-          <PlusIcon class="w-5 h-5" />
-          Buat Order Pertama
-        </button>
+        <PermissionBasedAccess collection="purchase_orders" action="create">
+          <button
+            @click="showAddModal = true"
+            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
+          >
+            <PlusIcon class="w-5 h-5" />
+            Buat Order Pertama
+          </button>
+        </PermissionBasedAccess>
       </div>
       
-      <div 
-        v-else
-        v-for="order in filteredOrders" 
-        :key="order.id" 
-        class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
-      >
-        <div class="p-6">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <div :class="getStatusBadgeClass(order.status)" class="p-2 rounded-lg">
-                <component :is="getStatusIcon(order.status)" class="w-5 h-5" />
-              </div>
-              <div>
-                <h3 class="font-semibold text-lg text-gray-900">{{ order.id }}</h3>
-                <div class="flex items-center gap-4 mt-1 text-sm">
-                  <div class="flex items-center gap-1">
-                    <BuildingOfficeIcon class="w-4 h-4" /> 
-                    {{ order.supplier?.nama_pt_toko }}
-                  </div>
-                  <span :class="getStatusTextClass(order.status)" class="px-2 py-1 rounded-full text-xs font-medium">
-                    {{ getStatusLabel(order.status) }}
-                  </span>
-                  <span class="text-gray-500">oleh {{ order.pembuat_po?.first_name }}</span>
-                </div>
-                <div class="flex items-center gap-6 mt-2 text-sm">
-                  <div class="flex items-center gap-1 text-gray-500">
-                    <CalendarIcon class="w-4 h-4" />
-                    Order: {{ formatDate(order.date_created) }}
-                  </div>
-                  <div class="flex items-center gap-1 text-gray-500">
-                    <ArchiveBoxIcon class="w-4 h-4" />
-                    Delivery: {{ formatDate(order.tanggal_pembayaran || order.date_created) }}
-                  </div>
-                </div>
-                <div class="flex items-center gap-1 mt-1 text-sm text-gray-500">
-                  <HashtagIcon class="w-4 h-4" />
-                  {{ order.po_items?.length || 0 }} items
-                </div>
-                <p v-if="order.catatan_pembelian" class="text-xs text-gray-500 mt-1 truncate max-w-md">
-                  Note: {{ order.catatan_pembelian }}
-                </p>
-              </div>
-            </div>
-            <div class="text-right">
-              <div class="text-lg font-bold text-blue-600 mb-3">
-                {{ formatCurrency(order.total_pembayaran || 0) }}
-              </div>
-              <div class="flex gap-2">
-                <button 
-                  @click="openEditModal(order)" 
-                  class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
-                >
-                  <PencilIcon class="w-4 h-4" />
-                </button>
-                <button 
-                  @click="confirmDelete(order)" 
-                  class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
-                >
-                  <TrashIcon class="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PurchaseOrderCard
+        v-for="order in filteredOrders"
+        :key="order.id"
+        :order="order"
+        @edit="openEditModal"
+        @delete="confirmDelete"
+        @receive="openReceiveModal"
+      />
     </div>
     
     <!-- Modals -->
@@ -156,6 +75,14 @@
       :isLoading="isLoading"
       @close="showEditModal = false"
       @submit="handleUpdateOrder"
+    />
+    
+    <ReceivePurchaseOrderModal
+      :isOpen="showReceiveModal"
+      :order="receivingOrder"
+      :isLoading="isLoading"
+      @close="showReceiveModal = false"
+      @submit="handleReceiveOrder"
     />
     
     <!-- Delete Confirmation Modal -->
@@ -193,22 +120,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
+import PurchaseOrderFilters from '../components/features/purchase-orders/PurchaseOrderFilters.vue'
+import PurchaseOrderCard from '../components/features/purchase-orders/PurchaseOrderCard.vue'
 import { usePurchaseOrders } from '../composables/usePurchaseOrders'
 import { useSuppliers } from '../composables/useSuppliers'
+import { useInventory } from '../composables/useInventory'
 import AddPurchaseOrderModal from '../components/features/purchase-orders/modals/AddPurchaseOrderModal.vue'
 import EditPurchaseOrderModal from '../components/features/purchase-orders/modals/EditPurchaseOrderModal.vue'
+import ReceivePurchaseOrderModal from '../components/features/purchase-orders/modals/ReceivePurchaseOrderModal.vue'
 import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
+import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import { 
   PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  ArchiveBoxIcon,
-  CalendarIcon,
-  BuildingOfficeIcon,
-  HashtagIcon, 
-  CheckCircleIcon,
-  ClockIcon,
-  TruckIcon
+  ArchiveBoxIcon
 } from '@heroicons/vue/24/outline'
 
 // Load purchase orders
@@ -219,20 +143,46 @@ const {
   searchQuery,
   selectedStatus,
   selectedSupplier,
+  loadData,
   addPurchaseOrder,
   updatePurchaseOrder,
   deletePurchaseOrder,
-  fetchOrderDetail
+  fetchOrderDetail,
+  receivePurchaseOrder
 } = usePurchaseOrders()
 
 // Load suppliers
-const { suppliers } = useSuppliers()
+const { 
+  suppliers, 
+  loadData: loadSuppliersData,
+  isLoading: suppliersLoading 
+} = useSuppliers()
+
+// Load raw materials
+const { loadData: loadMaterialsData } = useInventory()
+
+// Load data on mount
+onMounted(async () => {
+  try {
+    // Load suppliers data explicitly
+    await loadSuppliersData()
+    // Load raw materials data
+    await loadMaterialsData()
+    // Load purchase orders data
+    await loadData()
+  } catch (error) {
+    console.error('Error loading data:', error)
+    showErrorNotification('Failed to load data')
+  }
+})
 
 // Modal state
 const showAddModal = ref(false)
 const showEditModal = ref(false)
+const showReceiveModal = ref(false)
 const isConfirmDeleteOpen = ref(false)
 const editingOrder = ref(null)
+const receivingOrder = ref(null)
 const orderToDelete = ref(null)
 
 // Notification state
@@ -240,52 +190,42 @@ const showNotification = ref(false)
 const notificationMessage = ref('')
 const notificationType = ref('success') // 'success' or 'error'
 
-// Load data on mount
-onMounted(async () => {
-  // Data loading is handled by the composable
-})
-
-// Open add modal
-function openAddModal() {
-  editingOrder.value = null
-  showAddModal.value = true
-}
-
 // Open edit modal
 async function openEditModal(order) {
   // Ambil detail order terlebih dahulu untuk mendapatkan data lengkap termasuk items
   const result = await fetchOrderDetail(order.id)
+  console.log('ini data order detail ketika akan di edit:', result);
   if (result.success) {
     const orderData = result.data;
-    
-    // Format data sesuai dengan struktur yang diharapkan oleh EditPurchaseOrderModal
+    console.log('ini data order detail ketika akan di edit:', orderData);
+    // ✅ Perbaiki mapping data untuk EditPurchaseOrderModal
     editingOrder.value = {
       id: orderData.id,
-      orderNumber: orderData.id, // Gunakan ID sebagai nomor order
-      supplier: orderData.supplier?.nama_pt_toko || '',
+      orderNumber: orderData.id.toString(),
+      supplier: orderData.supplier?.id?.toString() || '', // ✅ Gunakan ID supplier, bukan nama
       status: orderData.status || 'Dibuat',
       orderDate: orderData.date_created ? new Date(orderData.date_created).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       expectedDelivery: orderData.tanggal_pembayaran ? new Date(orderData.tanggal_pembayaran).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       createdBy: orderData.pembuat_po?.first_name || 'Admin',
       notes: orderData.catatan_pembelian || '',
-      // Format items dari po_items
-      items: Array.isArray(orderData.po_items) ? orderData.po_items.map(item => ({
-        item: item.item || '',
+      // ✅ Perbaiki mapping items
+      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+        raw_material_id: item.item?.id || item.item,
+        item: item.item?.nama_item || item.item_name || '',
         quantity: item.jumlah_pesan || 1,
-        unit: item.unit || 'pcs',
-        price: item.harga_satuan || 0,
-        total: (item.jumlah_pesan || 1) * (item.harga_satuan || 0)
+        unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
+        total_price: item.harga_satuan || 0
       })) : []
     };
-    
+    console.log('ini data order detail setelah di edit:', editingOrder.value);
     // Jika tidak ada items, tambahkan item kosong
     if (!editingOrder.value.items.length) {
       editingOrder.value.items.push({
+        raw_material_id: '',
         item: '',
         quantity: 1,
         unit: 'pcs',
-        price: 0,
-        total: 0
+        total_price: 0
       });
     }
     
@@ -314,6 +254,47 @@ async function handleUpdateOrder(order) {
     showSuccessNotification('Purchase order updated successfully')
   } else {
     showErrorNotification(`Failed to update purchase order: ${result.error || 'Unknown error'}`)
+  }
+}
+
+// Open receive modal
+async function openReceiveModal(order) {
+  // Ambil detail order terlebih dahulu untuk mendapatkan data lengkap termasuk items
+  const result = await fetchOrderDetail(order.id)
+  if (result.success) {
+    const orderData = result.data;
+    console.log('ini data order detail ketika akan di terima:', orderData);
+    // Format data sesuai dengan struktur yang diharapkan oleh ReceivePurchaseOrderModal
+    receivingOrder.value = {
+      id: orderData.id,
+      supplier: orderData.supplier,
+      date_created: orderData.date_created,
+      pembuat_po: orderData.pembuat_po,
+      // Format items dari po_items untuk modal receive
+      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+        id: item.id, // po_items.id
+        nama_item: item.item?.nama_item || 'Unknown Item',
+        unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
+        jumlah_pesan: item.jumlah_pesan || 0,
+        harga_satuan: item.harga_satuan || 0,
+        raw_material_id: item.item?.id
+      })) : []
+    };
+    
+    showReceiveModal.value = true;
+  } else {
+    showErrorNotification(`Failed to fetch order details: ${result.error || 'Unknown error'}`);
+  }
+}
+
+// Handle receive order
+async function handleReceiveOrder(receiptData) {
+  const result = await receivePurchaseOrder(receiptData)
+  if (result.success) {
+    showReceiveModal.value = false
+    showSuccessNotification('Purchase order received successfully')
+  } else {
+    showErrorNotification(`Failed to receive purchase order: ${result.error || 'Unknown error'}`)
   }
 }
 
@@ -353,54 +334,5 @@ function showErrorNotification(message) {
   setTimeout(() => {
     showNotification.value = false
   }, 3000)
-}
-
-// Format currency
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount)
-}
-
-// Format date
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('id-ID')
-}
-
-// Get status icon
-function getStatusIcon(status) {
-  switch (status) {
-    case 'Dibuat': return ClockIcon
-    case 'Diterima': return CheckCircleIcon
-    case 'Selesai': return TruckIcon
-    default: return ClockIcon
-  }
-}
-
-// Get status badge class
-function getStatusBadgeClass(status) {
-  switch (status) {
-    case 'Dibuat': return 'bg-gray-100'
-    case 'Diterima': return 'bg-blue-100'
-    case 'Selesai': return 'bg-green-100'
-    default: return 'bg-gray-100'
-  }
-}
-
-// Get status text class
-function getStatusTextClass(status) {
-  switch (status) {
-    case 'Dibuat': return 'bg-gray-100 text-gray-800'
-    case 'Diterima': return 'bg-blue-100 text-blue-800'
-    case 'Selesai': return 'bg-green-100 text-green-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-// Get status label
-function getStatusLabel(status) {
-  return status // Langsung gunakan status dari API
 }
 </script>

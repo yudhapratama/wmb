@@ -26,8 +26,20 @@ export const useAuthStore = defineStore('auth', {
     },
     // Modifikasi getter untuk memeriksa permissions
     hasPermission: (state) => (collection, action = 'read') => {
-      if (!state.permissions) return false
-      return !!state.permissions[collection]?.[action]
+      // Log the permission check for debugging
+      // console.log(`Checking permission for collection: ${collection}, action: ${action}`);
+      // console.log('Current permissions:', state.permissions[collection]?.[action]);
+  
+      // Ensure permissions are loaded and the specific permission exists
+      if (!state.permissions || !state.permissions[collection] || !state.permissions[collection][action]) {
+        // console.log(`Permission not found for ${collection}.${action}`);
+        return false;
+      }
+  
+      // Explicitly check if the 'access' property is 'full'
+      const hasFullAccess = state.permissions[collection][action].access === 'full';
+      // console.log(`Has full access for ${collection}.${action}: ${hasFullAccess}`);
+      return hasFullAccess;
     },
     // Tambahkan getter untuk memeriksa apakah user memiliki akses ke semua collection
     hasPermissionForAll: (state) => (collections, action = 'read') => {
@@ -41,12 +53,30 @@ export const useAuthStore = defineStore('auth', {
   },
   
   actions: {
+    // ✅ Tambahkan method untuk memulihkan session
+    async restoreSession() {
+      if (this.token) {
+        // Pulihkan authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+        
+        // Validasi token masih valid
+        try {
+          await api.get('/users/me')
+          return true
+        } catch (error) {
+          console.error('Token tidak valid, logout user:', error)
+          this.logout()
+          return false
+        }
+      }
+      return false
+    },
+    
     async login(email, password) {
       try {
-        // Use the correct Directus API endpoint
         const response = await api.post('/auth/login', { email, password, mode: 'json' })
         
-        console.log('Login response:', response.data.data)
+        // console.log('Login response:', response.data.data)
         
         this.token = response.data.data.access_token
         
@@ -70,12 +100,12 @@ export const useAuthStore = defineStore('auth', {
       try {
         // Fetch user data including role
         const userResponse = await api.get('/users/me?fields=*,role.*')
-        console.log('User data response:', userResponse.data.data)
+        // console.log('User data response:', userResponse.data.data)
         
         this.user = userResponse.data.data
         this.role = userResponse.data.data.role
         
-        console.log('Role from API:', this.role)
+        // console.log('Role from API:', this.role)
         
         // Fetch user permissions
         await this.fetchPermissions()
@@ -91,7 +121,7 @@ export const useAuthStore = defineStore('auth', {
     async fetchPermissions() {
       try {
         const permissionsResponse = await api.get('/permissions/me')
-        console.log('Permissions response:', permissionsResponse.data.data)
+        // console.log('Permissions response:', permissionsResponse.data.data)
         
         this.permissions = permissionsResponse.data.data
         this.permissionsTimestamp = Date.now()
@@ -103,6 +133,10 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (error) {
         console.error('Failed to fetch permissions:', error)
+        // Jika 401 atau 403, logout user
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          this.logout()
+        }
         return false
       }
     },

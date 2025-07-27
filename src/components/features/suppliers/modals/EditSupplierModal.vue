@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
-import InventoryForm from '../InventoryForm.vue'
+import SupplierForm from '../SupplierForm.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 
 const props = defineProps({
@@ -9,21 +9,9 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  item: {
+  supplier: {
     type: Object,
     default: null
-  },
-  categories: {
-    type: Array,
-    default: () => []
-  },
-  suppliers: {
-    type: Array,
-    default: () => []
-  },
-  unitOptions: {
-    type: Array,
-    default: () => []
   },
   isLoading: {
     type: Boolean,
@@ -33,49 +21,46 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
-const editedItem = ref(null)
+const editedSupplier = ref(null)
 
-// Initialize form data when item changes
-watch(() => props.item, (newItem) => {
-  if (newItem) {
-    editedItem.value = { ...newItem }
+// Initialize form data when supplier changes
+watch(() => props.supplier, (newSupplier) => {
+  if (newSupplier) {
+    editedSupplier.value = { ...newSupplier }
   }
 }, { immediate: true, deep: true })
 
 // Submit form
 function handleSubmit() {
-  emit('submit', editedItem.value)
+  emit('submit', editedSupplier.value)
 }
 </script>
 
 <template>
   <Modal 
     :isOpen="isOpen" 
-    :title="item ? `Edit Item - ${item.nama_item}` : 'Edit Item'" 
+    :title="supplier ? `Edit Supplier - ${supplier.nama_pt_toko}` : 'Edit Supplier'" 
     size="xl"
     @close="emit('close')"
   >
-    <PermissionBasedAccess collection="raw_materials" action="update">
-      <div v-if="item && editedItem">
-        <InventoryForm
-          :item="editedItem"
-          :categories="categories"
-          :suppliers="suppliers"
-          :unitOptions="unitOptions"
-          @update:item="(val) => editedItem = val"
-          @save="handleSubmit"
+    <PermissionBasedAccess collection="suppliers" action="update">
+      <div v-if="supplier && editedSupplier">
+        <SupplierForm
+          :supplier="editedSupplier"
+          :isLoading="isLoading"
+          @update:supplier="(val) => editedSupplier = val"
         />
       </div>
     </PermissionBasedAccess>
     
     <template v-slot:fallback>
       <div class="p-6 text-center text-gray-500">
-        Anda tidak memiliki akses untuk mengedit item ini.
+        Anda tidak memiliki akses untuk mengedit supplier ini.
       </div>
     </template>
     
     <template #footer>
-      <PermissionBasedAccess collection="raw_materials" action="update">
+      <PermissionBasedAccess collection="suppliers" action="update">
         <div class="flex gap-2 w-full">
           <button
             @click="emit('close')"
@@ -86,7 +71,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !editedItem?.nama_item || !editedItem?.kategori"
+            :disabled="isLoading || !editedSupplier?.nama_pt_toko || !editedSupplier?.no_telp_pic"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

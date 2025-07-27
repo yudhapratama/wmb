@@ -97,6 +97,39 @@ src/
 └── sw.js           # Service worker
 ```
 
+
+## Troubleshooting
+
+### Masalah Pengalihan ke Dashboard
+
+Jika pengguna dengan peran tertentu (misalnya 'cashier') dialihkan ke dashboard meskipun memiliki izin yang diperlukan untuk mengakses halaman tertentu, periksa konfigurasi `allowedRoles` di file `router/index.js`.
+
+#### Masalah
+
+Di `router/index.js`, ada dua pengecekan yang dilakukan:
+
+1. **Pengecekan Permission** - Memeriksa apakah pengguna memiliki izin 'read' untuk semua koleksi yang diperlukan
+2. **Pengecekan Role** - Memeriksa apakah peran pengguna ada dalam daftar `allowedRoles`
+
+Untuk beberapa rute seperti Inventory, peran tertentu mungkin tidak ada dalam daftar `allowedRoles`, sehingga meskipun pengguna memiliki semua izin yang diperlukan, mereka akan dialihkan ke dashboard karena peran mereka tidak diizinkan.
+
+#### Solusi
+
+Tambahkan peran yang diperlukan ke daftar `allowedRoles` untuk rute yang sesuai di `router/index.js`. Contoh:
+
+```javascript
+{
+  path: '/inventory',
+  name: 'inventory',
+  component: Inventory,
+  meta: { 
+    requiresAuth: true,
+    allowedRoles: ['superadmin', 'admin', 'warehouse', 'kitchen', 'cashier'],
+    requiredCollections: ['raw_materials', 'item_categories', 'suppliers', 'units']
+  }
+}
+```
+
 ## Lisensi
 
 MIT

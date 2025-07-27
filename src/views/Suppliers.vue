@@ -1,8 +1,12 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
-import Modal from '../components/ui/Modal.vue'
-import SupplierForm from '../components/features/suppliers/SupplierForm.vue'
+import SupplierCard from '../components/features/suppliers/SupplierCard.vue'
+import SupplierDetailModal from '../components/features/suppliers/modals/SupplierDetailModal.vue'
+import AddSupplierModal from '../components/features/suppliers/modals/AddSupplierModal.vue'
+import EditSupplierModal from '../components/features/suppliers/modals/EditSupplierModal.vue'
+import SuppliersFilters from '../components/features/suppliers/SuppliersFilters.vue'
+import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import { useSuppliers } from '../composables/useSuppliers'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 
@@ -14,75 +18,63 @@ const {
   isLoading,
   suppliers,
   searchQuery,
-  filteredSuppliers,
+  filteredSuppliers: baseFilteredSuppliers,
   loadData,
   addSupplier,
   updateSupplier,
   deleteSupplier
 } = useSuppliers()
 
+// Add filter state
+const selectedCategory = ref('all')
+
+// Update filtered suppliers to include category filter
+const filteredSuppliers = computed(() => {
+  let filtered = baseFilteredSuppliers.value
+  
+  // Filter by category
+  if (selectedCategory.value !== 'all') {
+    filtered = filtered.filter(supplier => 
+      supplier.kategori_supplier === selectedCategory.value
+    )
+  }
+  
+  return filtered
+})
+
 // Modal state
 const showAddModal = ref(false)
 const showEditModal = ref(false)
+const showDetailModal = ref(false)
 const currentSupplier = ref(null)
 
-// Form data
-const newSupplier = ref({
-  nama_pt_toko: '',
-  no_telp_pic: '',
-  kategori_supplier: '',
-  alamat_pt_toko: '',
-  status: 'active'
+// Notification state
+const showNotification = ref(false)
+const notificationMessage = ref('')
+const notificationType = ref('success')
+
+// Load data on mount
+onMounted(async () => {
+  await loadData()
 })
+
+// View supplier details
+function viewSupplierDetails(supplier) {
+  currentSupplier.value = { ...supplier }
+  showDetailModal.value = true
+}
 
 // Edit supplier
 function editSupplier(supplier) {
-  currentSupplier.value = { ...supplier, 
-    nama_pt_toko: supplier.nama_pt_toko || '',
-    no_telp_pic: supplier.no_telp_pic || '',
-    kategori_supplier: supplier.kategori_supplier || '',
-    alamat_pt_toko: supplier.alamat_pt_toko || ''
-  }
+  currentSupplier.value = { ...supplier }
+  showDetailModal.value = false
   showEditModal.value = true
 }
 
-// Handle add supplier
-async function handleAddSupplier() {
-  // Konversi ke objek JavaScript biasa terlebih dahulu
-  const plainSupplier = JSON.parse(JSON.stringify(newSupplier.value))
-  
-  const result = await addSupplier(plainSupplier)
-  if (result.success) {
-    // Reset form and close modal
-    newSupplier.value = {
-      nama_pt_toko: '',
-      no_telp_pic: '',
-      kategori_supplier: '',
-      alamat_pt_toko: '',
-      status: 'active'
-    }
-    showAddModal.value = false
-    showSuccessNotification('Supplier added successfully')
-  } else {
-    showErrorNotification(`Failed to add supplier: ${result.error || 'Unknown error'}`)
-  }
-}
-
-// Handle update supplier
-async function handleUpdateSupplier() {
-  const result = await updateSupplier(currentSupplier.value)
-  if (result.success) {
-    showEditModal.value = false
-    showSuccessNotification('Supplier updated successfully')
-  } else {
-    showErrorNotification(`Failed to update supplier: ${result.error || 'Unknown error'}`)
-  }
-}
-
 // Handle delete supplier
-async function handleDeleteSupplier(id) {
-  if (confirm('Are you sure you want to delete this supplier?')) {
-    const result = await deleteSupplier(id)
+async function handleDeleteSupplier(supplier) {
+  if (confirm(`Are you sure you want to delete supplier "${supplier.nama_pt_toko}"?`)) {
+    const result = await deleteSupplier(supplier.id)
     if (result.success) {
       showSuccessNotification('Supplier deleted successfully')
     } else {
@@ -91,10 +83,27 @@ async function handleDeleteSupplier(id) {
   }
 }
 
-// Add these to the script section
-const showNotification = ref(false)
-const notificationMessage = ref('')
-const notificationType = ref('success') // 'success' or 'error'
+// Handle add supplier
+async function handleAddSupplier(newSupplier) {
+  const result = await addSupplier(newSupplier)
+  if (result.success) {
+    showAddModal.value = false
+    showSuccessNotification('Supplier added successfully')
+  } else {
+    showErrorNotification(`Failed to add supplier: ${result.error || 'Unknown error'}`)
+  }
+}
+
+// Handle update supplier
+async function handleUpdateSupplier(updatedSupplier) {
+  const result = await updateSupplier(updatedSupplier)
+  if (result.success) {
+    showEditModal.value = false
+    showSuccessNotification('Supplier updated successfully')
+  } else {
+    showErrorNotification(`Failed to update supplier: ${result.error || 'Unknown error'}`)
+  }
+}
 
 function showSuccessNotification(message) {
   notificationMessage.value = message
@@ -113,202 +122,132 @@ function showErrorNotification(message) {
     showNotification.value = false
   }, 3000)
 }
-
-const isFormValid = computed(() => {
-  return (
-    newSupplier.value.nama_pt_toko && 
-    newSupplier.value.no_telp_pic
-  )
-})
-
-const isEditFormValid = computed(() => {
-  return (
-    currentSupplier.value && 
-    currentSupplier.value.nama_pt_toko && 
-    currentSupplier.value.no_telp_pic
-  )
-})
-
-// Initialize
-onMounted(async () => {
-  await loadData()
-})
 </script>
 
 <template>
-  <AppLayout>
-    <!-- Main content -->
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-2xl font-bold text-gray-900">Supplier Management</h2>
-          <p class="text-gray-600">Kelola data supplier dan vendor</p>
+  <AppLayout title="Supplier Management">
+    <!-- Offline Warning -->
+    <div v-if="isOffline" class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+      <div class="flex">
+        <svg class="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77 .833.192 2.5 1.732 2.5z" />
+        </svg>
+        <div class="ml-3">
+          <p class="text-sm text-yellow-800">
+            You are currently offline. Changes will be synced when connection is restored.
+          </p>
         </div>
-        <button 
-          @click="showAddModal = true" 
-          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center"
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Supplier Management</h1>
+        <p class="text-gray-600">Kelola data supplier dan vendor</p>
+      </div>
+      <PermissionBasedAccess collection="suppliers" action="create">
+        <button
+          @click="showAddModal = true"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
         >
-          <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
           Tambah Supplier
         </button>
+      </PermissionBasedAccess>
+    </div>
+    
+    <!-- Filters -->
+    <SuppliersFilters
+      :suppliers="suppliers"
+      :selectedCategory="selectedCategory"
+      @update:selectedCategory="selectedCategory = $event"
+      :searchQuery="searchQuery"
+      @update:searchQuery="searchQuery = $event"
+    />
+    
+    <!-- Supplier Cards -->
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <div v-if="isLoading" class="col-span-full text-center py-12">
+        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-2 text-gray-600">Loading suppliers...</p>
       </div>
       
-      <!-- Offline warning -->
-      <div v-if="isOffline" class="mb-4 bg-yellow-50 border-l-3 border-yellow-400 p-2.5 rounded-md">
-        <div class="flex">
-          <div class="flex-shrink-0">
-            <svg class="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <div v-else-if="filteredSuppliers.length === 0" class="col-span-full text-center py-12">
+        <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+        <p class="mt-2 text-gray-600">No suppliers found.</p>
+        <PermissionBasedAccess collection="suppliers" action="create">
+          <button
+            @click="showAddModal = true"
+            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-          </div>
-          <div class="ml-2.5">
-            <p class="text-xs text-yellow-700">
-              You are currently offline. Changes will be synchronized when you're back online.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notification -->
-      <div 
-        v-if="showNotification" 
-        :class="[notificationType === 'success' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700']"
-        class="border-l-4 p-4 mb-6 transition-opacity duration-300"
-      >
-        <p>{{ notificationMessage }}</p>
-      </div>
-
-      <!-- Search -->
-      <div class="mb-6">
-        <div class="relative">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search suppliers..."
-            class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span class="text-gray-500">🔍</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading state -->
-      <div v-if="isLoading" class="flex justify-center items-center h-48">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            Add Your First Supplier
+          </button>
+        </PermissionBasedAccess>
       </div>
       
-      <!-- Suppliers list -->
-      <div v-else-if="filteredSuppliers.length > 0" class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supplier in filteredSuppliers" :key="supplier.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ supplier.nama_pt_toko }}</div>
-                <div class="text-sm text-gray-500 truncate max-w-xs">{{ supplier.alamat_pt_toko }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.no_telp_pic }}</td>
-              <!-- In the table data cells -->
-              <td class="px-4 py-2 text-sm">{{ supplier.kategori_supplier }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  :class="supplier.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                >
-                  {{ supplier.status === 'active' ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button 
-                  @click="editSupplier(supplier)" 
-                  class="text-blue-600 hover:text-blue-900 mr-3"
-                >
-                  Edit
-                </button>
-                <button 
-                  @click="handleDeleteSupplier(supplier.id)" 
-                  class="text-red-600 hover:text-red-900"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <SupplierCard
+        v-for="supplier in filteredSuppliers"
+        :key="supplier.id"
+        :supplier="supplier"
+        @view="viewSupplierDetails"
+        @edit="editSupplier"
+        @delete="handleDeleteSupplier"
+      />
+    </div>
+    
+    <!-- Modals -->
+    <AddSupplierModal
+      :isOpen="showAddModal"
+      :isLoading="isLoading"
+      @close="showAddModal = false"
+      @submit="handleAddSupplier"
+    />
+    
+    <EditSupplierModal
+      :isOpen="showEditModal"
+      :supplier="currentSupplier"
+      :isLoading="isLoading"
+      @close="showEditModal = false"
+      @submit="handleUpdateSupplier"
+    />
+    
+    <SupplierDetailModal
+      :isOpen="showDetailModal"
+      :supplier="currentSupplier"
+      @close="showDetailModal = false"
+      @edit="editSupplier"
+    />
+    
+    <!-- Notification -->
+    <div 
+      v-if="showNotification" 
+      :class="[notificationType === 'success' ? 'bg-green-50 border-green-400 text-green-800' : 'bg-red-50 border-red-400 text-red-800']"
+      class="fixed bottom-4 right-4 px-4 py-3 rounded-md border-l-4 shadow-md"
+    >
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg v-if="notificationType === 'success'" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <svg v-else class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm">{{ notificationMessage }}</p>
+        </div>
       </div>
-
-      <!-- Empty state -->
-      <div v-else class="bg-white rounded-lg shadow p-6 text-center">
-        <p class="text-gray-500 mb-4">No suppliers found</p>
-        <button 
-          @click="showAddModal = true" 
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-        >
-          Add your first supplier
-        </button>
-      </div>
-
-      <!-- Add Supplier Modal -->
-      <Modal 
-        :isOpen="showAddModal" 
-        title="Add New Supplier"
-        @close="showAddModal = false"
-      >
-        <SupplierForm v-model:supplier="newSupplier" :is-loading="isLoading" />
-        
-        <template #footer>
-          <button
-            @click="showAddModal = false"
-            class="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleAddSupplier"
-            class="px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !isFormValid"
-          >
-            {{ isLoading ? 'Saving...' : 'Save Supplier' }}
-          </button>
-        </template>
-      </Modal>
-
-      <!-- Edit Supplier Modal -->
-      <Modal 
-        :isOpen="showEditModal" 
-        title="Edit Supplier"
-        @close="showEditModal = false"
-      >
-        <SupplierForm v-if="currentSupplier" v-model:supplier="currentSupplier" :is-loading="isLoading" />
-        
-        <template #footer>
-          <button
-            @click="showEditModal = false"
-            class="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleUpdateSupplier"
-            class="px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !isEditFormValid"
-          >
-            {{ isLoading ? 'Saving...' : 'Update Supplier' }}
-          </button>
-        </template>
-      </Modal>
     </div>
   </AppLayout>
 </template>

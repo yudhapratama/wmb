@@ -1,8 +1,12 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import db from '../services/db'
 import syncService from '../services/sync'
+import { useAuthStore } from '../stores/auth' // Tambahkan import auth store
 
 export function usePurchaseOrders() {
+  // Tambahkan auth store
+  const authStore = useAuthStore()
+  
   // State
   const isLoading = ref(true)
   const purchaseOrders = ref([])
@@ -12,33 +16,28 @@ export function usePurchaseOrders() {
   const error = ref(null)
   
   // Filtered purchase orders
+  // Update filtered orders untuk menggunakan denormalisasi
   const filteredOrders = computed(() => {
     let filtered = [...purchaseOrders.value]
     
-    // Filter by search query
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase()
       filtered = filtered.filter(order => {
-        // Sesuaikan dengan struktur data API
         const orderNumber = order.id?.toString() || ''
-        const supplierName = order.supplier?.nama_pt_toko || ''
+        // Prioritaskan data denormalisasi
+        const supplierName = order.supplier_name || order.supplier?.nama_pt_toko || ''
+        const createdBy = order.pembuat_po_name || order.pembuat_po?.first_name || ''
         
         return orderNumber.toLowerCase().includes(query) ||
-               supplierName.toLowerCase().includes(query)
+               supplierName.toLowerCase().includes(query) ||
+               createdBy.toLowerCase().includes(query)
       })
     }
     
-    // Filter by status
-    if (selectedStatus.value !== 'all') {
-      filtered = filtered.filter(order => 
-        order.status === selectedStatus.value
-      )
-    }
-    
-    // Filter by supplier
+    // Filter by supplier menggunakan denormalisasi
     if (selectedSupplier.value !== 'all') {
       filtered = filtered.filter(order => 
-        order.supplier?.nama_pt_toko === selectedSupplier.value
+        (order.supplier_name || order.supplier?.nama_pt_toko) === selectedSupplier.value
       )
     }
     
@@ -53,7 +52,10 @@ export function usePurchaseOrders() {
     try {
       // Try to fetch from API first if online
       if (syncService.isOnline()) {
-        const result = await syncService.fetchPurchaseOrders()
+        // ✅ Gunakan pullPurchaseOrdersWithDenormalization untuk mengambil po_items sekaligus
+        const result = await syncService.pullPurchaseOrdersWithDenormalization()
+        // console.log("result dari load data dengan po_items:", result);
+        
         if (!result.success) {
           console.warn('Failed to fetch from API, falling back to local data')
         }
@@ -61,8 +63,7 @@ export function usePurchaseOrders() {
       
       // Load from local database
       const localOrders = await db.purchase_orders.toArray()
-      
-      // Langsung gunakan data dari API tanpa mapping
+      // console.log("ini data setelah call api -> simpan di local -> lalu panggil lagi localOrders:", localOrders);
       purchaseOrders.value = localOrders
       
       return { success: true }
@@ -75,7 +76,13 @@ export function usePurchaseOrders() {
     }
   }
   
+  // Auto-load data when composable is used
+  onMounted(() => {
+    loadData()
+  })
+  
   // Fetch a specific purchase order with details
+  // Perbaiki fetchOrderDetail function
   async function fetchOrderDetail(id) {
     isLoading.value = true
     error.value = null
@@ -83,10 +90,23 @@ export function usePurchaseOrders() {
     try {
       // Try to fetch from API if online
       if (syncService.isOnline()) {
-        const result = await syncService.fetchPurchaseOrderDetail(id)
+        const result = await syncService.pullPurchaseOrdersWithDenormalization(id)
+        console.log("data dari dapatkan detail order ketika open modal")
+        console.log(result)
         if (!result.success) {
           console.warn(`Failed to fetch order ${id} from API, falling back to local data`)
         } else {
+          // Simpan po_items dari API response
+          const order = result.data
+          if (order.po_items && Array.isArray(order.po_items)) {
+            for (const item of order.po_items) {
+              await db.po_items.put({
+                ...item,
+                purchase_order: id, // ✅ Gunakan field name yang benar
+                cached_at: new Date().getTime()
+              })
+            }
+          }
           return { success: true, data: result.data }
         }
       }
@@ -97,12 +117,14 @@ export function usePurchaseOrders() {
         return { success: false, error: 'Purchase order not found' }
       }
       
+      // ✅ Perbaiki query po_items
       const items = await db.po_items
-        .where('purchase_order_id')
+        .where('purchase_order')  // ✅ Gunakan field name yang benar
         .equals(id)
         .toArray()
       
-      order.items = items
+      // Attach items ke order dengan nama yang konsisten
+      order.po_items = items
       
       return { success: true, data: order }
     } catch (err) {
@@ -125,36 +147,67 @@ export function usePurchaseOrders() {
       const orderItems = [...plainOrder.items]
       delete plainOrder.items
       
-      // Add order to local database first
-      const orderId = await db.purchase_orders.add({
-        ...plainOrder,
-        sync_status: 'pending',
-        date: new Date().toISOString()
-      })
+      // Map form data ke struktur Directus
+      const directusOrder = {
+        status: plainOrder.status || 'Dibuat',
+        supplier: parseInt(plainOrder.supplier), // Pastikan ini integer
+        catatan_pembelian: plainOrder.notes || '',
+        date_created: new Date().toISOString(),
+        sync_status: 'pending'
+      }
       
-      // Add order items
+      // Validasi supplier
+      if (!plainOrder.supplier || isNaN(parseInt(plainOrder.supplier))) {
+        throw new Error('Supplier ID tidak valid')
+      }
+      
+      // Add order to local database
+      const orderId = await db.purchase_orders.add(directusOrder)
+      
+      // Add order items dengan struktur Directus
+      // Perbaiki struktur po_items
       for (const item of orderItems) {
         await db.po_items.add({
-          purchase_order_id: orderId,
-          item: item.item,
+          purchase_order: orderId, // Gunakan 'purchase_order' bukan 'purchase_order_id'
+          item: item.raw_material_id,
           jumlah_pesan: item.quantity,
-          harga_satuan: item.price,
-          unit: item.unit
+          harga_satuan: item.total_price,
+          sync_status: 'pending'
         })
       }
       
+      // TAMBAHKAN LOGIKA SYNC YANG HILANG
       // If online, sync to server
       if (syncService.isOnline()) {
-        await db.addToSyncQueue('purchase_orders', orderId, 'create', plainOrder)
+        // Siapkan data untuk sync dengan items
+        const syncData = {
+          ...directusOrder,
+          items: orderItems.map(item => ({
+            purchase_order: orderId,
+            item: item.raw_material_id,
+            jumlah_pesan: item.quantity,
+            harga_satuan: item.total_price
+          }))
+        }
+        
+        await db.addToSyncQueue('purchase_orders', orderId, 'create', syncData)
         await syncService.processSyncQueue()
       } else {
         // Add to sync queue for later
-        await db.addToSyncQueue('purchase_orders', orderId, 'create', plainOrder)
+        const syncData = {
+          ...directusOrder,
+          items: orderItems.map(item => ({
+            purchase_order: orderId,
+            item: item.raw_material_id,
+            jumlah_pesan: item.quantity,
+            harga_satuan: item.total_price
+          }))
+        }
+        await db.addToSyncQueue('purchase_orders', orderId, 'create', syncData)
       }
       
       // Reload data
       await loadData()
-      
       return { success: true, id: orderId }
     } catch (err) {
       console.error('Error adding purchase order:', err)
@@ -166,12 +219,12 @@ export function usePurchaseOrders() {
   }
   
   // Update existing purchase order
+  // Perbaiki updatePurchaseOrder function
   async function updatePurchaseOrder(order) {
     isLoading.value = true
     error.value = null
-
+  
     try {
-      // Convert Proxy object to plain JavaScript object
       const plainOrder = JSON.parse(JSON.stringify(order))
       const orderItems = [...plainOrder.items]
       delete plainOrder.items
@@ -182,25 +235,46 @@ export function usePurchaseOrders() {
         sync_status: 'pending'
       })
       
-      // Delete existing items
+      // ✅ Perbaiki delete existing items
       await db.po_items
-        .where('purchase_order_id')
+        .where('purchase_order')  // ✅ Gunakan field name yang benar
         .equals(plainOrder.id)
         .delete()
       
-      // Add updated items
+      // Add updated items dengan struktur yang benar
       for (const item of orderItems) {
         await db.po_items.add({
-          purchase_order_id: plainOrder.id,
-          item: item.item,
+          purchase_order: plainOrder.id,  // ✅ Gunakan field name yang benar
+          item: item.raw_material_id,
+          item_name: item.item,
           jumlah_pesan: item.quantity,
-          harga_satuan: item.price,
-          unit: item.unit
+          harga_satuan: item.total_price,
+          unit_name: item.unit,
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
         })
       }
       
+      // Check if status is changed to "Diterima"
+      const isReceived = plainOrder.status === 'Diterima'
+      
       // If online, sync to server
       if (syncService.isOnline()) {
+        // Add additional data for stock update if status is "Diterima"
+        if (isReceived) {
+          plainOrder.items = orderItems.map(item => ({
+            id: item.id,
+            raw_material_id: item.raw_material_id,
+            item: item.item,
+            jumlah_pesan: item.quantity,
+            harga_satuan: item.price,
+            unit: item.unit,
+            received_quantity: item.received_quantity || 0,
+            shrinkage: item.shrinkage || 0,
+            usable_quantity: item.usable_quantity || 0
+          }))
+        }
+        
         await db.addToSyncQueue('purchase_orders', plainOrder.id, 'update', plainOrder)
         await syncService.processSyncQueue()
       } else {
@@ -257,10 +331,167 @@ export function usePurchaseOrders() {
       isLoading.value = false
     }
   }
-  
-  // Initialize
-  loadData()
-  
+
+  // Tambahkan fungsi untuk proses penerimaan
+  // Perbaiki fungsi receivePurchaseOrder untuk menggunakan current user ID
+  async function receivePurchaseOrder(receiptData) {
+    isLoading.value = true
+    error.value = null
+    console.log('receiptData di usePurchaseOrder', receiptData)
+    
+    try {
+      const orderId = receiptData.orderId
+      const currentUserId = authStore.user?.id || 1 // Gunakan current user ID dengan fallback
+      
+      // 1. Update PO status menjadi "Diterima"
+      const updateData = {
+        status: 'Diterima',
+        tanggal_penerimaan: new Date().toISOString().split('T')[0],
+        penerima_barang: currentUserId, // Gunakan current user ID
+        sync_status: 'pending'
+      }
+      
+      await db.purchase_orders.update(orderId, updateData)
+      
+      // Tambahkan ke sync queue untuk update purchase order
+      await db.addToSyncQueue('purchase_orders', orderId, 'update', updateData)
+      
+      // 2. Update items dengan data penerimaan
+      for (const item of receiptData.items) {
+        const itemUpdateData = {
+          total_diterima: item.total_diterima,
+          total_penyusutan: item.total_penyusutan,
+          alasan_penyusutan: item.alasan_penyusutan,
+          bukti_penyusutan: item.bukti_penyusutan,
+          jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
+          sync_status: 'pending'
+        }
+        
+        await db.po_items.update(item.id, itemUpdateData)
+        
+        // Tambahkan ke sync queue untuk update po_items
+        await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
+        
+        // 3. update existing intentory
+        // 4. Update atau tambah data di raw_material
+        const materialId = item.raw_material_id
+        if (!materialId) {
+          console.error('Material ID tidak valid:', item)
+          continue
+        }  
+
+        const existingMaterial = await db.raw_materials.get(materialId)
+        console.log('existingMaterial', existingMaterial);
+        
+        if (existingMaterial) {
+          // stok yang ada saat ini
+          const currentStock = existingMaterial.total_stock || 0
+          // harga rata-rata saat ini
+          const currentPrice = existingMaterial.harga_rata_rata || 0
+          // harga per unit saat ini
+          const currentStockPricePerUnit = currentPrice / currentStock
+          // stok yang diterima dan dapat digunakan
+          const receivedStock = item.jumlah_dapat_digunakan
+          // harga beli stok yang diterima
+          const receivedStockPrice = item.harga_satuan // abaikan penamaan harga_satuan karena sebenaranya ini adalah harga beli
+          // harga per unit ketika diterima
+          const receivedStockPricePerUnit = receivedStockPrice / receivedStock
+
+          // mulai ini hitung untuk disimpan menjadi stok baru dan harga rata-rata baru
+          const newStock = currentStock + receivedStock
+          // harga baru per unit
+          const newStockPricePerUnit = ((currentStockPricePerUnit * currentStock) + (receivedStockPricePerUnit * receivedStock)) / newStock
+          // harga baru rata-rata
+          const totalNewStockPrice = newStockPricePerUnit * newStock
+          
+          const materialUpdateData = {
+            total_stock: newStock,
+            harga_rata_rata: totalNewStockPrice,
+            sync_status: 'pending'
+          }
+          
+          await db.raw_materials.update(materialId, materialUpdateData)
+          
+          // Tambahkan ke sync queue untuk raw_materials
+          await db.addToSyncQueue('raw_materials', materialId, 'update', materialUpdateData)
+        } else {
+          // Jika material belum ada, buat baru
+          const newMaterialData = {
+            id: materialId,
+            nama_item: item.nama_item || 'Unknown',
+            total_stock: item.jumlah_dapat_digunakan,
+            harga_rata_rata: item.harga_satuan || 0,
+            sync_status: 'pending',
+            cached_at: new Date().getTime()
+          }
+          
+          await db.raw_materials.add(newMaterialData)
+          
+          // Tambahkan ke sync queue untuk raw_materials
+          await db.addToSyncQueue('raw_materials', materialId, 'create', newMaterialData)
+        }
+
+        // 4. Input data ke log_inventory
+        const logInventoryData = {
+          item: item.raw_material_id,
+          tipe_transaksi: 'PENERIMAAN_PO',
+          perubahan_jumlah: item.jumlah_dapat_digunakan,
+          stok_sebelum: existingMaterial.total_stock || 0,
+          stok_setelah: (item.jumlah_dapat_digunakan + existingMaterial.total_stock),
+          dokumen_sumber: `${orderId}`,
+          pengguna: currentUserId, // Gunakan current user ID
+          waktu_log: new Date().toISOString(),
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
+        }
+        console.log('logInventoryData', logInventoryData);
+        
+        await db.log_inventaris.add(logInventoryData)
+        
+        // Tambahkan ke sync queue untuk log_inventaris
+        await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)      
+        
+        // 5. Tambahkan data ke waste jika ada penyusutan
+        // if (item.total_penyusutan > 0) {
+        //   const wasteData = {
+        //     id: `waste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        //     raw_material: item.item?.id || item.item,
+        //     jenis: 'Penyusutan',
+        //     jumlah: item.total_penyusutan,
+        //     unit: item.unit, // Gunakan unit langsung dari item
+        //     alasan: item.alasan_penyusutan,
+        //     keterangan: item.alasan_penyusutan, // Perbaiki field name
+        //     bukti_foto: item.bukti_penyusutan,
+        //     tanggal: new Date().toISOString().split('T')[0],
+        //     user_id: 1,
+        //     purchase_order_id: orderId,
+        //     sync_status: 'pending',
+        //     cached_at: new Date().getTime()
+        //   }
+          
+        //   await db.waste.add(wasteData)
+        // }
+      }
+      
+      // 6. Sync ke server jika online
+      if (syncService.isOnline()) {
+        await syncService.processSyncQueue()
+      }
+      
+      // Reload data
+      await loadData()
+      
+      return { success: true }
+    } catch (err) {
+      console.error('Error receiving purchase order:', err)
+      error.value = `Failed to receive purchase order: ${err.message}`
+      return { success: false, error: err.message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Export fungsi baru
   return {
     // State
     isLoading,
@@ -276,6 +507,7 @@ export function usePurchaseOrders() {
     fetchOrderDetail,
     addPurchaseOrder,
     updatePurchaseOrder,
-    deletePurchaseOrder
+    deletePurchaseOrder,
+    receivePurchaseOrder
   }
 }

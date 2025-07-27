@@ -52,7 +52,8 @@ const routes = [
     component: Suppliers,
     meta: { 
       requiresAuth: true,
-      allowedRoles: ['superadmin', 'admin', 'cashier', 'warehouse'] 
+      allowedRoles: ['superadmin', 'admin', 'cashier', 'warehouse'],
+      requiredCollections: ['suppliers']
     }
   },
   {
@@ -61,7 +62,8 @@ const routes = [
     component: () => import('../views/PurchaseOrders.vue'),
     meta: { 
       requiresAuth: true,
-      allowedRoles: ['superadmin', 'admin', 'cashier', 'warehouse'] 
+      allowedRoles: ['superadmin', 'admin', 'cashier', 'warehouse'],
+      requiredCollections: ['purchase_orders', 'suppliers']
     }
   },
   // 404 route

@@ -31,12 +31,16 @@
                 <span class="text-gray-500 font-normal">Harga: </span>
                 <span class="font-semibold text-gray-900">{{ formatCurrency(item.harga_rata_rata) }}</span>
               </div>
+              <div>
+                <span class="text-gray-500 font-normal">Harga per {{ getUnitName(item.unit) }}: </span>
+                <span class="font-semibold text-gray-900">{{ formatCurrency(item.harga_rata_rata/item.total_stock) }}</span>
+              </div>              
             </div>
             <div class="flex items-center gap-1 mt-1 text-sm text-gray-500">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Last updated: {{ formatDate(item.updated_at) }}
+              Last updated: {{ formatDateTime(item.date_updated) }}
             </div>
           </div>
         </div>
@@ -57,31 +61,37 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
-            <button 
-              @click="$emit('edit', item)"
-              class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button 
-              @click="$emit('shrinkage', item)"
-              class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-              </svg>
-            </button>
+              <PermissionBasedAccess collection="raw_materials" action="update">
+                <button 
+                  @click="$emit('edit', item)"
+                  class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              </PermissionBasedAccess>
+              <PermissionBasedAccess collection="raw_materials" action="delete">
+                <button 
+                  @click="$emit('shrinkage', item)"
+                  class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                  </svg>
+                </button>
+              </PermissionBasedAccess>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
+import { formatDateTime } from '@/utils/helpers'
 
 const props = defineProps({
   item: {

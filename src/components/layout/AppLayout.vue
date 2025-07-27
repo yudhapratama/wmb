@@ -10,19 +10,19 @@ const router = useRouter()
 // Get user role - perbaiki untuk menangani berbagai format nama role
 const userRole = computed(() => {
   const roleName = authStore.role?.name?.toLowerCase() || ''
-  console.log('Role name processed:', roleName)
+  // console.log('Role name processed:', roleName)
   
   // Normalisasi nama role (hapus spasi, ubah ke lowercase)
   return roleName.replace(/\s+/g, '').toLowerCase()
 })
 
 // Debugging untuk melihat nilai role
-watch(() => authStore.role, (newRole) => {
-  console.log('Role dari Directus:', newRole)
-  console.log('Role name:', newRole?.name)
-  console.log('User role computed:', userRole.value)
-  console.log('Permissions:', authStore.permissions)
-}, { immediate: true })
+// watch(() => authStore.role, (newRole) => {
+//   console.log('Role dari Directus:', newRole)
+//   console.log('Role name:', newRole?.name)
+//   console.log('User role computed:', userRole.value)
+//   console.log('Permissions:', authStore.permissions)
+// }, { immediate: true })
 
 // Change default to true so sidebar is open by default
 const isSidebarOpen = ref(true)
@@ -108,40 +108,40 @@ const allNavItems = [
 
 // Filter navigation items based on user permissions
 const navItems = computed(() => {
-  console.log('Filtering menu based on permissions:', authStore.permissions)
+  // console.log('Filtering menu based on permissions:', authStore.permissions)
   
   // Jika tidak ada permissions, tampilkan menu kosong
   if (!authStore.permissions) {
-    console.log('No permissions found, showing empty menu')
+    // console.log('No permissions found, showing empty menu')
     return []
   }
   
   // Jika user adalah admin, tampilkan semua menu
   if (userRole.value === 'admin' || userRole.value === 'superadmin' || userRole.value === 'administrator') {
-    console.log('Admin user, showing all menu items')
+    // console.log('Admin user, showing all menu items')
     return allNavItems
   }
   
   // Filter menu berdasarkan permissions
   const filteredItems = allNavItems.filter(item => {
-    console.log(`Checking menu item: ${item.name}`)
+    // console.log(`Checking menu item: ${item.name}`)
     
     // Log semua permission untuk debugging
     item.collections.forEach(collection => {
       if (collection) { // Skip empty collection names
         const hasPermission = authStore.hasPermission(collection, 'read')
-        console.log(`Checking permission for ${collection}: ${hasPermission}`)
+        // console.log(`Checking permission for ${collection}: ${hasPermission}`)
       }
     })
     
     // Periksa apakah user memiliki akses read ke SEMUA collection yang diperlukan
     const hasAccess = authStore.hasPermissionForAll(item.collections, 'read')
-    console.log(`Final access for ${item.name}: ${hasAccess}`)
+    // console.log(`Final access for ${item.name}: ${hasAccess}`)
     
     return hasAccess
   })
   
-  console.log('Filtered menu items:', filteredItems.map(i => i.name))
+  // console.log('Filtered menu items:', filteredItems.map(i => i.name))
   return filteredItems
 })
 </script>

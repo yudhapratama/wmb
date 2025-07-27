@@ -10,6 +10,7 @@ import DetailModal from '../components/features/inventory/modals/DetailModal.vue
 import { useInventory } from '../composables/useInventory'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 import { handleImageUpload } from '../utils/imageUtils'
+import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 
 // Add this function to handle shrinkage image upload
 async function handleShrinkageImageUpload(event) {
@@ -144,22 +145,26 @@ function showErrorNotification(message) {
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Inventory Management</h1>
-      <button
-        @click="showAddModal = true"
-        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-      >
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-        Tambah Item
-      </button>
+      <PermissionBasedAccess collection="raw_materials" action="create">
+        <button
+          @click="showAddModal = true"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Tambah Item
+        </button>
+      </PermissionBasedAccess>
     </div>
     
     <!-- Filters -->
     <InventoryFilters
       :categories="categories"
-      v-model:selectedCategory="selectedCategory"
-      v-model:searchQuery="searchQuery"
+      :selectedCategory="selectedCategory"
+      @update:selectedCategory="selectedCategory = $event"
+      :searchQuery="searchQuery"
+      @update:searchQuery="searchQuery = $event"
     />
     
     <!-- Inventory Cards -->
@@ -177,15 +182,17 @@ function showErrorNotification(message) {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
         <p class="mt-2 text-gray-600">No inventory items found.</p>
-        <button
-          @click="showAddModal = true"
-          class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
-        >
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Add Your First Item
-        </button>
+        <PermissionBasedAccess collection="raw_materials" action="create">
+          <button
+            @click="showAddModal = true"
+            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Your First Item
+          </button>
+        </PermissionBasedAccess>
       </div>
       
       <InventoryCard

@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="handleSubmit" class="space-y-4">
+  <form @submit.prevent="handleSubmit">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <!-- Order Number -->
       <div>
@@ -16,40 +16,10 @@
       <!-- Supplier -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-        <select 
-          v-model="formData.supplier" 
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="" disabled>Pilih Supplier</option>
-          <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.nama_pt_toko">
-            {{ supplier.nama_pt_toko }}
-          </option>
-        </select>
-      </div>
-      
-      <!-- Status -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-        <select 
-          v-model="formData.status" 
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          <option value="Dibuat">Dibuat</option>
-          <option value="Diterima">Diterima</option>
-          <option value="Selesai">Selesai</option>
-        </select>
-      </div>
-      
-      <!-- Expected Delivery -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
-        <input 
-          v-model="formData.expectedDelivery" 
-          type="date" 
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
+        <Select
+          v-model="formData.supplier"
+          :options="supplierOptions"
+          placeholder="Pilih Supplier"
         />
       </div>
     </div>
@@ -72,23 +42,21 @@
         <table class="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Material</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="(item, index) in formData.items" :key="index">
               <td class="px-3 py-2">
-                <input 
-                  v-model="item.item" 
-                  type="text" 
-                  placeholder="Nama item" 
-                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
+                <Select
+                  v-model="item.raw_material_id"
+                  :options="rawMaterialOptions"
+                  placeholder="Pilih Raw Material"
+                  @update:modelValue="onRawMaterialSelect(index, $event)"
                 />
               </td>
               <td class="px-3 py-2">
@@ -98,38 +66,25 @@
                   min="1" 
                   class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
-                  @input="updateItemTotal(index)"
                 />
               </td>
               <td class="px-3 py-2">
-                <select 
+                <input 
                   v-model="item.unit" 
-                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                >
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="pcs">pcs</option>
-                  <option value="box">box</option>
-                  <option value="pack">pack</option>
-                  <option value="liter">liter</option>
-                  <option value="ml">ml</option>
-                </select>
+                  type="text" 
+                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                  readonly
+                />
               </td>
               <td class="px-3 py-2">
                 <input 
-                  v-model.number="item.price" 
+                  v-model.number="item.total_price" 
                   type="number" 
                   min="0" 
                   class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
-                  @input="updateItemTotal(index)"
+                  placeholder="Total harga untuk item ini"
                 />
-              </td>
-              <td class="px-3 py-2">
-                <div class="text-right font-medium">
-                  {{ formatCurrency(item.total) }}
-                </div>
               </td>
               <td class="px-3 py-2 text-right">
                 <button 
@@ -144,7 +99,7 @@
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="4" class="px-3 py-2 text-right font-medium">Total:</td>
+              <td colspan="3" class="px-3 py-2 text-right font-medium">Total Keseluruhan:</td>
               <td class="px-3 py-2 text-right font-bold text-blue-600">
                 {{ formatCurrency(totalAmount) }}
               </td>
@@ -169,8 +124,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import Select from '../../ui/Select.vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { useInventory } from '../../../composables/useInventory'
 
 const props = defineProps({
   order: {
@@ -185,12 +142,20 @@ const props = defineProps({
 
 const emit = defineEmits(['update:order', 'save'])
 
+// Load raw materials data
+const { 
+  rawMaterials, 
+  isLoading: materialsLoading, 
+  loadData: loadMaterialsData,
+  getCategoryName,
+  getUnitName
+} = useInventory()
+
 const formData = ref({
   orderNumber: '',
   supplier: '',
   status: 'Dibuat',
   orderDate: new Date().toISOString().split('T')[0],
-  expectedDelivery: new Date().toISOString().split('T')[0],
   createdBy: 'Admin',
   notes: '',
   items: []
@@ -201,11 +166,12 @@ function initFormData() {
   if (props.order && Object.keys(props.order).length > 0) {
     formData.value = {
       ...props.order,
+      // ✅ Konversi supplier ke integer
+      supplier: props.order.supplier ? parseInt(props.order.supplier) : '',
       orderDate: props.order.orderDate ? new Date(props.order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      expectedDelivery: props.order.expectedDelivery ? new Date(props.order.expectedDelivery).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       items: props.order.items ? props.order.items.map(item => ({
         ...item,
-        total: item.price * item.quantity
+        total_price: item.total_price || item.total || (item.price * item.quantity) || 0
       })) : []
     }
   } else {
@@ -214,7 +180,6 @@ function initFormData() {
       supplier: '',
       status: 'Dibuat',
       orderDate: new Date().toISOString().split('T')[0],
-      expectedDelivery: new Date().toISOString().split('T')[0],
       createdBy: 'Admin',
       notes: '',
       items: []
@@ -231,20 +196,26 @@ function initFormData() {
 initFormData()
 
 // Watch for changes in the order prop
+// Di watch untuk newOrder, perbaiki mapping items
+// Watch for changes in the order prop
 watch(() => props.order, (newOrder) => {
-  // Hindari pembaruan rekursif dengan memeriksa apakah perlu memperbarui formData
   const currentOrderData = {
     orderNumber: newOrder?.orderNumber || '',
-    supplier: newOrder?.supplier || '',
+    // ✅ Konversi supplier ke integer
+    supplier: newOrder?.supplier ? parseInt(newOrder.supplier) : '',
     status: newOrder?.status || 'Dibuat',
     orderDate: newOrder?.orderDate ? new Date(newOrder.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    expectedDelivery: newOrder?.expectedDelivery ? new Date(newOrder.expectedDelivery).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     createdBy: newOrder?.createdBy || 'Admin',
     notes: newOrder?.notes || '',
-    items: newOrder?.items || []
+    items: newOrder?.items?.map(item => ({
+      raw_material_id: item.item || item.raw_material_id,
+      item: item.item_name || item.item,
+      quantity: item.jumlah_pesan || item.quantity || 1,
+      unit: item.unit_name || item.unit || 'pcs',
+      total_price: item.harga_satuan || item.total_price || 0
+    })) || []
   };
   
-  // Hanya perbarui jika data berbeda
   if (JSON.stringify(formData.value) !== JSON.stringify(currentOrderData)) {
     initFormData();
   }
@@ -252,19 +223,39 @@ watch(() => props.order, (newOrder) => {
 
 // Watch for changes in form data and emit update events
 watch(formData, (newData) => {
-  // Hindari update rekursif dengan hanya mengirim data yang berubah
-  // tanpa menggabungkan dengan props.order
   emit('update:order', newData)
 }, { deep: true })
 
-// Add new item
+// Load materials data on mount
+onMounted(async () => {
+  await loadMaterialsData()
+})
+
+// Get raw material by ID
+function getRawMaterialById(id) {
+  return rawMaterials.value.find(material => material.id === id)
+}
+
+// Handle raw material selection
+function onRawMaterialSelect(index, materialId) {
+  const material = getRawMaterialById(materialId)
+  if (material) {
+    const item = formData.value.items[index]
+    item.raw_material_id = materialId
+    item.item = material.nama_item
+    item.unit = getUnitName(material.unit) || 'pcs'
+    // Tidak lagi mengisi harga otomatis, biarkan user input total harga
+  }
+}
+
+// Add item function - hapus field price dan total, ganti dengan total_price
 function addItem() {
   formData.value.items.push({
+    raw_material_id: '',
     item: '',
     quantity: 1,
     unit: 'pcs',
-    price: 0,
-    total: 0
+    total_price: 0
   })
 }
 
@@ -273,15 +264,9 @@ function removeItem(index) {
   formData.value.items.splice(index, 1)
 }
 
-// Update item total
-function updateItemTotal(index) {
-  const item = formData.value.items[index]
-  item.total = item.quantity * item.price
-}
-
-// Calculate total amount
+// Calculate total amount - jumlahkan semua total_price
 const totalAmount = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + item.total, 0)
+  return formData.value.items.reduce((sum, item) => sum + (item.total_price || 0), 0)
 })
 
 // Format currency
@@ -293,12 +278,34 @@ function formatCurrency(amount) {
   }).format(amount)
 }
 
+// Dalam handleSubmit atau emit save
 function handleSubmit() {
+  // Validasi supplier
+  if (!formData.value.supplier) {
+    alert('Silakan pilih supplier')
+    return
+  }
+  
   const orderData = {
     ...formData.value,
+    supplier: parseInt(formData.value.supplier), // Pastikan integer
     totalAmount: totalAmount.value
   }
   
   emit('save', orderData)
 }
-</script>s
+
+const supplierOptions = computed(() => 
+  props.suppliers.map(supplier => ({
+    value: supplier.id,
+    label: supplier.nama_pt_toko
+  }))
+)
+
+const rawMaterialOptions = computed(() => 
+  rawMaterials.value.map(material => ({
+    value: material.id,
+    label: `${material.nama_item} - ${getCategoryName(material.kategori)}`
+  }))
+)
+</script>

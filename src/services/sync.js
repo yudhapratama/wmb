@@ -48,15 +48,30 @@ export const syncService = {
   async processQueueItem(item) {
     const { entity, entity_id, action, data } = item
     
-    // Tidak perlu mapping lagi, langsung gunakan data
-    const mappedData = data
-    
     switch (action) {
       case 'create':
-        await api.post(`/items/${entity}`, mappedData)
+        if (entity === 'purchase_orders' && data.items) {
+          // Handle purchase order dengan items
+          const { items, ...orderData } = data
+          
+          // Create purchase order first
+          const orderResponse = await api.post(`/items/${entity}`, orderData)
+          const createdOrderId = orderResponse.data.data.id
+          
+          // Create po_items
+          for (const item of items) {
+            await api.post('/items/po_items', {
+              ...item,
+              purchase_order: createdOrderId
+            })
+          }
+     
+        } else {
+          await api.post(`/items/${entity}`, data)
+        }
         break
       case 'update':
-        await api.patch(`/items/${entity}/${entity_id}`, mappedData)
+        await api.patch(`/items/${entity}/${entity_id}`, data)
         break
       case 'delete':
         await api.delete(`/items/${entity}/${entity_id}`)
@@ -120,30 +135,41 @@ export const syncService = {
   },
   
   // Initialize data sync
-  // In the initializeSync function
   async initializeSync() {
     if (!this.isOnline()) {
       return { success: false, message: 'Device is offline' }
     }
     
     try {
-      // Purge old cache before pulling new data
-      await db.purgeOldCache();
-
-      // Pull master data first
-      await this.pullData('suppliers')
+      console.log('Starting data synchronization with Directus...')
+      
+      // Pull master data first dengan clearExisting untuk memastikan data fresh
+      await this.pullData('suppliers', { clearExisting: true })
       
       // Pull item_categories directly
-      await this.pullData('item_categories')
-      await this.pullData('units')
-      await this.pullData('raw_materials')
-      await this.pullData('expense_categories')
-      await this.pullData('products')
-      await this.pullData('recipe_items')
-      await this.pullData('purchase_orders') // Tambahkan ini
+      await this.pullData('item_categories', { clearExisting: true })
+      await this.pullData('units', { clearExisting: true })
+      await this.pullData('raw_materials', { clearExisting: true })
+      await this.pullData('expense_categories', { clearExisting: true })
+      await this.pullData('products', { clearExisting: true })
+      await this.pullData('recipe_items', { clearExisting: true })
+  
+      // Clear purchase orders dan po_items sebelum pull data baru
+      await db.purchase_orders.clear()
+      await db.po_items.clear()
       
+      // Pull purchase orders dengan denormalisasi
+      await this.pullPurchaseOrdersWithDenormalization()
+      
+      // Clear log_inventory dan waste untuk data fresh
+      await db.log_inventaris.clear()
+      await db.waste.clear()
+  
       // Process any pending sync items
-      return this.processSyncQueue()
+      const syncResult = await this.processSyncQueue()
+      
+      console.log('Data synchronization completed successfully')
+      return syncResult
     } catch (error) {
       console.error('Failed to initialize sync:', error)
       return { success: false, message: error.message }
@@ -210,7 +236,192 @@ export const syncService = {
       console.error(`Failed to fetch purchase order ${id}:`, error)
       return { success: false, message: error.message }
     }
+  },
+
+  // Tambahkan denormalisasi saat pull data
+  async pullPurchaseOrdersWithDenormalization(id = null) {
+    if (!this.isOnline()) {
+      return { success: false, message: 'Device is offline' }
+    }
+    
+    try {
+      // ✅ Query 1: Ambil purchase_orders (dengan atau tanpa filter id)
+      let ordersResponse
+      if (id) {
+        // Jika ada id, ambil purchase order spesifik
+        ordersResponse = await api.get(`/items/purchase_orders/${id}`, {
+          params: {
+            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name'
+          }
+        })
+        // Wrap single item dalam array untuk konsistensi
+        ordersResponse.data.data = [ordersResponse.data.data]
+      } else {
+        // Jika tidak ada id, ambil semua purchase orders
+        ordersResponse = await api.get('/items/purchase_orders', {
+          params: {
+            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name'
+          }
+        })
+      }
+  
+      // console.log('ini data orders:', ordersResponse.data.data)
+      
+      // ✅ Query 2: Ambil po_items dengan filter yang tepat
+      let itemsResponse
+      if (id) {
+        // Jika ada id, filter po_items berdasarkan purchase_order tertentu
+        itemsResponse = await api.get('/items/po_items', {
+          params: {
+            filter: {
+              purchase_order: {
+                _eq: id
+              }
+            },
+            fields: [
+              '*',
+              'item.id',
+              'item.nama_item',
+              'item.kategori.id',
+              'item.kategori.name',
+              'item.unit.id',
+              'item.unit.name',
+              'item.unit.abbreviation'
+            ].join(',')
+          }
+        })
+      } else {
+        // Jika tidak ada id, ambil semua po_items
+        const orderIds = ordersResponse.data.data.map(order => order.id)
+        itemsResponse = await api.get('/items/po_items', {
+          params: {
+            filter: {
+              purchase_order: {
+                _in: orderIds
+              }
+            },
+            fields: [
+              '*',
+              'item.id',
+              'item.nama_item',
+              'item.kategori.id',
+              'item.kategori.name',
+              'item.unit.id',
+              'item.unit.name',
+              'item.unit.abbreviation'
+            ].join(',')
+          }
+        })
+      }
+      
+      // console.log('ini data po_items:', itemsResponse.data.data)
+      
+      // ✅ Gabungkan data orders dengan items
+      const ordersWithItems = ordersResponse.data.data.map(order => {
+        const orderItems = itemsResponse.data.data.filter(
+          item => item.purchase_order === order.id
+        )
+        
+        return {
+          ...order,
+          items: orderItems // ✅ Struktur yang diinginkan
+        }
+      })
+      
+      const timestamp = new Date().getTime()
+      
+      // ✅ Transform dan simpan dengan denormalisasi lengkap
+      for (const order of ordersWithItems) {
+        const localOrder = {
+          ...order,
+          supplier_name: order.supplier?.nama_pt_toko,
+          supplier_category: order.supplier?.kategori_supplier,
+          pembuat_po_name: `${order.pembuat_po?.first_name || ''} ${order.pembuat_po?.last_name || ''}`.trim(),
+          supplier: order.supplier?.id,
+          cached_at: timestamp
+        }
+        // console.log('Local order:', localOrder);
+        await db.purchase_orders.put(localOrder)
+        // console.log('order with items:', order)
+        
+        // ✅ Sekarang items sudah berisi data lengkap
+        const poItems = order.items || []
+        
+        if (poItems && Array.isArray(poItems)) {
+          // console.log('Processing po_items:', poItems)
+          
+          for (const item of poItems) {
+            // Jika item adalah ID saja, skip karena tidak ada data detail
+            if (typeof item === 'number' || typeof item === 'string') {
+              console.warn(`Skipping item ${item} - no detail data available`)
+              continue
+            }
+            
+            const poItemData = {
+              ...item,
+              // ✅ Data sudah di-populate dari API
+              item_name: item.item?.nama_item,
+              item_category: item.item?.kategori?.id,
+              item_category_name: item.item?.kategori?.name,
+              unit_id: item.item?.unit?.id,
+              unit_name: item.item?.unit?.name,
+              unit_abbreviation: item.item?.unit?.abbreviation,
+              item: item.item?.id,
+              purchase_order: order.id,
+              cached_at: timestamp
+            }
+            
+            // console.log('Saving po_item:', poItemData)
+            await db.po_items.put(poItemData)
+          }
+        } else {
+          console.log('No po_items found for order:', order.id)
+        }
+      }
+      
+      // ✅ Return data yang konsisten
+      return { 
+        success: true, 
+        data: id ? ordersWithItems[0] : ordersWithItems 
+      }
+    } catch (error) {
+      console.error('Failed to pull purchase orders with denormalization:', error)
+      return { success: false, message: error.message }
+    }
+  },
+
+  // Update fungsi pullData untuk raw_materials
+  async pullRawMaterialsWithDenormalization() {
+    const response = await api.get('/items/raw_materials', {
+      params: {
+        fields: '*,kategori.name,unit.name,unit.abbreviation,supplier_utama.nama_pt_toko'
+      }
+    })
+    
+    const itemsToCache = response.data.data.map(item => ({
+      ...item,
+      kategori_name: item.kategori?.name,
+      unit_name: item.unit?.name,
+      unit_abbreviation: item.unit?.abbreviation,
+      supplier_name: item.supplier_utama?.nama_pt_toko,
+      cached_at: new Date().getTime()
+    }))
+    
+    await db.raw_materials.bulkPut(itemsToCache)
   }
 }
 
 export default syncService
+
+// Tambahkan metrics untuk monitoring denormalisasi
+const denormalizationMetrics = {
+  lastSync: null,
+  itemsProcessed: 0,
+  errors: []
+}
+
+// Fungsi untuk monitoring performa
+function trackDenormalizationPerformance(operation, startTime) {
+  const endTime = performance.now()
+  console.log(`Denormalization ${operation} took ${endTime - startTime} milliseconds`)
+}

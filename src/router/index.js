@@ -66,6 +66,12 @@ const routes = [
       requiredCollections: ['purchase_orders', 'suppliers']
     }
   },
+  {
+    path: '/expenses',
+    name: 'Expenses',
+    component: () => import('../views/Expenses.vue'),
+    meta: { requiresAuth: true }
+  },
   // 404 route
   {
     path: '/:pathMatch(.*)*',

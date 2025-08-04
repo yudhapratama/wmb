@@ -1,10 +1,9 @@
 import { ref, computed, onMounted } from 'vue'
 import db from '../services/db'
 import syncService from '../services/sync'
-import { useAuthStore } from '../stores/auth' // Tambahkan import auth store
+import { useAuthStore } from '../stores/auth'
 
 export function usePurchaseOrders() {
-  // Tambahkan auth store
   const authStore = useAuthStore()
   
   // State
@@ -15,16 +14,27 @@ export function usePurchaseOrders() {
   const selectedSupplier = ref('all')
   const error = ref(null)
   
-  // Filtered purchase orders
-  // Update filtered orders untuk menggunakan denormalisasi
+  // Pagination state
+  const currentPage = ref(1)
+  const itemsPerPage = ref(10)
+  const itemsPerPageOptions = [5, 10, 25, 50, 100]
+  
+  // Date filter state
+  const dateFilter = ref({
+    startDate: '',
+    endDate: '',
+    dateField: 'date_created' // 'date_created' or 'date_updated'
+  })
+  
+  // Filtered purchase orders with date filter
   const filteredOrders = computed(() => {
     let filtered = [...purchaseOrders.value]
     
+    // Search filter
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase()
       filtered = filtered.filter(order => {
         const orderNumber = order.id?.toString() || ''
-        // Prioritaskan data denormalisasi
         const supplierName = order.supplier_name || order.supplier?.nama_pt_toko || ''
         const createdBy = order.pembuat_po_name || order.pembuat_po?.first_name || ''
         
@@ -34,16 +44,86 @@ export function usePurchaseOrders() {
       })
     }
     
-    // Filter by supplier menggunakan denormalisasi
+    // Status filter
+    if (selectedStatus.value !== 'all') {
+      filtered = filtered.filter(order => order.status === selectedStatus.value)
+    }
+    
+    // Supplier filter
     if (selectedSupplier.value !== 'all') {
       filtered = filtered.filter(order => 
         (order.supplier_name || order.supplier?.nama_pt_toko) === selectedSupplier.value
       )
     }
     
+    // Date filter
+    if (dateFilter.value.startDate || dateFilter.value.endDate) {
+      filtered = filtered.filter(order => {
+        const dateField = dateFilter.value.dateField
+        const orderDate = order[dateField]
+        
+        if (!orderDate) return false
+        
+        const date = new Date(orderDate).toISOString().split('T')[0]
+        const startDate = dateFilter.value.startDate
+        const endDate = dateFilter.value.endDate
+        
+        if (startDate && endDate) {
+          return date >= startDate && date <= endDate
+        } else if (startDate) {
+          return date >= startDate
+        } else if (endDate) {
+          return date <= endDate
+        }
+        
+        return true
+      })
+    }
+    
     return filtered
   })
   
+  // Pagination computed properties
+  const totalPages = computed(() => {
+    return Math.ceil(filteredOrders.value.length / itemsPerPage.value)
+  })
+  
+  const paginatedOrders = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value
+    const end = start + itemsPerPage.value
+    return filteredOrders.value.slice(start, end)
+  })
+  
+  const paginationInfo = computed(() => {
+    const start = filteredOrders.value.length === 0 ? 0 : (currentPage.value - 1) * itemsPerPage.value + 1
+    const end = Math.min(currentPage.value * itemsPerPage.value, filteredOrders.value.length)
+    const total = filteredOrders.value.length
+    
+    return { start, end, total }
+  })
+  
+  // Pagination methods
+  function changePage(page) {
+    if (page >= 1 && page <= totalPages.value) {
+      currentPage.value = page
+    }
+  }
+  
+  function changeItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    currentPage.value = 1 // Reset to first page
+  }
+  
+  function resetPagination() {
+    currentPage.value = 1
+  }
+  
+  // Date filter methods
+  function updateDateFilter(newDateFilter) {
+    dateFilter.value = { ...newDateFilter }
+    resetPagination() // Reset pagination when filter changes
+  }
+
   // Load purchase orders
   async function loadData() {
     isLoading.value = true
@@ -348,7 +428,18 @@ export function usePurchaseOrders() {
         status: 'Diterima',
         tanggal_penerimaan: new Date().toISOString().split('T')[0],
         penerima_barang: currentUserId, // Gunakan current user ID
-        sync_status: 'pending'
+        sync_status: 'pending',
+        items: receiptData.items.map(item => ({
+          id: item.id,
+          raw_material_id: item.raw_material_id,
+          total_diterima: item.total_diterima,
+          total_penyusutan: item.total_penyusutan || 0,
+          alasan_penyusutan: item.alasan_penyusutan,
+          bukti_penyusutan: item.bukti_penyusutan,
+          jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
+          harga_satuan: item.harga_satuan,
+          unit: item.unit
+        }))        
       }
       
       await db.purchase_orders.update(orderId, updateData)
@@ -357,99 +448,99 @@ export function usePurchaseOrders() {
       await db.addToSyncQueue('purchase_orders', orderId, 'update', updateData)
       
       // 2. Update items dengan data penerimaan
-      for (const item of receiptData.items) {
-        const itemUpdateData = {
-          total_diterima: item.total_diterima,
-          total_penyusutan: item.total_penyusutan,
-          alasan_penyusutan: item.alasan_penyusutan,
-          bukti_penyusutan: item.bukti_penyusutan,
-          jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
-          sync_status: 'pending'
-        }
+      // for (const item of receiptData.items) {
+      //   const itemUpdateData = {
+      //     total_diterima: item.total_diterima,
+      //     total_penyusutan: item.total_penyusutan,
+      //     alasan_penyusutan: item.alasan_penyusutan,
+      //     bukti_penyusutan: item.bukti_penyusutan,
+      //     jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
+      //     sync_status: 'pending'
+      //   }
         
-        await db.po_items.update(item.id, itemUpdateData)
+      //   await db.po_items.update(item.id, itemUpdateData)
         
-        // Tambahkan ke sync queue untuk update po_items
-        await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
+      //   // Tambahkan ke sync queue untuk update po_items
+      //   await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
         
-        // 3. update existing intentory
-        // 4. Update atau tambah data di raw_material
-        const materialId = item.raw_material_id
-        if (!materialId) {
-          console.error('Material ID tidak valid:', item)
-          continue
-        }  
+      //   // 3. update existing intentory
+      //   // 4. Update atau tambah data di raw_material
+      //   const materialId = item.raw_material_id
+      //   if (!materialId) {
+      //     console.error('Material ID tidak valid:', item)
+      //     continue
+      //   }  
 
-        const existingMaterial = await db.raw_materials.get(materialId)
-        console.log('existingMaterial', existingMaterial);
+      //   const existingMaterial = await db.raw_materials.get(materialId)
+      //   console.log('existingMaterial', existingMaterial);
         
-        if (existingMaterial) {
-          // stok yang ada saat ini
-          const currentStock = existingMaterial.total_stock || 0
-          // harga rata-rata saat ini
-          const currentPrice = existingMaterial.harga_rata_rata || 0
-          // harga per unit saat ini
-          const currentStockPricePerUnit = currentPrice / currentStock
-          // stok yang diterima dan dapat digunakan
-          const receivedStock = item.jumlah_dapat_digunakan
-          // harga beli stok yang diterima
-          const receivedStockPrice = item.harga_satuan // abaikan penamaan harga_satuan karena sebenaranya ini adalah harga beli
-          // harga per unit ketika diterima
-          const receivedStockPricePerUnit = receivedStockPrice / receivedStock
+      //   if (existingMaterial) {
+      //     // stok yang ada saat ini
+      //     const currentStock = existingMaterial.total_stock || 0
+      //     // harga rata-rata saat ini
+      //     const currentPrice = existingMaterial.harga_rata_rata || 0
+      //     // harga per unit saat ini
+      //     const currentStockPricePerUnit = currentPrice / currentStock
+      //     // stok yang diterima dan dapat digunakan
+      //     const receivedStock = item.jumlah_dapat_digunakan
+      //     // harga beli stok yang diterima
+      //     const receivedStockPrice = item.harga_satuan // abaikan penamaan harga_satuan karena sebenaranya ini adalah harga beli
+      //     // harga per unit ketika diterima
+      //     const receivedStockPricePerUnit = receivedStockPrice / receivedStock
 
-          // mulai ini hitung untuk disimpan menjadi stok baru dan harga rata-rata baru
-          const newStock = currentStock + receivedStock
-          // harga baru per unit
-          const newStockPricePerUnit = ((currentStockPricePerUnit * currentStock) + (receivedStockPricePerUnit * receivedStock)) / newStock
-          // harga baru rata-rata
-          const totalNewStockPrice = newStockPricePerUnit * newStock
+      //     // mulai ini hitung untuk disimpan menjadi stok baru dan harga rata-rata baru
+      //     const newStock = currentStock + receivedStock
+      //     // harga baru per unit
+      //     const newStockPricePerUnit = ((currentStockPricePerUnit * currentStock) + (receivedStockPricePerUnit * receivedStock)) / newStock
+      //     // harga baru rata-rata
+      //     const totalNewStockPrice = newStockPricePerUnit * newStock
           
-          const materialUpdateData = {
-            total_stock: newStock,
-            harga_rata_rata: totalNewStockPrice,
-            sync_status: 'pending'
-          }
+      //     const materialUpdateData = {
+      //       total_stock: newStock,
+      //       harga_rata_rata: totalNewStockPrice,
+      //       sync_status: 'pending'
+      //     }
           
-          await db.raw_materials.update(materialId, materialUpdateData)
+      //     await db.raw_materials.update(materialId, materialUpdateData)
           
-          // Tambahkan ke sync queue untuk raw_materials
-          await db.addToSyncQueue('raw_materials', materialId, 'update', materialUpdateData)
-        } else {
-          // Jika material belum ada, buat baru
-          const newMaterialData = {
-            id: materialId,
-            nama_item: item.nama_item || 'Unknown',
-            total_stock: item.jumlah_dapat_digunakan,
-            harga_rata_rata: item.harga_satuan || 0,
-            sync_status: 'pending',
-            cached_at: new Date().getTime()
-          }
+      //     // Tambahkan ke sync queue untuk raw_materials
+      //     await db.addToSyncQueue('raw_materials', materialId, 'update', materialUpdateData)
+      //   } else {
+      //     // Jika material belum ada, buat baru
+      //     const newMaterialData = {
+      //       id: materialId,
+      //       nama_item: item.nama_item || 'Unknown',
+      //       total_stock: item.jumlah_dapat_digunakan,
+      //       harga_rata_rata: item.harga_satuan || 0,
+      //       sync_status: 'pending',
+      //       cached_at: new Date().getTime()
+      //     }
           
-          await db.raw_materials.add(newMaterialData)
+      //     await db.raw_materials.add(newMaterialData)
           
-          // Tambahkan ke sync queue untuk raw_materials
-          await db.addToSyncQueue('raw_materials', materialId, 'create', newMaterialData)
-        }
+      //     // Tambahkan ke sync queue untuk raw_materials
+      //     await db.addToSyncQueue('raw_materials', materialId, 'create', newMaterialData)
+      //   }
 
-        // 4. Input data ke log_inventory
-        const logInventoryData = {
-          item: item.raw_material_id,
-          tipe_transaksi: 'PENERIMAAN_PO',
-          perubahan_jumlah: item.jumlah_dapat_digunakan,
-          stok_sebelum: existingMaterial.total_stock || 0,
-          stok_setelah: (item.jumlah_dapat_digunakan + existingMaterial.total_stock),
-          dokumen_sumber: `${orderId}`,
-          pengguna: currentUserId, // Gunakan current user ID
-          waktu_log: new Date().toISOString(),
-          sync_status: 'pending',
-          cached_at: new Date().getTime()
-        }
-        console.log('logInventoryData', logInventoryData);
+      //   // 4. Input data ke log_inventory
+      //   const logInventoryData = {
+      //     item: item.raw_material_id,
+      //     tipe_transaksi: 'PENERIMAAN_PO',
+      //     perubahan_jumlah: item.jumlah_dapat_digunakan,
+      //     stok_sebelum: existingMaterial.total_stock || 0,
+      //     stok_setelah: (item.jumlah_dapat_digunakan + existingMaterial.total_stock),
+      //     dokumen_sumber: `${orderId}`,
+      //     pengguna: currentUserId, // Gunakan current user ID
+      //     waktu_log: new Date().toISOString(),
+      //     sync_status: 'pending',
+      //     cached_at: new Date().getTime()
+      //   }
+      //   console.log('logInventoryData', logInventoryData);
         
-        await db.log_inventaris.add(logInventoryData)
+      //   await db.log_inventaris.add(logInventoryData)
         
-        // Tambahkan ke sync queue untuk log_inventaris
-        await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)      
+      //   // Tambahkan ke sync queue untuk log_inventaris
+      //   await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)      
         
         // 5. Tambahkan data ke waste jika ada penyusutan
         // if (item.total_penyusutan > 0) {
@@ -471,7 +562,7 @@ export function usePurchaseOrders() {
           
         //   await db.waste.add(wasteData)
         // }
-      }
+      // }
       
       // 6. Sync ke server jika online
       if (syncService.isOnline()) {
@@ -491,16 +582,90 @@ export function usePurchaseOrders() {
     }
   }
 
-  // Export fungsi baru
+  // Fungsi untuk membayar dan menyelesaikan purchase order
+  const payPurchaseOrder = async (paymentData) => {
+    try {
+      isLoading.value = true
+      
+      const updateData = {
+        id: paymentData.orderId,
+        status: 'Selesai',
+        tanggal_pembayaran: paymentData.tanggal_pembayaran,
+        total_pembayaran: paymentData.total_pembayaran,
+        bukti_bayar: paymentData.bukti_bayar,
+        catatan_pembayaran: paymentData.catatan_pembayaran
+      }
+      
+      if (isOnline.value) {
+        // Update ke server
+        const response = await api.updatePurchaseOrder(updateData)
+        
+        if (response.success) {
+          // Update local data
+          const index = purchaseOrders.value.findIndex(order => order.id === paymentData.orderId)
+          if (index !== -1) {
+            purchaseOrders.value[index] = { ...purchaseOrders.value[index], ...updateData }
+          }
+          
+          // Update IndexedDB
+          await db.updatePurchaseOrder(updateData)
+          
+          return { success: true }
+        } else {
+          throw new Error(response.error || 'Failed to pay purchase order')
+        }
+      } else {
+        // Offline: simpan ke IndexedDB dan queue untuk sync
+        await db.updatePurchaseOrder(updateData)
+        
+        // Add to sync queue
+        await db.addToSyncQueue({
+          type: 'UPDATE_PURCHASE_ORDER',
+          data: updateData,
+          timestamp: new Date().toISOString()
+        })
+        
+        // Update local state
+        const index = purchaseOrders.value.findIndex(order => order.id === paymentData.orderId)
+        if (index !== -1) {
+          purchaseOrders.value[index] = { ...purchaseOrders.value[index], ...updateData }
+        }
+        
+        return { success: true }
+      }
+    } catch (error) {
+      console.error('Error paying purchase order:', error)
+      return { success: false, error: error.message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Export semua state dan methods
   return {
     // State
     isLoading,
     purchaseOrders,
     filteredOrders,
+    paginatedOrders,
     searchQuery,
     selectedStatus,
     selectedSupplier,
     error,
+    
+    // Pagination
+    currentPage,
+    itemsPerPage,
+    itemsPerPageOptions,
+    totalPages,
+    paginationInfo,
+    changePage,
+    changeItemsPerPage,
+    resetPagination,
+    
+    // Date filter
+    dateFilter,
+    updateDateFilter,
     
     // Methods
     loadData,
@@ -508,6 +673,7 @@ export function usePurchaseOrders() {
     addPurchaseOrder,
     updatePurchaseOrder,
     deletePurchaseOrder,
-    receivePurchaseOrder
+    receivePurchaseOrder,
+    payPurchaseOrder
   }
 }

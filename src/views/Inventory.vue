@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
 import InventoryCard from '../components/features/inventory/InventoryCard.vue'
 import InventoryFilters from '../components/features/inventory/InventoryFilters.vue'
@@ -33,6 +33,7 @@ const {
   searchQuery,
   selectedCategory,
   filteredMaterials,
+  paginatedMaterials,
   loadData,
   getCategoryName,
   getSupplierName,
@@ -40,7 +41,19 @@ const {
   addItem,
   updateItem,
   deleteItem,
-  getStockStatus
+  getStockStatus,
+  // Pagination
+  currentPage,
+  itemsPerPage,
+  itemsPerPageOptions,
+  totalPages,
+  paginationInfo,
+  changePage,
+  changeItemsPerPage,
+  resetPagination,
+  // Date filter
+  dateFilter,
+  updateDateFilter
 } = useInventory()
 
 // Modal state
@@ -55,6 +68,11 @@ const activeTab = ref('details')
 const showNotification = ref(false)
 const notificationMessage = ref('')
 const notificationType = ref('success') // 'success' or 'error'
+
+// Watch for filter changes to reset pagination
+watch([searchQuery, selectedCategory, dateFilter], () => {
+  resetPagination()
+}, { deep: true })
 
 // Load data on mount
 onMounted(async () => {
@@ -165,10 +183,32 @@ function showErrorNotification(message) {
       @update:selectedCategory="selectedCategory = $event"
       :searchQuery="searchQuery"
       @update:searchQuery="searchQuery = $event"
+      :dateFilter="dateFilter"
+      @update:dateFilter="updateDateFilter"
     />
     
+    <!-- Pagination Info -->
+    <div class="mt-6 flex justify-between items-center">
+      <div class="text-sm text-gray-700">
+        Menampilkan {{ paginationInfo.start }} - {{ paginationInfo.end }} dari {{ paginationInfo.total }} item
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-700">Tampilkan:</label>
+        <select
+          :value="itemsPerPage"
+          @change="changeItemsPerPage(Number($event.target.value))"
+          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+        <span class="text-sm text-gray-700">per halaman</span>
+      </div>
+    </div>
+    
     <!-- Inventory Cards -->
-    <div class="mt-6 grid grid-cols-1 gap-6">
+    <div class="mt-4 grid grid-cols-1 gap-6">
       <div v-if="isLoading" class="col-span-full text-center py-12">
         <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -177,7 +217,7 @@ function showErrorNotification(message) {
         <p class="mt-2 text-gray-600">Loading inventory items...</p>
       </div>
       
-      <div v-else-if="filteredMaterials.length === 0" class="col-span-full text-center py-12">
+      <div v-else-if="paginatedMaterials.length === 0" class="col-span-full text-center py-12">
         <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
@@ -196,7 +236,7 @@ function showErrorNotification(message) {
       </div>
       
       <InventoryCard
-        v-for="item in filteredMaterials"
+        v-for="item in paginatedMaterials"
         :key="item.id"
         :item="item"
         :getCategoryName="getCategoryName"
@@ -206,6 +246,48 @@ function showErrorNotification(message) {
         @edit="editItem"
         @shrinkage="recordShrinkage"
       />
+    </div>
+    
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
+      <nav class="flex items-center gap-2">
+        <!-- Previous button -->
+        <button
+          @click="changePage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Sebelumnya
+        </button>
+        
+        <!-- Page numbers -->
+        <template v-for="page in Math.min(totalPages, 7)" :key="page">
+          <button
+            v-if="page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)"
+            @click="changePage(page)"
+            :class="[
+              'px-3 py-2 text-sm font-medium border rounded-md',
+              page === currentPage
+                ? 'text-blue-600 bg-blue-50 border-blue-500'
+                : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
+            ]"
+          >
+            {{ page }}
+          </button>
+          <span v-else-if="page === currentPage - 3 || page === currentPage + 3" class="px-2 py-2 text-gray-500">
+            ...
+          </span>
+        </template>
+        
+        <!-- Next button -->
+        <button
+          @click="changePage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Selanjutnya
+        </button>
+      </nav>
     </div>
     
     <!-- Modals -->

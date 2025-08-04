@@ -39,7 +39,7 @@
         </div>
         <div class="text-right">
           <div class="text-lg font-bold text-blue-600 mb-3">
-            {{ formatCurrency(order.total_pembayaran || 0) }}
+            {{ formatCurrency(calculatedTotal) }}
           </div>
           <div class="flex gap-2">
             <!-- Tombol Terima untuk status Dibuat -->
@@ -50,6 +50,17 @@
               >
                 <CheckIcon class="w-4 h-4" />
                 Terima
+              </button>
+            </PermissionBasedAccess>
+            
+            <!-- Tombol Bayar dan Selesaikan untuk status Diterima -->
+            <PermissionBasedAccess collection="purchase_orders" action="update" v-if="order.status === 'Diterima'">
+              <button 
+                @click="$emit('pay', order)" 
+                class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+              >
+                <CreditCardIcon class="w-4 h-4" />
+                Bayar dan Selesaikan
               </button>
             </PermissionBasedAccess>
             
@@ -89,7 +100,8 @@ import {
   CheckCircleIcon,
   ClockIcon,
   TruckIcon,
-  CheckIcon
+  CheckIcon,
+  CreditCardIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -99,7 +111,20 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'receive'])
+const emit = defineEmits(['edit', 'delete', 'receive', 'pay'])
+
+// Computed property untuk menghitung total dari semua items
+const calculatedTotal = computed(() => {
+  if (!props.order.items || !Array.isArray(props.order.items)) {
+    return 0
+  }
+  
+  return props.order.items.reduce((total, item) => {
+    // const quantity = item.jumlah_pesan || 0
+    const price = item.harga_satuan || 0
+    return total + price
+  }, 0)
+})
 
 const statusConfig = computed(() => {
   const { status } = props.order

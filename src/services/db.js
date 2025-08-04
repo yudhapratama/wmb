@@ -54,7 +54,7 @@ class WarungDatabase extends Dexie {
       sales_sessions: 'id, date, status, sync_status, cached_at',
       sales: 'id, sales_session_id, status, sync_status, cached_at',
       sales_items: 'id, sales_id, product_id, cached_at',
-      expenses: 'id, category_id, date, sync_status, cached_at',
+      expenses: 'id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at',
     })
     
     // Define version 5 to add units table
@@ -70,8 +70,8 @@ class WarungDatabase extends Dexie {
     
     // Define version 7 untuk denormalisasi lengkap
     this.version(7).stores({
-      // Purchase Orders dengan denormalisasi supplier
-      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, catatan_pembelian, tanggal_penerimaan, penerima_barang, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
+      // Purchase Orders dengan denormalisasi supplier dan penerima_barang
+      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
       
       // PO Items dengan denormalisasi lengkap - PERBAIKAN: gunakan purchase_order konsisten
       po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
@@ -92,6 +92,11 @@ class WarungDatabase extends Dexie {
       
       // Tambahkan juga tabel waste untuk penyusutan
       waste: '++id, item, jumlah, alasan, bukti, tanggal, pengguna, unit, sync_status, cached_at'
+    })
+    
+    // Define version 9 to fix expenses table auto-increment
+    this.version(9).stores({
+      expenses: '++id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at'
     })
     
     // Define tables

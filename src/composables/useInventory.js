@@ -14,6 +14,18 @@ export function useInventory() {
   const selectedCategory = ref('all')
   const error = ref(null)
   
+  // Pagination state
+  const currentPage = ref(1)
+  const itemsPerPage = ref(10)
+  const itemsPerPageOptions = [10, 25, 50, 100]
+  
+  // Date filter state
+  const dateFilter = ref({
+    startDate: '',
+    endDate: '',
+    dateField: 'date_created' // 'date_created' or 'date_updated'
+  })
+  
   // Filtered materials
   const filteredMaterials = computed(() => {
     let filtered = [...rawMaterials.value]
@@ -33,8 +45,77 @@ export function useInventory() {
       )
     }
     
+    // Filter by date range
+    if (dateFilter.value.startDate || dateFilter.value.endDate) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item[dateFilter.value.dateField])
+        const startDate = dateFilter.value.startDate ? new Date(dateFilter.value.startDate) : null
+        const endDate = dateFilter.value.endDate ? new Date(dateFilter.value.endDate) : null
+        
+        if (startDate && endDate) {
+          return itemDate >= startDate && itemDate <= endDate
+        } else if (startDate) {
+          return itemDate >= startDate
+        } else if (endDate) {
+          return itemDate <= endDate
+        }
+        return true
+      })
+    }
+    
     return filtered
   })
+  
+  // Paginated materials
+  const paginatedMaterials = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value
+    const end = start + itemsPerPage.value
+    return filteredMaterials.value.slice(start, end)
+  })
+  
+  // Total pages
+  const totalPages = computed(() => {
+    return Math.ceil(filteredMaterials.value.length / itemsPerPage.value)
+  })
+  
+  // Pagination info
+  const paginationInfo = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value + 1
+    const end = Math.min(start + itemsPerPage.value - 1, filteredMaterials.value.length)
+    const total = filteredMaterials.value.length
+    
+    return {
+      start,
+      end,
+      total,
+      currentPage: currentPage.value,
+      totalPages: totalPages.value
+    }
+  })
+  
+  // Reset pagination when filters change
+  function resetPagination() {
+    currentPage.value = 1
+  }
+  
+  // Change page
+  function changePage(page) {
+    if (page >= 1 && page <= totalPages.value) {
+      currentPage.value = page
+    }
+  }
+  
+  // Change items per page
+  function changeItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    resetPagination()
+  }
+  
+  // Update date filter
+  function updateDateFilter(newDateFilter) {
+    dateFilter.value = { ...dateFilter.value, ...newDateFilter }
+    resetPagination()
+  }
   
   // Get category name by ID
   function getCategoryName(categoryId) {
@@ -267,11 +348,22 @@ export function useInventory() {
     rawMaterials,
     categories,
     suppliers,
-    unitOptions, // Export unitOptions as a ref now
+    unitOptions,
     searchQuery,
     selectedCategory,
     filteredMaterials,
+    paginatedMaterials,
     error,
+    
+    // Pagination
+    currentPage,
+    itemsPerPage,
+    itemsPerPageOptions,
+    totalPages,
+    paginationInfo,
+    
+    // Date filter
+    dateFilter,
     
     // Methods
     loadData,
@@ -281,6 +373,10 @@ export function useInventory() {
     addItem,
     updateItem,
     deleteItem,
-    getStockStatus
+    getStockStatus,
+    resetPagination,
+    changePage,
+    changeItemsPerPage,
+    updateDateFilter
   }
 }

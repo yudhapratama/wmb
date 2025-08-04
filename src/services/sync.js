@@ -251,7 +251,7 @@ export const syncService = {
         // Jika ada id, ambil purchase order spesifik
         ordersResponse = await api.get(`/items/purchase_orders/${id}`, {
           params: {
-            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name'
+            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name,penerima_barang.first_name,penerima_barang.last_name'
           }
         })
         // Wrap single item dalam array untuk konsistensi
@@ -260,7 +260,7 @@ export const syncService = {
         // Jika tidak ada id, ambil semua purchase orders
         ordersResponse = await api.get('/items/purchase_orders', {
           params: {
-            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name'
+            fields: '*,supplier.*,pembuat_po.first_name,pembuat_po.last_name,penerima_barang.first_name,penerima_barang.last_name'
           }
         })
       }
@@ -337,6 +337,7 @@ export const syncService = {
           supplier_name: order.supplier?.nama_pt_toko,
           supplier_category: order.supplier?.kategori_supplier,
           pembuat_po_name: `${order.pembuat_po?.first_name || ''} ${order.pembuat_po?.last_name || ''}`.trim(),
+          penerima_barang_name: `${order.penerima_barang?.first_name || ''} ${order.penerima_barang?.last_name || ''}`.trim(),
           supplier: order.supplier?.id,
           cached_at: timestamp
         }

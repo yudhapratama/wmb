@@ -4,11 +4,12 @@ import api from '../services/api'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: null,
+    refresh_token: null, // Tambahkan refresh token
     user: null,
     role: null,
     permissions: null,
-    permissionsTimestamp: null, // Tambahkan timestamp untuk validasi
-    permissionsVersion: null // Tambahkan version untuk validasi
+    permissionsTimestamp: null,
+    permissionsVersion: null
   }),
   
   getters: {
@@ -74,11 +75,14 @@ export const useAuthStore = defineStore('auth', {
     
     async login(email, password) {
       try {
-        const response = await api.post('/auth/login', { email, password, mode: 'json' })
-        
-        // console.log('Login response:', response.data.data)
+        const response = await api.post('/auth/login', { 
+          email, 
+          password, 
+          mode: 'json' // Pastikan mendapat refresh token di response
+        })
         
         this.token = response.data.data.access_token
+        this.refresh_token = response.data.data.refresh_token // Simpan refresh token
         
         // Set api default authorization header
         api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
@@ -93,6 +97,38 @@ export const useAuthStore = defineStore('auth', {
           success: false, 
           message: error.response?.data?.errors?.[0]?.message || 'Login failed' 
         }
+      }
+    },
+    
+    // Tambahkan method refresh token
+    async refreshToken() {
+      if (!this.refresh_token) {
+        console.error('No refresh token available')
+        return false
+      }
+      
+      try {
+        const response = await api.post('/auth/refresh', {
+          refresh_token: this.refresh_token,
+          mode: 'json'
+        }, {
+          // Flag khusus untuk mencegah interceptor
+          _skipAuthRefresh: true
+        })
+        
+        this.token = response.data.data.access_token
+        this.refresh_token = response.data.data.refresh_token
+        
+        // Update authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+        
+        console.log('Token refreshed successfully')
+        return true
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+        // Jika refresh gagal, logout user
+        this.logout()
+        return false
       }
     },
     
@@ -141,6 +177,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
+    // Update method validateSession
     async validateSession() {
       // Jika tidak ada token, tidak perlu validasi
       if (!this.token) return false
@@ -158,16 +195,33 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (error) {
         console.error('Session validation failed:', error)
-        // Jika error 401, logout user
+        
+        // Jika error 401, coba refresh token
         if (error.response?.status === 401) {
-          this.logout()
+          const refreshSuccess = await this.refreshToken()
+          if (refreshSuccess) {
+            // Jika refresh berhasil, coba validasi lagi
+            try {
+              await api.get('/users/me')
+              return true
+            } catch (retryError) {
+              console.error('Retry validation failed:', retryError)
+              this.logout()
+              return false
+            }
+          } else {
+            this.logout()
+            return false
+          }
         }
+        
         return false
       }
     },
     
     logout() {
       this.token = null
+      this.refresh_token = null // Clear refresh token
       this.user = null
       this.role = null
       this.permissions = null

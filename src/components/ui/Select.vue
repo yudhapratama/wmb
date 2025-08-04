@@ -2,7 +2,7 @@
   <Listbox v-model="selectedValue" @update:modelValue="handleChange">
     <div class="relative">
       <ListboxButton
-        class="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        class="relative w-full cursor-default rounded-md bg-white py-3 pl-3 pr-10 text-left border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
       >
         <span class="block truncate">{{ displayValue || placeholder }}</span>
         <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">

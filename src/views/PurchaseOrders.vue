@@ -23,10 +23,32 @@
       @update:selectedSupplier="selectedSupplier = $event"
       :searchQuery="searchQuery"
       @update:searchQuery="searchQuery = $event"
+      :dateFilter="dateFilter"
+      @update:dateFilter="updateDateFilter"
     />
     
+    <!-- Pagination Info -->
+    <div class="mt-6 flex justify-between items-center">
+      <div class="text-sm text-gray-700">
+        Menampilkan {{ paginationInfo.start }} - {{ paginationInfo.end }} dari {{ paginationInfo.total }} purchase order
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-700">Tampilkan:</label>
+        <select
+          :value="itemsPerPage"
+          @change="changeItemsPerPage(Number($event.target.value))"
+          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+        <span class="text-sm text-gray-700">per halaman</span>
+      </div>
+    </div>
+    
     <!-- Purchase Orders List -->
-    <div class="mt-6 grid grid-cols-1 gap-6">
+    <div class="mt-4 grid grid-cols-1 gap-6">
       <div v-if="isLoading" class="col-span-full text-center py-12">
         <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -35,7 +57,7 @@
         <p class="mt-2 text-gray-600">Loading purchase orders...</p>
       </div>
       
-      <div v-else-if="filteredOrders.length === 0" class="col-span-full text-center py-12">
+      <div v-else-if="paginatedOrders.length === 0" class="col-span-full text-center py-12">
         <ArchiveBoxIcon class="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <p class="text-gray-600">Tidak ada purchase order yang ditemukan</p>
         <PermissionBasedAccess collection="purchase_orders" action="create">
@@ -50,13 +72,56 @@
       </div>
       
       <PurchaseOrderCard
-        v-for="order in filteredOrders"
+        v-for="order in paginatedOrders"
         :key="order.id"
         :order="order"
         @edit="openEditModal"
         @delete="confirmDelete"
         @receive="openReceiveModal"
+        @pay="openPayModal"
       />
+    </div>
+    
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
+      <nav class="flex items-center gap-2">
+        <!-- Previous button -->
+        <button
+          @click="changePage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Sebelumnya
+        </button>
+        
+        <!-- Page numbers -->
+        <template v-for="page in Math.min(totalPages, 7)" :key="page">
+          <button
+            v-if="page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)"
+            @click="changePage(page)"
+            :class="[
+              'px-3 py-2 text-sm font-medium border rounded-md',
+              page === currentPage
+                ? 'text-blue-600 bg-blue-50 border-blue-500'
+                : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
+            ]"
+          >
+            {{ page }}
+          </button>
+          <span v-else-if="page === currentPage - 3 || page === currentPage + 3" class="px-2 py-2 text-gray-500">
+            ...
+          </span>
+        </template>
+        
+        <!-- Next button -->
+        <button
+          @click="changePage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Selanjutnya
+        </button>
+      </nav>
     </div>
     
     <!-- Modals -->
@@ -83,6 +148,14 @@
       :isLoading="isLoading"
       @close="showReceiveModal = false"
       @submit="handleReceiveOrder"
+    />
+    
+    <PayPurchaseOrderModal
+      :isOpen="showPayModal"
+      :order="payingOrder"
+      :isLoading="isLoading"
+      @close="showPayModal = false"
+      @submit="handlePayOrder"
     />
     
     <!-- Delete Confirmation Modal -->
@@ -118,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
 import PurchaseOrderFilters from '../components/features/purchase-orders/PurchaseOrderFilters.vue'
 import PurchaseOrderCard from '../components/features/purchase-orders/PurchaseOrderCard.vue'
@@ -128,6 +201,7 @@ import { useInventory } from '../composables/useInventory'
 import AddPurchaseOrderModal from '../components/features/purchase-orders/modals/AddPurchaseOrderModal.vue'
 import EditPurchaseOrderModal from '../components/features/purchase-orders/modals/EditPurchaseOrderModal.vue'
 import ReceivePurchaseOrderModal from '../components/features/purchase-orders/modals/ReceivePurchaseOrderModal.vue'
+import PayPurchaseOrderModal from '../components/features/purchase-orders/modals/PayPurchaseOrderModal.vue'
 import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import { 
@@ -140,6 +214,7 @@ const {
   isLoading,
   purchaseOrders,
   filteredOrders,
+  paginatedOrders,
   searchQuery,
   selectedStatus,
   selectedSupplier,
@@ -148,7 +223,19 @@ const {
   updatePurchaseOrder,
   deletePurchaseOrder,
   fetchOrderDetail,
-  receivePurchaseOrder
+  receivePurchaseOrder,
+  // Pagination
+  currentPage,
+  itemsPerPage,
+  itemsPerPageOptions,
+  totalPages,
+  paginationInfo,
+  changePage,
+  changeItemsPerPage,
+  resetPagination,
+  // Date filter
+  dateFilter,
+  updateDateFilter
 } = usePurchaseOrders()
 
 // Load suppliers
@@ -180,9 +267,11 @@ onMounted(async () => {
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showReceiveModal = ref(false)
+const showPayModal = ref(false)
 const isConfirmDeleteOpen = ref(false)
 const editingOrder = ref(null)
 const receivingOrder = ref(null)
+const payingOrder = ref(null)
 const orderToDelete = ref(null)
 
 // Notification state
@@ -298,6 +387,52 @@ async function handleReceiveOrder(receiptData) {
   }
 }
 
+// Open pay modal
+async function openPayModal(order) {
+  // Ambil detail order terlebih dahulu untuk mendapatkan data lengkap termasuk items
+  const result = await fetchOrderDetail(order.id)
+  if (result.success) {
+    const orderData = result.data
+    console.log('ini data order detail ketika akan dibayar:', orderData)
+    
+    payingOrder.value = {
+      id: orderData.id,
+      supplier: orderData.supplier,
+      pembuat_po: orderData.pembuat_po,
+      penerima_barang: orderData.penerima_barang,
+      date_created: orderData.date_created,
+      date_updated: orderData.date_updated,
+      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+        id: item.id,
+        nama_item: item.item?.nama_item || 'Unknown Item',
+        unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
+        jumlah_pesan: item.jumlah_pesan || 0,
+        total_diterima: item.total_diterima || item.jumlah_pesan || 0,
+        total_penyusutan: item.total_penyusutan || 0,
+        alasan_penyusutan: item.alasan_penyusutan,
+        harga_satuan: item.harga_satuan || 0,
+        raw_material_id: item.item?.id
+      })) : []
+    }
+    
+    showPayModal.value = true
+  } else {
+    showErrorNotification(`Failed to fetch order details: ${result.error || 'Unknown error'}`)
+  }
+}
+
+// Handle pay order
+async function handlePayOrder(paymentData) {
+  // Implementasi pembayaran akan ditambahkan ke usePurchaseOrders
+  const result = await payPurchaseOrder(paymentData)
+  if (result.success) {
+    showPayModal.value = false
+    showSuccessNotification('Purchase order berhasil dibayar dan diselesaikan')
+  } else {
+    showErrorNotification(`Failed to pay purchase order: ${result.error || 'Unknown error'}`)
+  }
+}
+
 // Confirm delete
 function confirmDelete(order) {
   orderToDelete.value = order
@@ -335,4 +470,9 @@ function showErrorNotification(message) {
     showNotification.value = false
   }, 3000)
 }
+
+// Watch for filter changes to reset pagination
+watch([searchQuery, selectedStatus, selectedSupplier, dateFilter], () => {
+  resetPagination()
+}, { deep: true })
 </script>

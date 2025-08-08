@@ -7,6 +7,46 @@ export const syncService = {
   isOnline() {
     return navigator.onLine
   },
+
+  // New helper method to handle expense file upload
+  async handleExpenseFileUpload(expenseData, entity, action, entityId = null) {
+    // Remove problematic fields
+    const cleanData = { ...expenseData }
+    
+    // Remove IndexedDB-specific fields
+    delete cleanData.id
+    delete cleanData.sync_status
+    delete cleanData.cached_at
+    
+    // Handle bukti_pembayaran file upload
+    if (cleanData.bukti_pembayaran && cleanData.bukti_pembayaran instanceof File) {
+      const formData = new FormData()
+      formData.append('file', cleanData.bukti_pembayaran)
+      
+      const uploadResponse = await api.post('/files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      
+      cleanData.bukti_pembayaran = uploadResponse.data.data.id
+    } else if (!cleanData.bukti_pembayaran) {
+      delete cleanData.bukti_pembayaran
+    }
+    
+    // Clean empty string fields (except required ones)
+    Object.keys(cleanData).forEach(key => {
+      if (key !== 'nama_pengeluaran' && 
+          (cleanData[key] === '' || cleanData[key] === null || cleanData[key] === undefined)) {
+        delete cleanData[key]
+      }
+    })
+    
+    // Perform API call
+    if (action === 'create') {
+      await api.post(`/items/${entity}`, cleanData)
+    } else if (action === 'update') {
+      await api.patch(`/items/${entity}/${entityId}`, cleanData)
+    }
+  },  
   
   // Process sync queue
   async processSyncQueue() {
@@ -50,7 +90,9 @@ export const syncService = {
     
     switch (action) {
       case 'create':
-        if (entity === 'purchase_orders' && data.items) {
+        if (entity === 'expenses') {
+          await this.handleExpenseFileUpload(data, entity, 'create')
+        } else if (entity === 'purchase_orders' && data.items) {
           // Handle purchase order dengan items
           const { items, ...orderData } = data
           
@@ -67,11 +109,22 @@ export const syncService = {
           }
      
         } else {
-          await api.post(`/items/${entity}`, data)
+          // Handle case where bukti_pembayaran is null
+          if (entity === 'expenses' && data.bukti_pembayaran === null) {
+            const expenseData = { ...data }
+            delete expenseData.bukti_pembayaran
+            await api.post(`/items/${entity}`, expenseData)
+          } else {
+            await api.post(`/items/${entity}`, data)
+          }
         }
         break
       case 'update':
-        await api.patch(`/items/${entity}/${entity_id}`, data)
+        if (entity === 'expenses') {
+          await this.handleExpenseFileUpload(data, entity, 'update', entity_id)
+        } else {
+          await api.patch(`/items/${entity}/${entity_id}`, data)
+        }
         break
       case 'delete':
         await api.delete(`/items/${entity}/${entity_id}`)

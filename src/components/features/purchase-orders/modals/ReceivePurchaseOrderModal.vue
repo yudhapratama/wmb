@@ -1,48 +1,46 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-      <div class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Penerimaan Purchase Order</h2>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <XMarkIcon class="w-6 h-6" />
-          </button>
-        </div>
+  <Modal :isOpen="isOpen" @close="$emit('close')" size="3xl">
+    <template #header>
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-gray-900">Terima Purchase Order</h2>
+        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
+          <XMarkIcon class="w-6 h-6" />
+        </button>
+      </div>
+    </template>
 
-        <!-- Informasi PO (Read-only) -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
-          <h3 class="font-semibold mb-3">Informasi Purchase Order</h3>
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="text-gray-600">Nomor PO:</span>
-              <span class="font-medium ml-2">{{ order?.id }}</span>
-            </div>
-            <div>
-              <span class="text-gray-600">Supplier:</span>
-              <span class="font-medium ml-2">{{ order?.supplier?.nama_pt_toko }}</span>
-            </div>
-            <div>
-              <span class="text-gray-600">Tanggal PO Dibuat:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.date_created) }}</span>
-            </div>
-            <div>
-              <span class="text-gray-600">Pembuat PO:</span>
-              <span class="font-medium ml-2">{{ order?.pembuat_po?.first_name }}</span>
-            </div>
-          </div>
+    <!-- Order Info -->
+    <div v-if="order" class="bg-gray-50 p-4 rounded-lg mb-6">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-sm text-gray-600">Nomor PO</p>
+          <p class="font-medium">{{ order.id }}</p>
         </div>
+        <div>
+          <p class="text-sm text-gray-600">Supplier</p>
+          <p class="font-medium">{{ order.supplier?.nama_pt_toko || 'N/A' }}</p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Tanggal Order</p>
+          <p class="font-medium">{{ formatDate(order.date_created) }}</p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Total</p>
+          <p class="font-medium">{{ formatCurrency(calculatedTotal) }}</p>
+        </div>
+      </div>
+    </div>
 
-        <!-- Form Penerimaan -->
-        <div class="space-y-4">
+    <!-- Form Penerimaan -->
+    <div class="space-y-4">
           <h3 class="font-semibold">Form Penerimaan Barang</h3>
           
-          <div v-for="(item, index) in receiptItems" :key="item.id" class="border rounded-lg p-4"> <!-- item.items?.item?.unit?.unit -->
-            <!-- <div><pre>{{ item }}</pre></div> -->
+          <div v-for="(item, index) in receiptItems" :key="item.id" class="border rounded-lg p-4">
             <div class="flex justify-between items-start mb-3">
               <div>
                 <h4 class="font-medium">{{ item.nama_item }}</h4>
                 <p class="text-sm text-gray-600">Jumlah Pesan: {{ item.jumlah_pesan }} {{ item.unit }}</p>
-                <p class="text-sm text-gray-600">Harga Satuan: {{ formatCurrency(item.harga_satuan) }}</p>
+                <p class="text-sm text-gray-600">Harga: {{ formatCurrency(item.harga_satuan) }}</p>
               </div>
             </div>
             
@@ -113,50 +111,78 @@
               
               <div>
                 <label class="block text-sm font-medium text-red-700 mb-1">Bukti Penyusutan (Upload Foto)</label>
-                <input 
-                  @change="handleFileUpload($event, index)"
-                  type="file" 
-                  accept="image/*"
-                  class="w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
+                <div class="flex items-center gap-4">
+                  <button
+                    type="button"
+                    @click="triggerFileInput(index)"
+                    class="flex items-center gap-2 px-3 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Ambil Foto
+                  </button>
+                  <input 
+                    :id="`shrinkageFileInput${index}`"
+                    @change="handleFileUpload($event, index)"
+                    type="file" 
+                    accept="image/*"
+                    class="hidden"
+                  />
+                  <img
+                    v-if="item.bukti_penyusutan_preview"
+                    :src="item.bukti_penyusutan_preview"
+                    alt="Shrinkage evidence"
+                    class="w-20 h-20 object-cover rounded border"
+                  />
+                </div>
                 <p class="text-xs text-red-600 mt-1">Format: JPG, PNG, maksimal 5MB</p>
               </div>
             </div>
             
-            <!-- Jumlah Dapat Digunakan (Calculated) -->
-            <div class="mt-3 p-3 bg-green-50 rounded-lg">
-              <span class="text-sm font-medium text-green-800">
-                Jumlah Dapat Digunakan: {{ calculateUsableQuantity(item) }} {{ item.item?.unit?.abbreviation }}
-              </span>
+            <!-- Summary -->
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div class="flex justify-between text-sm">
+                <span class="text-blue-700">Jumlah yang dapat digunakan:</span>
+                <span class="font-medium text-blue-900">{{ calculateUsableQuantity(item) }} {{ item.unit }}</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <button 
-            @click="$emit('close')" 
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Batal
-          </button>
-          <button 
-            @click="handleSubmit" 
-            :disabled="isLoading || !isFormValid"
-            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ isLoading ? 'Menyimpan...' : 'Simpan Penerimaan' }}
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
+
+    <template #footer>
+      <div class="flex gap-3 w-full">
+        <button
+          @click="$emit('close')"
+          class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Batal
+        </button>
+        <button
+          @click="handleSubmit"
+          class="flex-1 flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-sm font-medium text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isLoading || !isFormValid"
+        >
+          <svg v-if="!isLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+          </svg>
+          <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isLoading ? 'Memproses...' : 'Proses Penerimaan' }}
+        </button>
+      </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Select from '../../../ui/Select.vue'
+import Modal from '../../../ui/Modal.vue'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -177,6 +203,19 @@ const reasonOptions = [
   { value: 'other', label: 'Lainnya' }
 ]
 
+// Computed property untuk menghitung total dari semua items
+const calculatedTotal = computed(() => {
+  if (!props.order?.items || !Array.isArray(props.order.items)) {
+    return 0
+  }
+  
+  return props.order.items.reduce((total, item) => {
+    // const quantity = item.jumlah_pesan || 0
+    const price = item.harga_satuan || 0
+    return total + price
+  }, 0)
+})
+
 // Initialize receipt items when order changes
 watch(() => props.order, (newOrder) => {
   if (newOrder?.items) {
@@ -186,6 +225,7 @@ watch(() => props.order, (newOrder) => {
       total_penyusutan: 0,
       alasan_penyusutan: '',
       bukti_penyusutan: null,
+      bukti_penyusutan_preview: null,
       has_penyusutan: false
     }))
   }
@@ -207,15 +247,35 @@ const isFormValid = computed(() => {
   })
 })
 
+// Fungsi untuk trigger file input
+const triggerFileInput = (index) => {
+  const fileInput = document.getElementById(`shrinkageFileInput${index}`)
+  if (fileInput) {
+    fileInput.click()
+  }
+}
+
 const handleFileUpload = (event, index) => {
   const file = event.target.files[0]
   if (file) {
-    // Validasi ukuran file (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file terlalu besar. Maksimal 5MB.')
+    // Gunakan utility validation
+    const validation = validateFile(file)
+    if (!validation.isValid) {
+      alert(validation.error)
       return
     }
+    
+    // Set file untuk upload
     receiptItems.value[index].bukti_penyusutan = file
+    
+    // Buat preview gambar
+    createFilePreview(file)
+      .then(preview => {
+        receiptItems.value[index].bukti_penyusutan_preview = preview
+      })
+      .catch(error => {
+        console.error('Error creating preview:', error)
+      })
   }
 }
 
@@ -230,8 +290,8 @@ const handleSubmit = () => {
       total_penyusutan: item.has_penyusutan ? item.total_penyusutan : 0,
       alasan_penyusutan: item.has_penyusutan ? item.alasan_penyusutan : null,
       bukti_penyusutan: item.has_penyusutan ? item.bukti_penyusutan : null,
-      harga_satuan: item.harga_satuan, // Tambahkan harga_satuan langsung dari item
-      unit: item.unit, // Tambahkan unit untuk keperluan waste
+      harga_satuan: item.harga_satuan,
+      unit: item.unit,
       jumlah_dapat_digunakan: calculateUsableQuantity(item)
     }))
   }

@@ -1,6 +1,7 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
+import { useFileUpload } from '../../../composables/useFileUpload'
 
 const props = defineProps({
   expense: {
@@ -18,6 +19,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['view', 'edit', 'delete'])
+
+// Get the getFileUrl function from useFileUpload composable
+const { getFileUrl } = useFileUpload()
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('id-ID', {
@@ -57,7 +61,7 @@ function getPaymentMethodLabel(method) {
                 {{ formatDate(expense.tanggal) }}
               </div>
               <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                {{ getCategoryName(expense.kategori) }}
+                {{ getCategoryName(expense.kategori?.id) }}
               </span>
               <span>{{ getPaymentMethodLabel(expense.metode_pembayaran) }}</span>
             </div>
@@ -66,7 +70,7 @@ function getPaymentMethodLabel(method) {
             </p>
             <div v-if="expense.bukti_pembayaran" class="mt-2">
               <img 
-                :src="`${$api.defaults.baseURL}/assets/${expense.bukti_pembayaran}`" 
+                :src="getFileUrl(expense.bukti_pembayaran)" 
                 alt="Payment proof" 
                 class="w-16 h-16 object-cover rounded border cursor-pointer"
                 @click="$emit('view', expense)"
@@ -75,14 +79,13 @@ function getPaymentMethodLabel(method) {
           </div>
         </div>
         <div class="text-right">
-          <div class="text-lg font-bold text-red-600 mb-2">
+          <div class="text-lg font-bold text-red-600 mb-3">
             {{ formatCurrency(expense.jumlah) }}
           </div>
           <div class="flex gap-2">
             <button 
               @click="$emit('view', expense)"
-              class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-              title="View Details"
+              class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
             >
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -92,8 +95,7 @@ function getPaymentMethodLabel(method) {
             <PermissionBasedAccess collection="expenses" action="update">
               <button 
                 @click="$emit('edit', expense)"
-                class="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors"
-                title="Edit"
+                class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -103,8 +105,7 @@ function getPaymentMethodLabel(method) {
             <PermissionBasedAccess collection="expenses" action="delete">
               <button 
                 @click="$emit('delete', expense)"
-                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                title="Delete"
+                class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

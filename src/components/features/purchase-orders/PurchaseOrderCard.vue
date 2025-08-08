@@ -42,44 +42,76 @@
             {{ formatCurrency(calculatedTotal) }}
           </div>
           <div class="flex gap-2">
-            <!-- Tombol Terima untuk status Dibuat -->
-            <PermissionBasedAccess collection="purchase_orders" action="update" v-if="order.status === 'Dibuat'">
+            <!-- Status: Dibuat - Tombol: Terima, Detail, Edit, Hapus -->
+            <template v-if="order.status === 'Dibuat'">
+              <PermissionBasedAccess collection="purchase_orders" action="update">
+                <button 
+                  @click="$emit('receive', order)" 
+                  class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                >
+                  <CheckIcon class="w-4 h-4" />
+                  Terima
+                </button>
+              </PermissionBasedAccess>
+              
               <button 
-                @click="$emit('receive', order)" 
-                class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                @click="$emit('detail', order)" 
+                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
               >
-                <CheckIcon class="w-4 h-4" />
-                Terima
+                <EyeIcon class="w-4 h-4" />
+                <!-- Detail -->
               </button>
-            </PermissionBasedAccess>
+              
+              <PermissionBasedAccess collection="purchase_orders" action="update">
+                <button 
+                  @click="$emit('edit', order)" 
+                  class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
+                >
+                  <PencilIcon class="w-4 h-4" />
+                </button>
+              </PermissionBasedAccess>
+              
+              <PermissionBasedAccess collection="purchase_orders" action="delete">
+                <button 
+                  @click="$emit('delete', order)" 
+                  class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
+                >
+                  <TrashIcon class="w-4 h-4" />
+                </button>
+              </PermissionBasedAccess>
+            </template>
             
-            <!-- Tombol Bayar dan Selesaikan untuk status Diterima -->
-            <PermissionBasedAccess collection="purchase_orders" action="update" v-if="order.status === 'Diterima'">
+            <!-- Status: Diterima - Tombol: Bayar dan Selesaikan, Detail -->
+            <template v-else-if="order.status === 'Diterima'">
+              <PermissionBasedAccess collection="purchase_orders" action="update">
+                <button 
+                  @click="$emit('pay', order)" 
+                  class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                >
+                  <CreditCardIcon class="w-4 h-4" />
+                  Bayar dan Selesaikan
+                </button>
+              </PermissionBasedAccess>
+              
               <button 
-                @click="$emit('pay', order)" 
-                class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                @click="$emit('detail', order)" 
+                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
               >
-                <CreditCardIcon class="w-4 h-4" />
-                Bayar dan Selesaikan
+                <EyeIcon class="w-4 h-4" />
+                <!-- Detail -->
               </button>
-            </PermissionBasedAccess>
+            </template>
             
-            <PermissionBasedAccess collection="purchase_orders" action="update">
+            <!-- Status: Selesai - Tombol: Detail saja -->
+            <template v-else-if="order.status === 'Selesai'">
               <button 
-                @click="$emit('edit', order)" 
-                class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
+                @click="$emit('detail', order)" 
+                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
               >
-                <PencilIcon class="w-4 h-4" />
+                <EyeIcon class="w-4 h-4" />
+                <!-- Detail -->
               </button>
-            </PermissionBasedAccess>
-            <PermissionBasedAccess collection="purchase_orders" action="delete">
-              <button 
-                @click="$emit('delete', order)" 
-                class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
-              >
-                <TrashIcon class="w-4 h-4" />
-              </button>
-            </PermissionBasedAccess>
+            </template>
           </div>
         </div>
       </div>
@@ -101,7 +133,8 @@ import {
   ClockIcon,
   TruckIcon,
   CheckIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  EyeIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -111,7 +144,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'receive', 'pay'])
+const emit = defineEmits(['edit', 'delete', 'receive', 'pay', 'detail'])
 
 // Computed property untuk menghitung total dari semua items
 const calculatedTotal = computed(() => {

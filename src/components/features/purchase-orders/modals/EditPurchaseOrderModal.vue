@@ -43,7 +43,7 @@ function handleSubmit(order) {
   <Modal 
     :isOpen="isOpen" 
     :title="order ? `Edit Purchase Order - ${order.orderNumber}` : 'Edit Purchase Order'" 
-    size="xl"
+    size="3xl"
     @close="emit('close')"
   >
     <div v-if="order && editedOrder">

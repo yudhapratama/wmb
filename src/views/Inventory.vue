@@ -197,7 +197,7 @@ function showErrorNotification(message) {
         <select
           :value="itemsPerPage"
           @change="changeItemsPerPage(Number($event.target.value))"
-          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[70px]"
         >
           <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
             {{ option }}

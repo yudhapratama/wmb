@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import OfflineIndicator from '../ui/OfflineIndicator.vue'
+import db from '../../services/db'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -46,6 +47,62 @@ onMounted(() => {
 function logout() {
   authStore.logout()
   router.push('/login')
+}
+
+// Fungsi untuk clear cache dan reset aplikasi
+async function clearCache() {
+  try {
+    // Konfirmasi dari user
+    if (!confirm('Apakah Anda yakin ingin menghapus semua data lokal? Tindakan ini tidak dapat dibatalkan.')) {
+      return
+    }
+
+    // 1. Hapus semua data dari IndexedDB
+    const tableNames = [
+      'suppliers', 'item_categories', 'expense_categories', 'raw_materials',
+      'products', 'recipe_items', 'purchase_orders', 'po_items',
+      'stock_opname', 'kitchen_preparations', 'waste_records',
+      'sales_sessions', 'sales', 'sales_items', 'expenses',
+      'sync_queue', 'units', 'log_inventaris', 'waste'
+    ]
+
+    for (const tableName of tableNames) {
+      try {
+        await db[tableName].clear()
+      } catch (error) {
+        console.warn(`Failed to clear table ${tableName}:`, error)
+      }
+    }
+
+    // 2. Hapus localStorage
+    localStorage.clear()
+
+    // 3. Hapus sessionStorage
+    sessionStorage.clear()
+
+    // 4. Hapus cookies
+    document.cookie.split(";").forEach(function(c) {
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
+    })
+
+    // 5. Hapus cache browser (jika didukung)
+    if ('caches' in window) {
+      const cacheNames = await caches.keys()
+      await Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+      )
+    }
+
+    // 6. Reset auth store
+    authStore.logout()
+
+    // 7. Reload halaman untuk memastikan state bersih
+    window.location.href = '/login'
+    
+  } catch (error) {
+    console.error('Error clearing cache:', error)
+    alert('Terjadi error saat menghapus cache. Silakan coba lagi.')
+  }
 }
 
 // Define all navigation items with collections they need access to
@@ -271,9 +328,13 @@ const navItems = computed(() => {
         </div>
         
         <div class="ml-auto flex items-center gap-3">
-          <button class="p-2 rounded-lg hover:bg-gray-100">
-            <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          <button 
+            @click="clearCache" 
+            class="p-2 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"
+            title="Clear Cache & Reset App"
+          >
+            <svg class="w-5 h-5 text-gray-500 hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
           <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">

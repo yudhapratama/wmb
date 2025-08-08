@@ -43,7 +43,7 @@ const modalTitle = computed(() => {
   <Modal 
     :isOpen="isOpen" 
     :title="modalTitle" 
-    size="xl"
+    size="3xl"
     @close="emit('close')"
   >
     <div v-if="item">
@@ -66,7 +66,7 @@ const modalTitle = computed(() => {
         >
           Tutup
         </button>
-        <PermissionBasedAccess collection="raw_materials" action="delete">
+        <!-- <PermissionBasedAccess collection="raw_materials" action="delete">
           <button
             @click="emit('shrinkage', item)"
             class="px-4 py-2 bg-red-600 text-sm text-white rounded-md hover:bg-red-700 flex items-center gap-2"
@@ -76,8 +76,8 @@ const modalTitle = computed(() => {
             </svg>
             Catat Shrinkage
           </button>
-        </PermissionBasedAccess>
-        <PermissionBasedAccess collection="raw_materials" action="update">
+        </PermissionBasedAccess> -->
+        <!-- <PermissionBasedAccess collection="raw_materials" action="update">
           <button
             @click="emit('edit', item)"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
@@ -87,7 +87,7 @@ const modalTitle = computed(() => {
             </svg>
             Edit Item
           </button>
-        </PermissionBasedAccess>
+        </PermissionBasedAccess> -->
       </div>
     </template>
   </Modal>

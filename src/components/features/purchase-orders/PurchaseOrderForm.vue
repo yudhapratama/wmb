@@ -1,123 +1,126 @@
 <template>
-  <form @submit.prevent="handleSubmit">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+  <form @submit.prevent="handleSubmit" class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Order Number -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Order</label>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Order</label>
         <input 
           v-model="formData.orderNumber" 
           type="text" 
           placeholder="PO-001" 
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           required
         />
       </div>
       
       <!-- Supplier -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
         <Select
           v-model="formData.supplier"
           :options="supplierOptions"
           placeholder="Pilih Supplier"
+          searchable
         />
       </div>
     </div>
     
-    <!-- Items -->
-    <div class="mb-4">
-      <div class="flex justify-between items-center mb-2">
-        <h3 class="text-lg font-medium">Items</h3>
+    <!-- Items Section -->
+    <div class="space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900">Items Purchase Order</h3>
         <button 
           type="button"
           @click="addItem" 
-          class="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
         >
           <PlusIcon class="w-4 h-4" />
           Tambah Item
         </button>
       </div>
       
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead>
-            <tr>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Material</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(item, index) in formData.items" :key="index">
-              <td class="px-3 py-2">
-                <Select
-                  v-model="item.raw_material_id"
-                  :options="rawMaterialOptions"
-                  placeholder="Pilih Raw Material"
-                  @update:modelValue="onRawMaterialSelect(index, $event)"
-                />
-              </td>
-              <td class="px-3 py-2">
-                <input 
-                  v-model.number="item.quantity" 
-                  type="number" 
-                  min="1" 
-                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                />
-              </td>
-              <td class="px-3 py-2">
-                <input 
-                  v-model="item.unit" 
-                  type="text" 
-                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                  readonly
-                />
-              </td>
-              <td class="px-3 py-2">
-                <input 
-                  v-model.number="item.total_price" 
-                  type="number" 
-                  min="0" 
-                  class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                  placeholder="Total harga untuk item ini"
-                />
-              </td>
-              <td class="px-3 py-2 text-right">
-                <button 
-                  type="button"
-                  @click="removeItem(index)" 
-                  class="text-red-600 hover:text-red-800"
-                >
-                  <TrashIcon class="w-4 h-4" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" class="px-3 py-2 text-right font-medium">Total Keseluruhan:</td>
-              <td class="px-3 py-2 text-right font-bold text-blue-600">
-                {{ formatCurrency(totalAmount) }}
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead>
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Raw Material</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 w-32">Qty</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 w-32">Unit</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 w-32">Total Harga</th>
+                <th class="px-4 py-3 w-12"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="(item, index) in formData.items" :key="index" class="hover:bg-white transition-colors">
+                <td class="px-4 py-3">
+                  <Select
+                    v-model="item.raw_material_id"
+                    :options="rawMaterialOptions"
+                    placeholder="Pilih Raw Material"
+                    searchable
+                    @update:modelValue="onRawMaterialSelect(index, $event)"
+                  />
+                </td>
+                <td class="px-4 py-3">
+                  <input 
+                    v-model.number="item.quantity" 
+                    type="number" 
+                    min="1" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </td>
+                <td class="px-4 py-3">
+                  <input 
+                    v-model="item.unit" 
+                    type="text" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                    readonly
+                  />
+                </td>
+                <td class="px-4 py-3">
+                  <input 
+                    v-model.number="item.total_price" 
+                    type="number" 
+                    min="0" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                    placeholder="0"
+                  />
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <button 
+                    type="button"
+                    @click="removeItem(index)" 
+                    class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+                  >
+                    <TrashIcon class="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Total Section -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="flex justify-between items-center">
+            <span class="text-lg font-medium text-gray-900">Total Keseluruhan:</span>
+            <span class="text-xl font-bold text-blue-600">{{ formatCurrency(totalAmount) }}</span>
+          </div>
+        </div>
       </div>
     </div>
     
     <!-- Notes -->
-    <div class="mb-6">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan</label>
       <textarea 
         v-model="formData.notes" 
         rows="3" 
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Catatan tambahan..."
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        placeholder="Catatan tambahan untuk purchase order ini..."
       ></textarea>
     </div>
   </form>
@@ -125,7 +128,7 @@
 
 <script setup>
 import Select from '../../ui/Select.vue'
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useInventory } from '../../../composables/useInventory'
 
@@ -151,6 +154,9 @@ const {
   getUnitName
 } = useInventory()
 
+// Tambahkan flag untuk mencegah recursive updates
+const isUpdatingFromParent = ref(false)
+
 const formData = ref({
   orderNumber: '',
   supplier: '',
@@ -166,12 +172,14 @@ function initFormData() {
   if (props.order && Object.keys(props.order).length > 0) {
     formData.value = {
       ...props.order,
-      // ✅ Konversi supplier ke integer
       supplier: props.order.supplier ? parseInt(props.order.supplier) : '',
       orderDate: props.order.orderDate ? new Date(props.order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       items: props.order.items ? props.order.items.map(item => ({
-        ...item,
-        total_price: item.total_price || item.total || (item.price * item.quantity) || 0
+        raw_material_id: item.raw_material_id || item.item || '',
+        item: item.item_name || item.nama_item || item.item || '',
+        quantity: item.jumlah_pesan || item.quantity || 1,
+        unit: item.unit_name || item.unit || 'pcs',
+        total_price: item.total_price || item.harga_satuan || item.total || (item.price * item.quantity) || 0
       })) : []
     }
   } else {
@@ -196,34 +204,42 @@ function initFormData() {
 initFormData()
 
 // Watch for changes in the order prop
-// Di watch untuk newOrder, perbaiki mapping items
-// Watch for changes in the order prop
 watch(() => props.order, (newOrder) => {
+  // Tambahkan flag untuk mencegah recursive updates
+  if (isUpdatingFromParent.value) return
+  
   const currentOrderData = {
     orderNumber: newOrder?.orderNumber || '',
-    // ✅ Konversi supplier ke integer
     supplier: newOrder?.supplier ? parseInt(newOrder.supplier) : '',
     status: newOrder?.status || 'Dibuat',
     orderDate: newOrder?.orderDate ? new Date(newOrder.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     createdBy: newOrder?.createdBy || 'Admin',
     notes: newOrder?.notes || '',
     items: newOrder?.items?.map(item => ({
-      raw_material_id: item.item || item.raw_material_id,
-      item: item.item_name || item.item,
+      raw_material_id: item.raw_material_id || item.item || '',
+      item: item.item_name || item.nama_item || item.item || '',
       quantity: item.jumlah_pesan || item.quantity || 1,
       unit: item.unit_name || item.unit || 'pcs',
       total_price: item.harga_satuan || item.total_price || 0
     })) || []
   };
   
+  // Hanya update jika data benar-benar berbeda
   if (JSON.stringify(formData.value) !== JSON.stringify(currentOrderData)) {
-    initFormData();
+    isUpdatingFromParent.value = true
+    formData.value = currentOrderData
+    nextTick(() => {
+      isUpdatingFromParent.value = false
+    })
   }
 }, { deep: true })
 
 // Watch for changes in form data and emit update events
 watch(formData, (newData) => {
-  emit('update:order', newData)
+  // Jangan emit jika sedang update dari parent
+  if (!isUpdatingFromParent.value) {
+    emit('update:order', newData)
+  }
 }, { deep: true })
 
 // Load materials data on mount
@@ -238,13 +254,18 @@ function getRawMaterialById(id) {
 
 // Handle raw material selection
 function onRawMaterialSelect(index, materialId) {
+  // console.log('Selected material ID:', materialId)
+  // console.log('Available materials:', rawMaterials.value)
+  
   const material = getRawMaterialById(materialId)
+  // console.log('Found material:', material)
+  
   if (material) {
     const item = formData.value.items[index]
     item.raw_material_id = materialId
     item.item = material.nama_item
     item.unit = getUnitName(material.unit) || 'pcs'
-    // Tidak lagi mengisi harga otomatis, biarkan user input total harga
+    // console.log('Updated item:', item)
   }
 }
 

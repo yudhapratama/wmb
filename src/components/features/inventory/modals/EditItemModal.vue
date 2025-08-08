@@ -52,7 +52,7 @@ function handleSubmit() {
   <Modal 
     :isOpen="isOpen" 
     :title="item ? `Edit Item - ${item.nama_item}` : 'Edit Item'" 
-    size="xl"
+    size="3xl"
     @close="emit('close')"
   >
     <PermissionBasedAccess collection="raw_materials" action="update">

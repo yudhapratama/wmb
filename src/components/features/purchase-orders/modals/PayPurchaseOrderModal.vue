@@ -1,16 +1,13 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-      <div class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Pembayaran Purchase Order</h2>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <XMarkIcon class="w-6 h-6" />
-          </button>
-        </div>
+  <Modal 
+    :isOpen="isOpen" 
+    title="Pembayaran Purchase Order" 
+    size="3xl"
+    @close="$emit('close')"
+  >
 
-        <!-- Section Informasi PO -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+    <!-- Section Informasi PO -->
+    <div class="bg-gray-50 p-4 rounded-lg mb-6">
           <h3 class="font-semibold mb-3">Informasi Purchase Order</h3>
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -38,10 +35,10 @@
               <span class="font-medium ml-2">{{ formatDate(order?.date_updated) }}</span>
             </div>
           </div>
-        </div>
+    </div>
 
-        <!-- Section Detail per Item -->
-        <div class="mb-6">
+    <!-- Section Detail per Item -->
+    <div class="mb-6">
           <h3 class="font-semibold mb-3">Detail Item</h3>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -55,9 +52,6 @@
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Jumlah Diterima
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Harga Satuan
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total Harga
@@ -76,19 +70,16 @@
                     {{ item.total_diterima || item.jumlah_pesan }} {{ item.unit }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ formatCurrency(item.harga_satuan) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ formatCurrency(calculateItemTotal(item)) }}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
+    </div>
 
-        <!-- Section Penyusutan (hanya muncul jika ada penyusutan) -->
-        <div v-if="hasShrinkage" class="mb-6">
+    <!-- Section Penyusutan (hanya muncul jika ada penyusutan) -->
+    <div v-if="hasShrinkage" class="mb-6">
           <h3 class="font-semibold mb-3 text-red-700">Detail Penyusutan</h3>
           <div class="bg-red-50 p-4 rounded-lg">
             <div class="overflow-x-auto">
@@ -133,10 +124,10 @@
               </span>
             </div>
           </div>
-        </div>
+    </div>
 
-        <!-- Total Pembayaran -->
-        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+    <!-- Total Pembayaran -->
+    <div class="bg-blue-50 p-4 rounded-lg mb-6">
           <div class="flex justify-between items-center">
             <div>
               <h3 class="font-semibold text-blue-900">Total yang Harus Dibayarkan</h3>
@@ -153,10 +144,10 @@
               </div>
             </div>
           </div>
-        </div>
+    </div>
 
-        <!-- Form Pembayaran -->
-        <div class="space-y-4 mb-6">
+    <!-- Form Pembayaran -->
+    <div class="space-y-4 mb-6">
           <h3 class="font-semibold">Informasi Pembayaran</h3>
           
           <div class="grid grid-cols-2 gap-4">
@@ -203,32 +194,39 @@
               placeholder="Catatan tambahan untuk pembayaran..."
             ></textarea>
           </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 pt-6 border-t">
-          <button 
-            @click="$emit('close')" 
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Batal
-          </button>
-          <button 
-            @click="handleSubmit" 
-            :disabled="isLoading || !isFormValid"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ isLoading ? 'Memproses...' : 'Bayar dan Selesaikan' }}
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
+
+    <template #footer>
+      <div class="flex gap-3 w-full">
+        <button
+          @click="$emit('close')"
+          class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Batal
+        </button>
+        <button
+          @click="handleSubmit"
+          class="flex-1 flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-sm font-medium text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isLoading || !isFormValid"
+        >
+          <svg v-if="!isLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+          </svg>
+          <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isLoading ? 'Memproses...' : 'Proses Pembayaran' }}
+        </button>
+      </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
+import Modal from '../../../ui/Modal.vue'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -286,12 +284,15 @@ const isFormValid = computed(() => {
 
 // Methods
 const calculateItemTotal = (item) => {
-  const quantity = item.total_diterima || item.jumlah_pesan
-  return quantity * (item.harga_satuan || 0)
+  // Sekarang harga_satuan sudah merupakan total harga, bukan harga per unit
+  return item.harga_satuan || 0
 }
 
 const calculateShrinkageValue = (item) => {
-  return (item.total_penyusutan || 0) * (item.harga_satuan || 0)
+  // Untuk penyusutan, kita perlu menghitung proporsi dari total harga
+  const totalReceived = item.total_diterima || item.jumlah_pesan
+  const shrinkageRatio = (item.total_penyusutan || 0) / item.jumlah_pesan
+  return shrinkageRatio * (item.harga_satuan || 0)
 }
 
 const getShrinkageReasonLabel = (reason) => {
@@ -308,9 +309,10 @@ const getShrinkageReasonLabel = (reason) => {
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
-    // Validasi ukuran file (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file terlalu besar. Maksimal 5MB.')
+    // Gunakan utility validation
+    const validation = validateFile(file)
+    if (!validation.isValid) {
+      alert(validation.error)
       return
     }
     paymentData.value.bukti_bayar = file

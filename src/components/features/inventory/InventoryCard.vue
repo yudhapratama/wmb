@@ -52,14 +52,21 @@
           </div>
           <!-- Replace the existing action buttons with these -->
           <div class="flex gap-2">
-            <button 
+            <!-- <button 
               @click="$emit('view', item)"
               class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            > -->
+            <button 
+              @click="$emit('view', item)"
+              class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
+            >            
+              <!-- <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />                
+              </svg> -->
+              <EyeIcon class="w-4 h-4" />
             </button>
               <PermissionBasedAccess collection="raw_materials" action="update">
                 <button 
@@ -92,6 +99,9 @@
 import { computed } from 'vue'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
 import { formatDateTime } from '@/utils/helpers'
+import { 
+  EyeIcon
+} from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   item: {

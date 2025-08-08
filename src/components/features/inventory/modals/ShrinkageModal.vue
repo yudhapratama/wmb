@@ -68,7 +68,7 @@ function handleSubmit() {
 </script>
 
 <template>
-  <Modal :isOpen="isOpen" @close="$emit('close')" size="xl" title="Catat Shrinkage">
+  <Modal :isOpen="isOpen" @close="$emit('close')" size="3xl" title="Catat Shrinkage">
     <form @submit.prevent="handleSubmit">
       <div v-if="item" class="space-y-4">
         <div class="p-4 bg-blue-50 rounded-lg">

@@ -62,7 +62,7 @@ function handleSubmit() {
   <Modal 
     :isOpen="isOpen" 
     title="Tambah Item Baru" 
-    size="xl"
+    size="3xl"
     @close="$emit('close')"
   >
     <PermissionBasedAccess collection="raw_materials" action="create">

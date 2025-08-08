@@ -141,8 +141,11 @@ export function usePurchaseOrders() {
         }
       }
       
-      // Load from local database
-      const localOrders = await db.purchase_orders.toArray()
+      // Load from local database with descending order by date_created
+      const localOrders = await db.purchase_orders
+        .orderBy('date_created')
+        .reverse() // This makes it descending order
+        .toArray()
       // console.log("ini data setelah call api -> simpan di local -> lalu panggil lagi localOrders:", localOrders);
       purchaseOrders.value = localOrders
       
@@ -381,14 +384,14 @@ export function usePurchaseOrders() {
     error.value = null
     
     try {
-      // Delete from local database first
-      await db.purchase_orders.delete(id)
-      
-      // Delete related items
+      // PENTING: Hapus po_items terlebih dahulu
       await db.po_items
-        .where('purchase_order_id')
+        .where('purchase_order')  // Pastikan menggunakan 'purchase_order', bukan 'purchase_order_id'
         .equals(id)
         .delete()
+      
+      // Kemudian hapus purchase order
+      await db.purchase_orders.delete(id)
       
       // If online, sync to server
       if (syncService.isOnline()) {
@@ -583,59 +586,40 @@ export function usePurchaseOrders() {
   }
 
   // Fungsi untuk membayar dan menyelesaikan purchase order
-  const payPurchaseOrder = async (paymentData) => {
+  // Perbaiki fungsi payPurchaseOrder
+  async function payPurchaseOrder(paymentData) {
+    isLoading.value = true
+    error.value = null
+    
     try {
-      isLoading.value = true
-      
       const updateData = {
-        id: paymentData.orderId,
         status: 'Selesai',
         tanggal_pembayaran: paymentData.tanggal_pembayaran,
         total_pembayaran: paymentData.total_pembayaran,
         bukti_bayar: paymentData.bukti_bayar,
-        catatan_pembayaran: paymentData.catatan_pembayaran
+        catatan_pembayaran: paymentData.catatan_pembayaran,
+        sync_status: 'pending'
       }
       
-      if (isOnline.value) {
-        // Update ke server
-        const response = await api.updatePurchaseOrder(updateData)
-        
-        if (response.success) {
-          // Update local data
-          const index = purchaseOrders.value.findIndex(order => order.id === paymentData.orderId)
-          if (index !== -1) {
-            purchaseOrders.value[index] = { ...purchaseOrders.value[index], ...updateData }
-          }
-          
-          // Update IndexedDB
-          await db.updatePurchaseOrder(updateData)
-          
-          return { success: true }
-        } else {
-          throw new Error(response.error || 'Failed to pay purchase order')
-        }
+      // Update local database
+      await db.purchase_orders.update(paymentData.orderId, updateData)
+      
+      // Add to sync queue
+      if (syncService.isOnline()) {
+        await db.addToSyncQueue('purchase_orders', paymentData.orderId, 'update', updateData)
+        await syncService.processSyncQueue()
       } else {
-        // Offline: simpan ke IndexedDB dan queue untuk sync
-        await db.updatePurchaseOrder(updateData)
-        
-        // Add to sync queue
-        await db.addToSyncQueue({
-          type: 'UPDATE_PURCHASE_ORDER',
-          data: updateData,
-          timestamp: new Date().toISOString()
-        })
-        
-        // Update local state
-        const index = purchaseOrders.value.findIndex(order => order.id === paymentData.orderId)
-        if (index !== -1) {
-          purchaseOrders.value[index] = { ...purchaseOrders.value[index], ...updateData }
-        }
-        
-        return { success: true }
+        await db.addToSyncQueue('purchase_orders', paymentData.orderId, 'update', updateData)
       }
-    } catch (error) {
-      console.error('Error paying purchase order:', error)
-      return { success: false, error: error.message }
+      
+      // Reload data
+      await loadData()
+      
+      return { success: true }
+    } catch (err) {
+      console.error('Error paying purchase order:', err)
+      error.value = `Failed to pay purchase order: ${err.message}`
+      return { success: false, error: err.message }
     } finally {
       isLoading.value = false
     }

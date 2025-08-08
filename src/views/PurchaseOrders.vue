@@ -37,7 +37,7 @@
         <select
           :value="itemsPerPage"
           @change="changeItemsPerPage(Number($event.target.value))"
-          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[70px]"
         >
           <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
             {{ option }}
@@ -79,6 +79,7 @@
         @delete="confirmDelete"
         @receive="openReceiveModal"
         @pay="openPayModal"
+        @detail="openDetailModal"
       />
     </div>
     
@@ -158,6 +159,13 @@
       @submit="handlePayOrder"
     />
     
+    <!-- Detail Modal -->
+    <DetailPurchaseOrderModal
+      :isOpen="showDetailModal"
+      :order="detailOrder"
+      @close="showDetailModal = false"
+    />
+    
     <!-- Delete Confirmation Modal -->
     <ConfirmationModal
       v-if="isConfirmDeleteOpen"
@@ -202,6 +210,7 @@ import AddPurchaseOrderModal from '../components/features/purchase-orders/modals
 import EditPurchaseOrderModal from '../components/features/purchase-orders/modals/EditPurchaseOrderModal.vue'
 import ReceivePurchaseOrderModal from '../components/features/purchase-orders/modals/ReceivePurchaseOrderModal.vue'
 import PayPurchaseOrderModal from '../components/features/purchase-orders/modals/PayPurchaseOrderModal.vue'
+import DetailPurchaseOrderModal from '../components/features/purchase-orders/modals/DetailPurchaseOrderModal.vue'
 import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import { 
@@ -224,6 +233,7 @@ const {
   deletePurchaseOrder,
   fetchOrderDetail,
   receivePurchaseOrder,
+  payPurchaseOrder,
   // Pagination
   currentPage,
   itemsPerPage,
@@ -268,10 +278,12 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showReceiveModal = ref(false)
 const showPayModal = ref(false)
+const showDetailModal = ref(false)
 const isConfirmDeleteOpen = ref(false)
 const editingOrder = ref(null)
 const receivingOrder = ref(null)
 const payingOrder = ref(null)
+const detailOrder = ref(null)
 const orderToDelete = ref(null)
 
 // Notification state
@@ -475,4 +487,42 @@ function showErrorNotification(message) {
 watch([searchQuery, selectedStatus, selectedSupplier, dateFilter], () => {
   resetPagination()
 }, { deep: true })
+
+// Open detail modal
+async function openDetailModal(order) {
+  // Ambil detail order terlebih dahulu untuk mendapatkan data lengkap termasuk items
+  const result = await fetchOrderDetail(order.id)
+  if (result.success) {
+    const orderData = result.data
+    console.log('Detail order data:', orderData)
+    
+    detailOrder.value = {
+      id: orderData.id,
+      status: orderData.status,
+      supplier: orderData.supplier,
+      pembuat_po: orderData.pembuat_po,
+      penerima_barang: orderData.penerima_barang,
+      penerima_barang_name: orderData.penerima_barang_name,
+      date_created: orderData.date_created,
+      date_updated: orderData.date_updated,
+      tanggal_pembayaran: orderData.tanggal_pembayaran,
+      catatan_pembelian: orderData.catatan_pembelian,
+      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+        id: item.id,
+        nama_item: item.item?.nama_item || 'Unknown Item',
+        unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
+        jumlah_pesan: item.jumlah_pesan || 0,
+        total_diterima: item.total_diterima || item.jumlah_pesan || 0,
+        total_penyusutan: item.total_penyusutan || 0,
+        alasan_penyusutan: item.alasan_penyusutan,
+        harga_satuan: item.harga_satuan || 0,
+        raw_material_id: item.item?.id
+      })) : []
+    }
+    
+    showDetailModal.value = true
+  } else {
+    showErrorNotification(`Failed to fetch order details: ${result.error || 'Unknown error'}`)
+  }
+}
 </script>

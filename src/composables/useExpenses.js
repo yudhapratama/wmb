@@ -13,6 +13,18 @@ export function useExpenses() {
   const selectedDateFilter = ref('all')
   const error = ref(null)
   
+  // Pagination state
+  const currentPage = ref(1)
+  const itemsPerPage = ref(10)
+  const itemsPerPageOptions = [10, 25, 50, 100]
+  
+  // Date filter state
+  const dateFilter = ref({
+    startDate: '',
+    endDate: '',
+    dateField: 'tanggal' // 'tanggal' for expenses
+  })
+  
   // Filtered expenses
   const filteredExpenses = computed(() => {
     let filtered = [...expenses.value]
@@ -58,13 +70,89 @@ export function useExpenses() {
       }
     }
     
+    // Filter by date range
+    if (dateFilter.value.startDate || dateFilter.value.endDate) {
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense[dateFilter.value.dateField])
+        const startDate = dateFilter.value.startDate ? new Date(dateFilter.value.startDate) : null
+        const endDate = dateFilter.value.endDate ? new Date(dateFilter.value.endDate) : null
+        
+        if (startDate && endDate) {
+          return expenseDate >= startDate && expenseDate <= endDate
+        } else if (startDate) {
+          return expenseDate >= startDate
+        } else if (endDate) {
+          return expenseDate <= endDate
+        }
+        return true
+      })
+    }
+    
     return filtered.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))
   })
   
+  // Paginated expenses
+  const paginatedExpenses = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value
+    const end = start + itemsPerPage.value
+    return filteredExpenses.value.slice(start, end)
+  })
+  
+  // Total pages
+  const totalPages = computed(() => {
+    return Math.ceil(filteredExpenses.value.length / itemsPerPage.value)
+  })
+  
+  // Pagination info
+  const paginationInfo = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value + 1
+    const end = Math.min(start + itemsPerPage.value - 1, filteredExpenses.value.length)
+    const total = filteredExpenses.value.length
+    
+    return {
+      start,
+      end,
+      total,
+      currentPage: currentPage.value,
+      totalPages: totalPages.value
+    }
+  })
+  
+  // Reset pagination when filters change
+  function resetPagination() {
+    currentPage.value = 1
+  }
+  
+  // Change page
+  function changePage(page) {
+    if (page >= 1 && page <= totalPages.value) {
+      currentPage.value = page
+    }
+  }
+  
+  // Change items per page
+  function changeItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    resetPagination()
+  }
+  
+  // Update date filter
+  function updateDateFilter(newDateFilter) {
+    dateFilter.value = { ...dateFilter.value, ...newDateFilter }
+    resetPagination()
+  }
+  
   // Get category name by ID
   function getCategoryName(categoryId) {
+    if (!categoryId) return 'Tidak ada kategori'
+    
     const category = categories.value.find(c => c.id === categoryId)
-    return category ? category.name : 'Uncategorized'
+    if (!category) {
+      console.warn(`Category with ID ${categoryId} not found in:`, categories.value)
+      return `Kategori ID: ${categoryId} (tidak ditemukan)`
+    }
+    
+    return category.name
   }
   
   // Format currency
@@ -129,6 +217,7 @@ export function useExpenses() {
   }
   
   // Add new expense
+  // ✅ PERBAIKAN - Konsisten dengan pola yang ada
   async function addExpense(expenseData) {
     try {
       const newExpense = {
@@ -142,23 +231,16 @@ export function useExpenses() {
         sync_status: 'pending'
       }
       
-      // Add to IndexedDB
+      // Add to IndexedDB first
       const id = await db.expenses.add(newExpense)
       newExpense.id = id
       
-      // Add to sync queue
-      await db.addToSyncQueue(
-        'expenses',    // entity
-        id,           // entity_id
-        'create',     // action
-        newExpense    // data
-      )
-      
-      // Try to sync immediately if online
-      try {
+      // Add to sync queue with consistent parameters
+      if (syncService.isOnline()) {
+        await db.addToSyncQueue('expenses', id, 'create', newExpense)
         await syncService.processSyncQueue()
-      } catch (syncError) {
-        console.warn('Failed to sync immediately, will retry later:', syncError)
+      } else {
+        await db.addToSyncQueue('expenses', id, 'create', newExpense)
       }
       
       // Reload data
@@ -171,7 +253,6 @@ export function useExpenses() {
     }
   }
   
-  // Update expense
   async function updateExpense(expenseData) {
     try {
       const updatedExpense = {
@@ -179,22 +260,15 @@ export function useExpenses() {
         sync_status: 'pending'
       }
       
-      // Update in IndexedDB
+      // Update in IndexedDB first
       await db.expenses.update(expenseData.id, updatedExpense)
       
-      // Add to sync queue
-      await db.addToSyncQueue({
-        table: 'expenses',
-        action: 'update',
-        data: updatedExpense,
-        id: expenseData.id
-      })
-      
-      // Try to sync immediately if online
-      try {
+      // Add to sync queue with consistent parameters
+      if (syncService.isOnline()) {
+        await db.addToSyncQueue('expenses', expenseData.id, 'update', updatedExpense)
         await syncService.processSyncQueue()
-      } catch (syncError) {
-        console.warn('Failed to sync immediately, will retry later:', syncError)
+      } else {
+        await db.addToSyncQueue('expenses', expenseData.id, 'update', updatedExpense)
       }
       
       // Reload data
@@ -207,24 +281,17 @@ export function useExpenses() {
     }
   }
   
-  // Delete expense
   async function deleteExpense(expenseId) {
     try {
-      // Remove from IndexedDB
+      // Remove from IndexedDB first
       await db.expenses.delete(expenseId)
       
-      // Add to sync queue
-      await db.addToSyncQueue({
-        table: 'expenses',
-        action: 'delete',
-        id: expenseId
-      })
-      
-      // Try to sync immediately if online
-      try {
+      // Add to sync queue with consistent parameters
+      if (syncService.isOnline()) {
+        await db.addToSyncQueue('expenses', expenseId, 'delete', { id: expenseId })
         await syncService.processSyncQueue()
-      } catch (syncError) {
-        console.warn('Failed to sync immediately, will retry later:', syncError)
+      } else {
+        await db.addToSyncQueue('expenses', expenseId, 'delete', { id: expenseId })
       }
       
       // Reload data
@@ -242,16 +309,6 @@ export function useExpenses() {
     return filteredExpenses.value.reduce((sum, expense) => sum + parseFloat(expense.jumlah || 0), 0)
   })
   
-  // Calculate expenses by category
-  const expensesByCategory = computed(() => {
-    const categoryTotals = {}
-    filteredExpenses.value.forEach(expense => {
-      const categoryName = getCategoryName(expense.kategori)
-      categoryTotals[categoryName] = (categoryTotals[categoryName] || 0) + parseFloat(expense.jumlah || 0)
-    })
-    return categoryTotals
-  })
-  
   return {
     // State
     isLoading,
@@ -264,8 +321,22 @@ export function useExpenses() {
     
     // Computed
     filteredExpenses,
+    paginatedExpenses,
     totalExpenses,
-    expensesByCategory,
+    
+    // Pagination
+    currentPage,
+    itemsPerPage,
+    itemsPerPageOptions,
+    totalPages,
+    paginationInfo,
+    changePage,
+    changeItemsPerPage,
+    resetPagination,
+    
+    // Date filter
+    dateFilter,
+    updateDateFilter,
     
     // Methods
     loadData,

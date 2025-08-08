@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
 import ExpenseCard from '../components/features/expenses/ExpenseCard.vue'
 import ExpenseFilters from '../components/features/expenses/ExpenseFilters.vue'
@@ -23,14 +23,26 @@ const {
   selectedCategory,
   selectedDateFilter,
   filteredExpenses,
+  paginatedExpenses,
   totalExpenses,
-  expensesByCategory,
   loadData,
   addExpense,
   updateExpense,
   deleteExpense,
   getCategoryName,
-  formatCurrency
+  formatCurrency,
+  // Pagination
+  currentPage,
+  itemsPerPage,
+  itemsPerPageOptions,
+  totalPages,
+  paginationInfo,
+  changePage,
+  changeItemsPerPage,
+  resetPagination,
+  // Date filter
+  dateFilter,
+  updateDateFilter
 } = useExpenses()
 
 // Modal state
@@ -45,6 +57,11 @@ const expenseToDelete = ref(null)
 const showNotification = ref(false)
 const notificationMessage = ref('')
 const notificationType = ref('success') // 'success' or 'error'
+
+// Watch for filter changes to reset pagination
+watch([searchQuery, selectedCategory, selectedDateFilter, dateFilter], () => {
+  resetPagination()
+}, { deep: true })
 
 // Load data on mount
 onMounted(async () => {
@@ -70,13 +87,34 @@ function confirmDelete(expense) {
 }
 
 // Handle add expense
-async function handleAddExpense(newExpense) {
-  const result = await addExpense(newExpense)
-  if (result.success) {
-    showAddModal.value = false
-    showSuccessNotification('Pengeluaran berhasil ditambahkan')
-  } else {
-    showErrorNotification(`Gagal menambahkan pengeluaran: ${result.error || 'Unknown error'}`)
+// In the handleAddExpense function
+const handleAddExpense = async (submitData) => {
+  try {
+    // First create the expense
+    const result = await addExpense(submitData.data)
+    
+    if (result.success && result.data) {
+      // Then upload file with the expense ID
+      if (submitData.uploadFile) {
+        const fileId = await submitData.uploadFile(result.data.id)
+        
+        // Update expense with file ID if uploaded
+        if (fileId) {
+          await updateExpense({
+            ...result.data,
+            bukti_pembayaran: fileId
+          })
+        }
+      }
+      
+      showAddModal.value = false
+      showSuccessNotification('Pengeluaran berhasil ditambahkan')
+    } else {
+      showErrorNotification(`Gagal menambahkan pengeluaran: ${result.error || 'Unknown error'}`)
+    }
+  } catch (error) {
+    console.error('Error adding expense:', error)
+    showErrorNotification('Gagal menambahkan pengeluaran')
   }
 }
 
@@ -125,8 +163,7 @@ function showErrorNotification(message) {
 </script>
 
 <template>
-  <AppLayout title="Expense Management">
-    <!-- Header -->
+  <AppLayout>
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Tracking Pengeluaran</h1>
@@ -145,38 +182,6 @@ function showErrorNotification(message) {
       </PermissionBasedAccess>
     </div>
     
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg p-6">
-        <div class="flex items-center gap-2">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-          <div>
-            <p class="text-2xl font-bold">{{ formatCurrency(totalExpenses) }}</p>
-            <p class="text-sm text-red-100">Total Filtered</p>
-          </div>
-        </div>
-      </div>
-      
-      <div 
-        v-for="(total, categoryName) in Object.entries(expensesByCategory).slice(0, 3)" 
-        :key="categoryName"
-        class="bg-white rounded-lg p-6 shadow-sm border"
-      >
-        <div class="flex items-center gap-2">
-          <div class="p-2 bg-gray-100 rounded-lg">
-            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-lg font-bold">{{ formatCurrency(total[1]) }}</p>
-            <p class="text-xs text-gray-500">{{ total[0] }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
     
     <!-- Filters -->
     <ExpenseFilters
@@ -189,8 +194,28 @@ function showErrorNotification(message) {
       @update:searchQuery="searchQuery = $event"
     />
     
+    <!-- Pagination Info -->
+    <div class="mt-6 flex justify-between items-center">
+      <div class="text-sm text-gray-700">
+        Menampilkan {{ paginationInfo.start }} - {{ paginationInfo.end }} dari {{ paginationInfo.total }} pengeluaran
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-700">Tampilkan:</label>
+        <select
+          :value="itemsPerPage"
+          @change="changeItemsPerPage(Number($event.target.value))"
+          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-w-[70px]"
+        >
+          <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+        <span class="text-sm text-gray-700">per halaman</span>
+      </div>
+    </div>
+    
     <!-- Expenses List -->
-    <div class="mt-6 grid grid-cols-1 gap-6">
+    <div class="mt-4 grid grid-cols-1 gap-6">
       <div v-if="isLoading" class="col-span-full text-center py-12">
         <svg class="animate-spin h-8 w-8 text-red-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -199,7 +224,7 @@ function showErrorNotification(message) {
         <p class="mt-2 text-gray-600">Loading expenses...</p>
       </div>
       
-      <div v-else-if="filteredExpenses.length === 0" class="col-span-full text-center py-12">
+      <div v-else-if="paginatedExpenses.length === 0" class="col-span-full text-center py-12">
         <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
@@ -218,7 +243,7 @@ function showErrorNotification(message) {
       </div>
       
       <ExpenseCard
-        v-for="expense in filteredExpenses"
+        v-for="expense in paginatedExpenses"
         :key="expense.id"
         :expense="expense"
         :getCategoryName="getCategoryName"
@@ -227,6 +252,48 @@ function showErrorNotification(message) {
         @edit="editExpense"
         @delete="confirmDelete"
       />
+    </div>
+    
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
+      <nav class="flex items-center gap-2">
+        <!-- Previous button -->
+        <button
+          @click="changePage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Sebelumnya
+        </button>
+        
+        <!-- Page numbers -->
+        <template v-for="page in Math.min(totalPages, 7)" :key="page">
+          <button
+            v-if="page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)"
+            @click="changePage(page)"
+            :class="[
+              'px-3 py-2 text-sm font-medium border rounded-md',
+              page === currentPage
+                ? 'text-red-600 bg-red-50 border-red-500'
+                : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
+            ]"
+          >
+            {{ page }}
+          </button>
+          <span v-else-if="page === currentPage - 3 || page === currentPage + 3" class="px-2 py-2 text-gray-500">
+            ...
+          </span>
+        </template>
+        
+        <!-- Next button -->
+        <button
+          @click="changePage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Selanjutnya
+        </button>
+      </nav>
     </div>
     
     <!-- Modals -->
@@ -250,8 +317,7 @@ function showErrorNotification(message) {
     <DetailModal
       :isOpen="showDetailModal"
       :expense="currentExpense"
-      :getCategoryName="getCategoryName"
-      :formatCurrency="formatCurrency"
+      :categories="categories"
       @close="showDetailModal = false"
       @edit="editExpense"
     />
@@ -287,3 +353,15 @@ function showErrorNotification(message) {
     </div>
   </AppLayout>
 </template>
+
+<style scoped>
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+</style>

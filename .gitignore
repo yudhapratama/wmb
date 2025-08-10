@@ -23,6 +23,7 @@ dist-ssr
 .env.development
 .env.production
 .env.staging
+ecosystem.config.cjs
 
 # Editor directories and files
 .vscode/*

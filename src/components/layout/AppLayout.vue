@@ -135,8 +135,15 @@ const allNavItems = [
     name: 'Kitchen Prep', 
     path: '/kitchen', 
     icon: 'utensils',
-    collections: ['kitchen_prep', 'inventory_ready_materials'] // Collection yang perlu diakses
+    collections: ['kitchen_prep', 'raw_materials', 'cooked_items'] // Collection yang perlu diakses
   },
+
+  { 
+    name: 'Cooked Items', 
+    path: '/cooked-items', 
+    icon: 'utensils',
+    collections: ['cooked_items', 'cooked_items_raw_materials', 'raw_materials', 'item_categories', 'units'] // Collection yang perlu diakses
+  },  
   { 
     name: 'Products', 
     path: '/products', 

@@ -295,10 +295,8 @@ const notificationType = ref('success') // 'success' or 'error'
 async function openEditModal(order) {
   // Ambil detail order terlebih dahulu untuk mendapatkan data lengkap termasuk items
   const result = await fetchOrderDetail(order.id)
-  console.log('ini data order detail ketika akan di edit:', result);
   if (result.success) {
     const orderData = result.data;
-    console.log('ini data order detail ketika akan di edit:', orderData);
     // ✅ Perbaiki mapping data untuk EditPurchaseOrderModal
     editingOrder.value = {
       id: orderData.id,
@@ -318,7 +316,6 @@ async function openEditModal(order) {
         total_price: item.harga_satuan || 0
       })) : []
     };
-    console.log('ini data order detail setelah di edit:', editingOrder.value);
     // Jika tidak ada items, tambahkan item kosong
     if (!editingOrder.value.items.length) {
       editingOrder.value.items.push({
@@ -364,7 +361,6 @@ async function openReceiveModal(order) {
   const result = await fetchOrderDetail(order.id)
   if (result.success) {
     const orderData = result.data;
-    console.log('ini data order detail ketika akan di terima:', orderData);
     // Format data sesuai dengan struktur yang diharapkan oleh ReceivePurchaseOrderModal
     receivingOrder.value = {
       id: orderData.id,
@@ -405,7 +401,6 @@ async function openPayModal(order) {
   const result = await fetchOrderDetail(order.id)
   if (result.success) {
     const orderData = result.data
-    console.log('ini data order detail ketika akan dibayar:', orderData)
     
     payingOrder.value = {
       id: orderData.id,
@@ -494,7 +489,6 @@ async function openDetailModal(order) {
   const result = await fetchOrderDetail(order.id)
   if (result.success) {
     const orderData = result.data
-    console.log('Detail order data:', orderData)
     
     detailOrder.value = {
       id: orderData.id,

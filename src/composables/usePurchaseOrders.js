@@ -174,8 +174,8 @@ export function usePurchaseOrders() {
       // Try to fetch from API if online
       if (syncService.isOnline()) {
         const result = await syncService.pullPurchaseOrdersWithDenormalization(id)
-        console.log("data dari dapatkan detail order ketika open modal")
-        console.log(result)
+        // console.log("data dari dapatkan detail order ketika open modal")
+        // console.log(result)
         if (!result.success) {
           console.warn(`Failed to fetch order ${id} from API, falling back to local data`)
         } else {

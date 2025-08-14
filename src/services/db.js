@@ -99,6 +99,12 @@ class WarungDatabase extends Dexie {
       expenses: '++id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at'
     })
     
+    // Define version 10 to add cooked_items table
+    this.version(10).stores({
+      cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
+      cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at'
+    })
+    
     // Define tables
     this.suppliers = this.table('suppliers')
     this.item_categories = this.table('item_categories')
@@ -120,6 +126,8 @@ class WarungDatabase extends Dexie {
     // Tambahkan referensi tabel baru
     this.log_inventaris = this.table('log_inventaris')
     this.waste = this.table('waste')
+    this.cooked_items = this.table('cooked_items')
+    this.cooked_items_raw_materials = this.table('cooked_items_raw_materials')
   }
   
   async purgeOldCache() {
@@ -144,7 +152,9 @@ class WarungDatabase extends Dexie {
       'units',
       // Tambahkan tabel baru ke purge list
       'log_inventaris',
-      'waste'
+      'waste',
+      'cooked_items',
+      'cooked_items_raw_materials'
     ];
 
     for (const tableName of tablesToPurge) {

@@ -72,6 +72,26 @@ const routes = [
     component: () => import('../views/Expenses.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/cooked-items',
+    name: 'CookedItems',
+    component: () => import('../views/CookedItems.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'kitchen'],
+      requiredCollections: ['kitchen_prep', 'cooked_items', 'raw_materials']
+    }
+  },
+  {
+    path: '/kitchen',
+    name: 'Kitchen',
+    component: () => import('../views/Kitchen.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'kitchen'],
+      requiredCollections: ['kitchen_prep', 'cooked_items', 'raw_materials']
+    }
+  },
   // 404 route
   {
     path: '/:pathMatch(.*)*',

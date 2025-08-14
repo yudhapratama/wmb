@@ -1,9 +1,9 @@
 module.exports = {
   apps: [{
     name: 'warung-fe',
-    script: 'serve',
-    args: '-s dist -l 3002',
-    cwd: '/home/user/warung_fe',
+    script: 'npx',
+    args: 'serve -s dist -p 3000',
+    cwd: '/Volumes/Curiosity/PROJECT/warung/warung_fe',
     instances: 1,
     autorestart: true,
     watch: false,

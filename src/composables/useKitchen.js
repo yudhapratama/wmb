@@ -192,7 +192,70 @@ export function useKitchen() {
     }))
   }
   
-  // Create new kitchen prep
+  // Update cooked item stock and average cost
+  async function updateCookedItemStock(cookedItemId, jumlahDihasilkan, hppPembuatan) {
+    try {
+      // Get current cooked item data
+      const response = await api.get(`/items/cooked_items/${cookedItemId}`)
+      const currentItem = response.data.data
+      
+      // Calculate new total stock
+      const newTotalStock = parseFloat(currentItem.total_stock || 0) + parseFloat(jumlahDihasilkan)
+      
+      // Calculate new average cost
+      const currentAvgCost = parseFloat(currentItem.harga_pokok_rata_rata || 0)
+      const newAvgCost = (parseFloat(hppPembuatan) + currentAvgCost) / 2
+      
+      // Update cooked item
+      const updatePayload = {
+        total_stock: newTotalStock,
+        harga_pokok_rata_rata: newAvgCost
+      }
+      
+      await api.patch(`/items/cooked_items/${cookedItemId}`, updatePayload)
+      console.log(`Updated cooked item ${cookedItemId}: stock=${newTotalStock}, avg_cost=${newAvgCost}`)
+      
+    } catch (error) {
+      console.error('Error updating cooked item stock:', error)
+      throw error
+    }
+  }
+  
+  // Update raw material stock and average price
+  async function updateRawMaterialStock(rawMaterialId, jumlahDiambil) {
+    try {
+      // Get current raw material data
+      const response = await api.get(`/items/raw_materials/${rawMaterialId}`)
+      const currentMaterial = response.data.data
+      
+      const currentTotalStock = parseFloat(currentMaterial.total_stock || 0)
+      const currentAvgPrice = parseFloat(currentMaterial.harga_rata_rata || 0)
+      
+      // Calculate price per unit before stock reduction
+      const pricePerUnit = currentTotalStock > 0 ? currentAvgPrice / currentTotalStock : 0
+      
+      // Calculate new stock after usage
+      const newTotalStock = currentTotalStock - parseFloat(jumlahDiambil)
+      
+      // Calculate new average price
+      const newAvgPrice = newTotalStock > 0 ? pricePerUnit * newTotalStock : 0
+      
+      // Update raw material
+      const updatePayload = {
+        total_stock: Math.max(0, newTotalStock), // Ensure stock doesn't go negative
+        harga_rata_rata: newAvgPrice
+      }
+      
+      await api.patch(`/items/raw_materials/${rawMaterialId}`, updatePayload)
+      console.log(`Updated raw material ${rawMaterialId}: stock=${newTotalStock}, avg_price=${newAvgPrice}`)
+      
+    } catch (error) {
+      console.error('Error updating raw material stock:', error)
+      throw error
+    }
+  }
+
+  // Create new kitchen prep (modified)
   async function createKitchenPrep(prepData) {
     try {
       isLoading.value = true
@@ -201,19 +264,34 @@ export function useKitchen() {
         bahan_hasil_olahan: prepData.bahan_hasil_olahan,
         jumlah_dihasilkan: prepData.jumlah_dihasilkan,
         hpp_pembuatan: prepData.hpp_pembuatan,
-        harga_per_unit: prepData.harga_per_unit, // Tambahkan field ini
+        harga_per_unit: prepData.harga_per_unit,
         bahan_baku: prepData.bahan_baku_digunakan.map(item => ({
           raw_materials_id: item.raw_materials_id,
           jumlah_diambil: parseFloat(item.jumlah_diambil),
-          harga_per_unit: item.harga_per_unit || 0 // Tambahkan harga per unit untuk setiap bahan
+          harga_per_unit: item.harga_per_unit || 0
         }))
       }
       
       const response = await api.post('/items/kitchen_prep', payload)
       
       if (response.data) {
+        // Update cooked item stock and average cost
+        await updateCookedItemStock(
+          prepData.bahan_hasil_olahan,
+          prepData.jumlah_dihasilkan,
+          prepData.hpp_pembuatan
+        )
+        
+        // Update each raw material stock
+        for (const bahanBaku of prepData.bahan_baku_digunakan) {
+          await updateRawMaterialStock(
+            bahanBaku.raw_materials_id,
+            bahanBaku.jumlah_diambil
+          )
+        }
+        
         await loadKitchenPreps()
-        showNotification('Catatan produksi berhasil dibuat', 'success')
+        showNotification('Catatan produksi berhasil dibuat dan stok telah diperbarui', 'success')
         return response.data
       }
     } catch (error) {
@@ -370,6 +448,10 @@ export function useKitchen() {
     
     // Filter functions
     updateDateFilter,
-    clearFilters
+    clearFilters,
+    
+    // New methods
+    updateCookedItemStock,
+    updateRawMaterialStock
   }
 }

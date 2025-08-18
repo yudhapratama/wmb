@@ -9,6 +9,7 @@ import DetailCookedItemModal from '../components/features/cookedItems/modals/Det
 import { useCookedItems } from '../composables/useCookedItems'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
+import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 
 // Get offline status
 const { isOffline } = useOfflineStatus()
@@ -48,6 +49,10 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
 const currentItem = ref(null)
+// ✅ Tambahkan state untuk modal konfirmasi hapus
+const isConfirmDeleteOpen = ref(false)
+const itemToDelete = ref(null)
+
 const activeTab = ref('details')
 
 // Notification state
@@ -101,13 +106,28 @@ async function handleUpdateItem(updatedItem) {
 }
 
 // Handle delete item
-async function handleDeleteItem(itemId) {
-  if (confirm('Apakah Anda yakin ingin menghapus bahan siap masak ini?')) {
-    const result = await deleteItem(itemId)
-    if (result.success) {
-      showSuccessNotification('Bahan siap masak berhasil dihapus')
-    } else {
-      showErrorNotification(`Gagal menghapus bahan siap masak: ${result.error || 'Unknown error'}`)
+// ✅ Ubah fungsi handleDeleteItem menjadi confirmDelete
+function confirmDelete(itemId) {
+  itemToDelete.value = itemId
+  isConfirmDeleteOpen.value = true
+}
+
+// ✅ Ubah nama fungsi dari deleteItem menjadi handleDeleteConfirm untuk menghindari konflik
+async function handleDeleteConfirm() {
+  if (itemToDelete.value) {
+    try {
+      const result = await deleteItem(itemToDelete.value) // Gunakan deleteItem dari composable
+      if (result.success) {
+        showSuccessNotification('Bahan siap masak berhasil dihapus')
+      } else {
+        showErrorNotification(`Gagal menghapus bahan siap masak: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      showErrorNotification('Gagal menghapus bahan siap masak')
+    } finally {
+      isConfirmDeleteOpen.value = false
+      itemToDelete.value = null
     }
   }
 }
@@ -187,12 +207,12 @@ function showErrorNotification(message) {
         v-for="item in paginatedItems"
         :key="item.id"
         :item="item"
-        :rawMaterials="rawMaterials"
         :getUnitName="getUnitName"
         :getRawMaterialName="getRawMaterialName"
+        :rawMaterials="rawMaterials"
         @view="viewItemDetails"
         @edit="editItem"
-        @delete="handleDeleteItem"
+        @delete="confirmDelete"
       />
     </div>
     
@@ -267,6 +287,15 @@ function showErrorNotification(message) {
       :getRawMaterialName="getRawMaterialName"
       @close="showDetailModal = false"
       @edit="editItem"
+    />
+    
+    <!-- Confirmation Modal -->
+    <ConfirmationModal
+      v-if="isConfirmDeleteOpen"
+      title="Konfirmasi Hapus"
+      message="Apakah Anda yakin ingin menghapus bahan siap masak ini? Tindakan ini tidak dapat dibatalkan."
+      @confirm="handleDeleteConfirm"
+      @cancel="isConfirmDeleteOpen = false"
     />
     
     <!-- Notification -->

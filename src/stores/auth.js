@@ -108,6 +108,8 @@ export const useAuthStore = defineStore('auth', {
       }
       
       try {
+        console.log('Attempting to refresh token...')
+        
         const response = await api.post('/auth/refresh', {
           refresh_token: this.refresh_token,
           mode: 'json'
@@ -115,6 +117,12 @@ export const useAuthStore = defineStore('auth', {
           // Flag khusus untuk mencegah interceptor
           _skipAuthRefresh: true
         })
+        
+        // ✅ Validasi response structure
+        if (!response.data?.data?.access_token) {
+          console.error('Invalid refresh token response structure')
+          return false
+        }
         
         this.token = response.data.data.access_token
         this.refresh_token = response.data.data.refresh_token
@@ -125,7 +133,15 @@ export const useAuthStore = defineStore('auth', {
         console.log('Token refreshed successfully')
         return true
       } catch (error) {
-        console.error('Token refresh failed:', error)
+        console.error('Token refresh failed:', error.response?.data || error.message)
+        
+        // ✅ Tambahkan specific error handling
+        if (error.response?.status === 401) {
+          console.log('Refresh token expired, user needs to login again')
+        } else if (error.response?.status === 400) {
+          console.log('Invalid refresh token format')
+        }
+        
         // Jika refresh gagal, logout user
         this.logout()
         return false
@@ -180,36 +196,46 @@ export const useAuthStore = defineStore('auth', {
     // Update method validateSession
     async validateSession() {
       // Jika tidak ada token, tidak perlu validasi
-      if (!this.token) return false
+      if (!this.token) {
+        console.log('No token available for validation')
+        return false
+      }
       
       try {
+        console.log('Validating session...')
         // Cek validitas token dengan request sederhana
         await api.get('/users/me')
         
         // Refresh permissions jika sudah lebih dari 5 menit
         const now = Date.now()
         if (!this.permissionsTimestamp || (now - this.permissionsTimestamp) > 5 * 60 * 1000) {
+          console.log('Refreshing permissions...')
           await this.fetchPermissions()
         }
         
+        console.log('Session validation successful')
         return true
       } catch (error) {
-        console.error('Session validation failed:', error)
+        console.error('Session validation failed:', error.response?.data || error.message)
         
         // Jika error 401, coba refresh token
         if (error.response?.status === 401) {
+          console.log('Session expired, attempting token refresh...')
           const refreshSuccess = await this.refreshToken()
+          
           if (refreshSuccess) {
             // Jika refresh berhasil, coba validasi lagi
             try {
               await api.get('/users/me')
+              console.log('Session validation successful after token refresh')
               return true
             } catch (retryError) {
-              console.error('Retry validation failed:', retryError)
+              console.error('Retry validation failed:', retryError.response?.data || retryError.message)
               this.logout()
               return false
             }
           } else {
+            console.log('Token refresh failed during session validation')
             this.logout()
             return false
           }

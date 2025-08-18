@@ -38,6 +38,16 @@ const routes = [
     }
   },
   {
+    path: '/products',
+    name: 'products',
+    component: () => import('../views/Products.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'kitchen', 'cashier'],
+      requiredCollections: ['products', 'product_categories', 'raw_materials', 'suppliers', 'units', 'cooked_items']
+    }
+  },
+  {
     path: '/inventory-categories',
     name: 'inventory-categories',
     component: InventoryCategories,

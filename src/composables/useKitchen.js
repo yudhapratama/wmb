@@ -199,21 +199,46 @@ export function useKitchen() {
       const response = await api.get(`/items/cooked_items/${cookedItemId}`)
       const currentItem = response.data.data
       
-      // Calculate new total stock
-      const newTotalStock = parseFloat(currentItem.total_stock || 0) + parseFloat(jumlahDihasilkan)
-      
-      // Calculate new average cost
+      const currentTotalStock = parseFloat(currentItem.total_stock || 0)
       const currentAvgCost = parseFloat(currentItem.harga_pokok_rata_rata || 0)
-      const newAvgCost = (parseFloat(hppPembuatan) + currentAvgCost) / 2
+      const newProductionAmount = parseFloat(jumlahDihasilkan)
+      const newProductionCost = parseFloat(hppPembuatan)
+      
+      let newTotalStock, newAvgCost
+      
+      // 1. Cek terlebih dahulu apakah jumlah stok existing sama dengan 0
+      if (currentTotalStock == 0) {
+        // a. Jika "Ya" maka jumlah stok dan hpp pembuatan dari kitchen prep bisa langsung ditambahkan
+        newTotalStock = currentTotalStock + newProductionAmount
+        
+        // Hitung weighted average cost
+        const totalCurrentValue = currentTotalStock * currentAvgCost
+        const totalNewValue = newProductionAmount * (newProductionCost / newProductionAmount) // HPP per unit
+        
+        console.log(totalCurrentValue, 'total current value') // 0 √
+        console.log(totalNewValue, 'total new value') // 150000
+        console.log(newTotalStock, 'new total stock') // 25 √
+        console.log(newProductionAmount, 'new production amount') // 25 √
+        console.log(newProductionCost, 'new production cost') // 150000
+
+        newAvgCost = (totalCurrentValue + totalNewValue) // newTotalStock
+        // (0+150000) / 25 = 6000
+        
+      } else {
+        // b. Jika "Tidak" maka tetap lakukan dengan mekanisme yang sekarang
+        newTotalStock = currentTotalStock + newProductionAmount
+        newAvgCost = (newProductionCost + currentAvgCost) / 2
+      }
       
       // Update cooked item
       const updatePayload = {
         total_stock: newTotalStock,
         harga_pokok_rata_rata: newAvgCost
       }
+      console.log(updatePayload,'update payload')
       
       await api.patch(`/items/cooked_items/${cookedItemId}`, updatePayload)
-      console.log(`Updated cooked item ${cookedItemId}: stock=${newTotalStock}, avg_cost=${newAvgCost}`)
+      console.log(`Updated cooked item ${cookedItemId}: stock=${newTotalStock}, avg_cost=${newAvgCost}, had_previous_stock=${currentTotalStock > 0}`)
       
     } catch (error) {
       console.error('Error updating cooked item stock:', error)
@@ -273,14 +298,16 @@ export function useKitchen() {
       }
       
       const response = await api.post('/items/kitchen_prep', payload)
-      
+      console.log(response, 'response create kitchen prep')
       if (response.data) {
         // Update cooked item stock and average cost
-        await updateCookedItemStock(
+        const responseCooked = await updateCookedItemStock(
           prepData.bahan_hasil_olahan,
           prepData.jumlah_dihasilkan,
           prepData.hpp_pembuatan
         )
+
+        console.log(responseCooked, 'response cooked')
         
         // Update each raw material stock
         for (const bahanBaku of prepData.bahan_baku_digunakan) {

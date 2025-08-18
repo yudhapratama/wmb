@@ -104,6 +104,17 @@ class WarungDatabase extends Dexie {
       cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
       cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at'
     })
+
+    this.version(11).stores({
+      // Tambah product_categories table
+      product_categories: 'id, name, status, cached_at',
+      
+      // Update products table dengan auto-increment id
+      products: '++id, nama_produk, kategori, harga_jual, deskripsi, tipe_produk, harga_pokok, total_harga_bahan, konsinyasi, supplier_konsinyasi, status, cached_at',
+      
+      // Update recipe_items dengan field yang benar
+      recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at'
+    })    
     
     // Define tables
     this.suppliers = this.table('suppliers')
@@ -128,6 +139,8 @@ class WarungDatabase extends Dexie {
     this.waste = this.table('waste')
     this.cooked_items = this.table('cooked_items')
     this.cooked_items_raw_materials = this.table('cooked_items_raw_materials')
+    // Tambahkan referensi untuk product_categories
+    this.product_categories = this.table('product_categories')
   }
   
   async purgeOldCache() {
@@ -154,7 +167,8 @@ class WarungDatabase extends Dexie {
       'log_inventaris',
       'waste',
       'cooked_items',
-      'cooked_items_raw_materials'
+      'cooked_items_raw_materials',
+      'product_categories' // Tambahkan ini
     ];
 
     for (const tableName of tablesToPurge) {

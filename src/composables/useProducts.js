@@ -9,7 +9,22 @@ export function useProducts() {
   const categories = ref([])
   const searchQuery = ref('')
   const selectedCategory = ref('all')
+  // Tambahkan filter yang hilang
+  const selectedType = ref('all')
+  const selectedConsignment = ref('all')
   const error = ref(null)
+  
+  // Pagination state
+  const currentPage = ref(1)
+  const itemsPerPage = ref(10)
+  const itemsPerPageOptions = [10, 25, 50, 100]
+  
+  // Date filter state
+  const dateFilter = ref({
+    startDate: '',
+    endDate: '',
+    dateField: 'date_created' // 'date_created' or 'date_updated'
+  })
   
   // Filtered products
   const filteredProducts = computed(() => {
@@ -25,13 +40,109 @@ export function useProducts() {
     
     // Filter by category
     if (selectedCategory.value !== 'all') {
+      filtered = filtered.filter(product => {
+        // Convert selectedCategory to number for comparison
+        const categoryId = parseInt(selectedCategory.value)
+        return product.kategori?.id === categoryId
+      })
+    }
+    
+    // Filter by product type
+    if (selectedType.value !== 'all') {
+      const typeMap = {
+        'basic': 'Basic Product',
+        'recipe': 'Recipe-based Product'
+      }
       filtered = filtered.filter(product => 
-        product.kategori?.id === selectedCategory.value
+        product.tipe_produk === typeMap[selectedType.value]
       )
+    }
+    
+    // Filter by consignment status
+    if (selectedConsignment.value !== 'all') {
+      const isConsignment = selectedConsignment.value === 'true'
+      filtered = filtered.filter(product => 
+        Boolean(product.konsinyasi) === isConsignment
+      )
+    }
+    
+    // Filter by date range
+    if (dateFilter.value.startDate || dateFilter.value.endDate) {
+      filtered = filtered.filter(product => {
+        const productDate = new Date(product[dateFilter.value.dateField])
+        const startDate = dateFilter.value.startDate ? new Date(dateFilter.value.startDate) : null
+        const endDate = dateFilter.value.endDate ? new Date(dateFilter.value.endDate) : null
+        
+        if (startDate && endDate) {
+          return productDate >= startDate && productDate <= endDate
+        } else if (startDate) {
+          return productDate >= startDate
+        } else if (endDate) {
+          return productDate <= endDate
+        }
+        return true
+      })
     }
     
     return filtered
   })
+  
+  // Paginated products
+  const paginatedProducts = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value
+    const end = start + itemsPerPage.value
+    return filteredProducts.value.slice(start, end)
+  })
+  
+  // Total pages
+  const totalPages = computed(() => {
+    return Math.ceil(filteredProducts.value.length / itemsPerPage.value)
+  })
+  
+  // Pagination info
+  const paginationInfo = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value + 1
+    const end = Math.min(start + itemsPerPage.value - 1, filteredProducts.value.length)
+    const total = filteredProducts.value.length
+    
+    return {
+      start,
+      end,
+      total,
+      currentPage: currentPage.value,
+      totalPages: totalPages.value
+    }
+  })
+  
+  // Reset pagination when filters change
+  function resetPagination() {
+    currentPage.value = 1
+  }
+  
+  // Change page
+  function changePage(page) {
+    if (page >= 1 && page <= totalPages.value) {
+      currentPage.value = page
+    }
+  }
+  
+  // Change items per page
+  function changeItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    resetPagination()
+  }
+  
+  // Update date filter
+  function updateDateFilter(newDateFilter) {
+    dateFilter.value = { ...dateFilter.value, ...newDateFilter }
+    resetPagination()
+  }
+  
+  // Get category name by ID
+  function getCategoryName(categoryId) {
+    const category = categories.value.find(c => c.id === categoryId)
+    return category ? category.name : 'Uncategorized'
+  }
   
   // Add new product
   async function addProduct(product) {
@@ -39,16 +150,19 @@ export function useProducts() {
     error.value = null
     
     try {
+      // Create a plain object to avoid DataCloneError
+      const plainProduct = JSON.parse(JSON.stringify(product))
+      console.log(plainProduct)
       // Add to local database first
-      const id = await db.products.add(product)
+      const id = await db.products.add(plainProduct)
       
       // If online, sync to server
       if (syncService.isOnline()) {
-        await db.addToSyncQueue('products', id, 'create', product)
+        await db.addToSyncQueue('products', id, 'create', plainProduct)
         await syncService.processSyncQueue()
       } else {
         // Add to sync queue for later
-        await db.addToSyncQueue('products', id, 'create', product)
+        await db.addToSyncQueue('products', id, 'create', plainProduct)
       }
       
       // Reload data
@@ -68,7 +182,7 @@ export function useProducts() {
   async function updateProduct(product) {
     isLoading.value = true
     error.value = null
-    
+    console.log(product, 'updateProduct')
     try {
       // Update in local database first
       await db.products.update(product.id, product)
@@ -159,11 +273,29 @@ export function useProducts() {
     categories,
     searchQuery,
     selectedCategory,
+    selectedType,
+    selectedConsignment,
     filteredProducts,
+    paginatedProducts,
     error,
+    
+    // Pagination
+    currentPage,
+    itemsPerPage,
+    itemsPerPageOptions,
+    totalPages,
+    paginationInfo,
+    changePage,
+    changeItemsPerPage,
+    resetPagination,
+    
+    // Date filter
+    dateFilter,
+    updateDateFilter,
     
     // Methods
     loadData,
+    getCategoryName,
     addProduct,
     updateProduct,
     deleteProduct

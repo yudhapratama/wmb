@@ -102,6 +102,26 @@ const routes = [
       requiredCollections: ['kitchen_prep', 'cooked_items', 'raw_materials']
     }
   },
+  {
+    path: '/pos',
+    name: 'POS',
+    component: () => import('../views/POS.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'cashier'],
+      requiredCollections: ['sales', 'sales_items', 'sales_sessions', 'products', 'product_categories']
+    }
+  },
+  {
+    path: '/sales',
+    name: 'Sales',
+    component: () => import('../views/Sales.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'cashier'],
+      requiredCollections: ['sales', 'sales_items', 'sales_sessions', 'products']
+    }
+  },
   // 404 route
   {
     path: '/:pathMatch(.*)*',

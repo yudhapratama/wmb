@@ -5,7 +5,7 @@ import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useProductCategories } from '../../../../composables/useProductCategories'
 import { useSuppliers } from '../../../../composables/useSuppliers'
-import { useInventory } from '../../../../composables/useInventory'
+import { useCookedItems } from '../../../../composables/useCookedItems'
 
 const props = defineProps({
   product: {
@@ -21,30 +21,39 @@ const props = defineProps({
 const emit = defineEmits(['save', 'close'])
 
 // Composables
-// Perbaiki destructuring composables (sekitar baris 23-25)
 const { categories: productCategories, loadData: loadCategoriesData } = useProductCategories()
 const { suppliers, loadData: loadSuppliersData } = useSuppliers()
-const { items: rawMaterials, loadData: loadItemsData } = useInventory()
+const { cookedItems, units, loadData: loadCookedItemsData } = useCookedItems()
 
 // Form data
-// Di bagian formData (sekitar baris 30)
 const formData = ref({
   id: '',
   nama_produk: '',
   kategori: '',
   harga_jual: 0,
-  deskripsi: '', // ← Tambahkan field ini
-  tipe_produk: 'basic', // 'basic' or 'recipe'
-  harga_pokok: 0, // For basic products
-  total_harga_bahan: 0, // For recipe-based products (calculated)
+  deskripsi: '',
+  tipe_produk: 'basic',
+  harga_pokok: 0,
+  total_harga_bahan: 0,
   konsinyasi: false,
   supplier_konsinyasi: '',
-  recipe_items: [] // For recipe-based products
+  recipe_items: []
 })
 
-// Di bagian watch untuk inisialisasi data (sekitar baris 45)
+// Tambahkan watcher untuk cookedItems
+watch(() => cookedItems.value, (newCookedItems) => {
+  if (newCookedItems.length > 0 && formData.value.recipe_items.length > 0) {
+    // Update unit untuk setiap recipe item yang sudah ada
+    formData.value.recipe_items.forEach(item => {
+      const cookedItem = newCookedItems.find(c => c.id === item.cooked_items_id)
+      if (cookedItem && cookedItem.unit) {
+        item.unit = cookedItem.unit
+      }
+    })
+  }
+}, { deep: true })
+
 watch(() => props.product, (newProduct) => {
-  // Perbaikan: Tambahkan pengecekan yang lebih ketat
   if (newProduct && typeof newProduct === 'object' && newProduct !== null && 'id' in newProduct && newProduct.id) {
     formData.value = {
       id: newProduct.id,
@@ -57,11 +66,32 @@ watch(() => props.product, (newProduct) => {
       total_harga_bahan: newProduct.total_harga_bahan || 0,
       konsinyasi: newProduct.konsinyasi || false,
       supplier_konsinyasi: typeof newProduct.supplier_konsinyasi === 'object' && newProduct.supplier_konsinyasi !== null ? newProduct.supplier_konsinyasi.id : newProduct.supplier_konsinyasi || '',
-      recipe_items: Array.isArray(newProduct.recipe_items) ? newProduct.recipe_items.map(item => ({
-        raw_material_id: typeof item.raw_material_id === 'object' && item.raw_material_id !== null ? item.raw_material_id.id : item.raw_material_id,
-        jumlah_dibutuhkan: item.jumlah_dibutuhkan || 0,
-        unit: item.unit || ''
-      })) : []
+      recipe_items: Array.isArray(newProduct.recipe_items) ? newProduct.recipe_items.map(item => {
+        // Jika cooked_items_id sudah berupa objek, ambil ID-nya
+        let cookedItemId = item.cooked_items_id
+        if (typeof cookedItemId === 'object' && cookedItemId !== null) {
+          cookedItemId = cookedItemId.id
+        }
+        
+        // Cari unit dari cookedItems - pastikan cookedItems sudah dimuat
+        const cookedItem = cookedItems.value.find(c => c.id === cookedItemId)
+        
+        return {
+          cooked_items_id: cookedItemId,
+          quantity: item.quantity || 0,
+          unit: cookedItem?.unit || item.unit || 'pcs'
+        }
+      }) : []
+    }
+    
+    // Update unit untuk setiap recipe item setelah cookedItems dimuat
+    if (cookedItems.value.length > 0) {
+      formData.value.recipe_items.forEach(item => {
+        const cookedItem = cookedItems.value.find(c => c.id === item.cooked_items_id)
+        if (cookedItem && cookedItem.unit) {
+          item.unit = cookedItem.unit
+        }
+      })
     }
   } else {
     // Reset form jika product null atau tidak valid
@@ -99,24 +129,27 @@ const supplierOptions = computed(() => [
   }))
 ])
 
-const rawMaterialOptions = computed(() => 
-  rawMaterials.value.map(material => ({
-    value: material.id,
-    label: material.nama_item,
-    unit: material.unit?.name || material.unit || 'pcs',
-    harga_per_unit: material.harga_per_unit || 0
+const cookedItemOptions = computed(() => 
+  cookedItems.value.map(item => ({
+    value: item.id,
+    label: item.name,
+    unit: item.unit || 'pcs',
+    harga_pokok_per_unit: item.harga_pokok_per_unit || 0
   }))
 )
 
-const isRecipeBased = computed(() => formData.value.tipe_produk === 'recipe')
+// Tambahkan computed property yang hilang
+const isRecipeBased = computed(() => {
+  return formData.value.tipe_produk === 'recipe'
+})
 
 const calculatedTotalHargaBahan = computed(() => {
   if (!isRecipeBased.value) return 0
   
   return formData.value.recipe_items.reduce((total, item) => {
-    const material = rawMaterials.value.find(m => m.id === item.raw_material_id)
-    const unitPrice = material?.harga_per_unit || 0
-    return total + (item.jumlah_dibutuhkan * unitPrice)
+    const cookedItem = cookedItems.value.find(c => c.id === item.cooked_items_id)
+    const unitPrice = cookedItem?.harga_pokok_per_unit || 0
+    return total + (item.quantity * unitPrice)
   }, 0)
 })
 
@@ -137,7 +170,7 @@ const isFormValid = computed(() => {
     return basicValid && 
            formData.value.recipe_items.length > 0 &&
            formData.value.recipe_items.every(item => 
-             item.raw_material_id && item.jumlah_dibutuhkan > 0
+             item.cooked_items_id && item.quantity > 0  // Perbaiki dari raw_material_id ke cooked_items_id dan jumlah_dibutuhkan ke quantity
            )
   }
 })
@@ -145,111 +178,105 @@ const isFormValid = computed(() => {
 // Methods
 function addRecipeItem() {
   formData.value.recipe_items.push({
-    raw_material_id: '',
-    jumlah_dibutuhkan: 0,
+    cooked_items_id: '',
+    quantity: 0,
     unit: ''
   })
 }
 
+function onCookedItemChange(index) {
+  const item = formData.value.recipe_items[index]
+  const cookedItem = cookedItems.value.find(c => c.id === item.cooked_items_id)
+  if (cookedItem) {
+    item.unit = cookedItem.unit || 'pcs'
+    // Force reactivity update
+    formData.value.recipe_items[index] = { ...item }
+  }
+}
+
+function getCookedItemName(cookedItemId) {
+  // Jika cookedItemId sudah berupa objek
+  if (typeof cookedItemId === 'object' && cookedItemId?.name) {
+    return cookedItemId.name
+  }
+  
+  // Jika cookedItemId masih berupa ID
+  const item = cookedItems.value.find(c => c.id === cookedItemId)
+  return item ? item.name : 'Bahan tidak ditemukan'
+}
+
+function getCookedItemUnit(cookedItemId) {
+  // Jika cookedItemId sudah berupa objek
+  if (typeof cookedItemId === 'object' && cookedItemId?.unit) {
+    return cookedItemId.unit || 'pcs'
+  }
+  
+  // Jika cookedItemId masih berupa ID
+  const item = cookedItems.value.find(c => c.id === cookedItemId)
+  return item ? (item.unit || 'pcs') : 'pcs'
+}
+
+// Tambahkan fungsi yang hilang setelah fungsi onCookedItemChange
 function removeRecipeItem(index) {
   formData.value.recipe_items.splice(index, 1)
 }
 
-function onRawMaterialChange(index) {
-  const item = formData.value.recipe_items[index]
-  const material = rawMaterials.value.find(m => m.id === item.raw_material_id)
-  if (material) {
-    item.unit = material.unit?.name || material.unit || 'pcs'
-  }
-}
-
 function onTipeProductChange() {
-  // Reset relevant fields when product type changes
   if (formData.value.tipe_produk === 'basic') {
     formData.value.recipe_items = []
     formData.value.total_harga_bahan = 0
   } else {
     formData.value.harga_pokok = 0
-    if (formData.value.recipe_items.length === 0) {
-      addRecipeItem()
-    }
   }
 }
-
-// Update total_harga_bahan when recipe items change
-watch(calculatedTotalHargaBahan, (newValue) => {
-  if (isRecipeBased.value) {
-    formData.value.total_harga_bahan = newValue
-  }
-})
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0
-  }).format(value)
+  }).format(value || 0)
 }
 
-function formatNumber(value) {
-  return new Intl.NumberFormat('id-ID').format(value)
-}
-
+// Tambahkan fungsi handleSubmit yang hilang
 function handleSubmit() {
-  if (isFormValid.value) {
-    const submitData = { ...formData.value }
-    
-    // Pastikan ID adalah integer
-    submitData.id = parseInt(submitData.id)
-    
-    // Pastikan numeric fields adalah number, bukan string
-    submitData.harga_jual = parseFloat(submitData.harga_jual) || 0
-    submitData.harga_pokok = parseFloat(submitData.harga_pokok) || 0
-    submitData.total_harga_bahan = parseFloat(submitData.total_harga_bahan) || 0
-    
-    // Pastikan kategori adalah integer
-    if (submitData.kategori && typeof submitData.kategori === 'object') {
-      submitData.kategori = parseInt(submitData.kategori.id)
-    } else {
-      submitData.kategori = parseInt(submitData.kategori) || null
-    }
-    
-    // Pastikan supplier_konsinyasi adalah integer atau null
-    if (submitData.supplier_konsinyasi && typeof submitData.supplier_konsinyasi === 'object') {
-      submitData.supplier_konsinyasi = parseInt(submitData.supplier_konsinyasi.id)
-    } else if (submitData.supplier_konsinyasi) {
-      submitData.supplier_konsinyasi = parseInt(submitData.supplier_konsinyasi)
-    } else {
-      submitData.supplier_konsinyasi = null
-    }
-    
-    // Pastikan konsinyasi adalah boolean
-    submitData.konsinyasi = Boolean(submitData.konsinyasi)
-    
-    // Pastikan recipe_items memiliki struktur yang benar
-    if (submitData.recipe_items && Array.isArray(submitData.recipe_items)) {
-      submitData.recipe_items = submitData.recipe_items.map(item => ({
-        raw_material_id: parseInt(item.raw_material_id) || null,
-        jumlah_dibutuhkan: parseFloat(item.jumlah_dibutuhkan) || 0,
-        unit: String(item.unit || '')
-      }))
-    }
-    
-    console.log('Submit data (processed):', submitData)
-    emit('save', submitData)
+  if (!isFormValid.value) {
+    return
   }
+  
+  // Siapkan data untuk dikirim - buat plain object untuk menghindari DataCloneError
+  const submitData = {
+    id: formData.value.id,
+    nama_produk: formData.value.nama_produk,
+    kategori: formData.value.kategori || null, // Konversi string kosong ke null
+    harga_jual: formData.value.harga_jual,
+    deskripsi: formData.value.deskripsi,
+    tipe_produk: formData.value.tipe_produk,
+    harga_pokok: isRecipeBased.value ? calculatedTotalHargaBahan.value : formData.value.harga_pokok,
+    total_harga_bahan: isRecipeBased.value ? calculatedTotalHargaBahan.value : 0,
+    konsinyasi: formData.value.konsinyasi,
+    supplier_konsinyasi: formData.value.supplier_konsinyasi || null, // Konversi string kosong ke null
+    // Buat plain array untuk recipe_items
+    recipe_items: formData.value.recipe_items.map(item => ({
+      cooked_items_id: item.cooked_items_id,
+      quantity: item.quantity,
+      unit: typeof item.unit === 'object' ? item.unit.id : item.unit
+    }))
+  }
+  
+  // Emit save event dengan data produk
+  emit('save', submitData)
 }
 
 // Load data on mount
-// Perbaiki onMounted (sekitar baris 210-216)
 onMounted(async () => {
   try {
     await Promise.all([
       loadCategoriesData(),
       loadSuppliersData(),
-      loadItemsData()
+      loadCookedItemsData()
     ])
-    console.log('Suppliers loaded:', suppliers.value) // Debug log
+    console.log('Cooked items loaded:', cookedItems.value)
   } catch (error) {
     console.error('Error loading data:', error)
   }
@@ -368,13 +395,43 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
+              <!-- Consignment Information -->
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Konsinyasi</h3>
+                
+                <div class="space-y-4">
+                  <div class="flex items-center">
+                    <input
+                      id="konsinyasi"
+                      v-model="formData.konsinyasi"
+                      type="checkbox"
+                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label for="konsinyasi" class="ml-2 block text-sm text-gray-700">
+                      Produk Konsinyasi
+                    </label>
+                  </div>
+                  
+                  <div v-if="formData.konsinyasi">
+                    <label for="supplier_konsinyasi" class="block text-sm font-medium text-gray-700 mb-2">
+                      Supplier Konsinyasi *
+                    </label>
+                    <Select
+                      v-model="formData.supplier_konsinyasi"
+                      :options="supplierOptions"
+                      placeholder="Pilih Supplier Konsinyasi"
+                      :required="formData.konsinyasi"
+                    />
+                  </div>
+                </div>
+              </div>              
             </div>
             
             <!-- Recipe-based Product -->
             <div v-else>
               <div class="space-y-4">
                 <div class="flex justify-between items-center">
-                  <h4 class="text-md font-medium text-gray-800">Bahan Baku yang Dibutuhkan</h4>
+                  <h4 class="text-md font-medium text-gray-800"></h4>
                   <button
                     type="button"
                     @click="addRecipeItem"
@@ -385,41 +442,55 @@ onMounted(async () => {
                 </div>
                 
                 <div v-if="formData.recipe_items.length === 0" class="text-center py-8 text-gray-500">
-                  <p>Belum ada bahan baku yang ditambahkan</p>
+                  <p>Belum ada bahan setengah jadi yang ditambahkan</p>
                   <button
                     type="button"
                     @click="addRecipeItem"
                     class="mt-2 text-blue-600 hover:text-blue-800"
                   >
-                    Tambah bahan baku pertama
+                    Tambah bahan setengah jadi pertama
                   </button>
                 </div>
                 
                 <div v-else class="space-y-3">
+                  <!-- Header Kolom -->
+                  <div class="grid grid-cols-12 gap-3 px-3 py-2 bg-gray-100 border border-gray-200 rounded-md">
+                    <div class="col-span-5">
+                      <span class="text-sm font-medium text-gray-700">Bahan Setengah Jadi</span>
+                    </div>
+                    <div class="col-span-2">
+                      <span class="text-sm font-medium text-gray-700">Jumlah</span>
+                    </div>
+                    <div class="col-span-2">
+                      <span class="text-sm font-medium text-gray-700">Unit</span>
+                    </div>
+                    <div class="col-span-2">
+                      <span class="text-sm font-medium text-gray-700">Subtotal</span>
+                    </div>
+                    <div class="col-span-1">
+                      <span class="text-sm font-medium text-gray-700">Aksi</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Data Rows -->
                   <div 
                     v-for="(item, index) in formData.recipe_items" 
                     :key="index"
-                    class="grid grid-cols-12 gap-3 items-end p-3 bg-white border border-gray-200 rounded-md"
+                    class="grid grid-cols-12 gap-3 items-center p-3 bg-white border border-gray-200 rounded-md"
                   >
                     <div class="col-span-5">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Bahan Baku *
-                      </label>
                       <Select
-                        v-model="item.raw_material_id"
-                        :options="rawMaterialOptions"
-                        placeholder="Pilih Bahan Baku"
-                        @update:modelValue="onRawMaterialChange(index)"
+                        v-model="item.cooked_items_id"
+                        :options="cookedItemOptions"
+                        placeholder="Pilih Bahan Setengah Jadi"
+                        @update:modelValue="onCookedItemChange(index)"
                         required
                       />
                     </div>
                     
                     <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Jumlah *
-                      </label>
                       <input
-                        v-model.number="item.jumlah_dibutuhkan"
+                        v-model.number="item.quantity"
                         type="number"
                         min="0"
                         step="0.1"
@@ -430,92 +501,31 @@ onMounted(async () => {
                     </div>
                     
                     <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Unit
-                      </label>
-                      <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm">
-                        {{ item.unit || '-' }}
+                      <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm text-center">
+                        {{ item.unit.abbreviation || '-' }}
                       </div>
                     </div>
                     
                     <div class="col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Subtotal
-                      </label>
-                      <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm">
-                        {{ formatCurrency((rawMaterials.find(m => m.id === item.raw_material_id)?.harga_per_unit || 0) * item.jumlah_dibutuhkan) }}
+                      <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm text-right">
+                        {{ formatCurrency((cookedItems.find(c => c.id === item.cooked_items_id)?.harga_pokok_per_unit || 0) * item.quantity) }}
                       </div>
                     </div>
                     
-                    <div class="col-span-1">
+                    <div class="col-span-1 flex justify-center">
                       <button
                         type="button"
                         @click="removeRecipeItem(index)"
-                        class="w-full px-2 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                         title="Hapus bahan"
                       >
-                        <svg class="w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Recipe Summary -->
-                <div v-if="formData.recipe_items.length > 0" class="bg-blue-50 p-4 rounded-md">
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span class="font-medium text-gray-700">Total Harga Bahan:</span>
-                      <div class="text-lg font-semibold text-blue-600">
-                        {{ formatCurrency(calculatedTotalHargaBahan) }}
-                      </div>
-                    </div>
-                    <div>
-                      <span class="font-medium text-gray-700">Harga Jual:</span>
-                      <div class="text-lg font-semibold text-green-600">
-                        {{ formatCurrency(formData.harga_jual) }}
-                      </div>
-                    </div>
-                    <div>
-                      <span class="font-medium text-gray-700">Margin Keuntungan:</span>
-                      <div class="text-lg font-semibold" :class="marginKeuntungan >= 0 ? 'text-green-600' : 'text-red-600'">
-                        {{ marginKeuntungan.toFixed(1) }}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Consignment Information -->
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Konsinyasi</h3>
-            
-            <div class="space-y-4">
-              <div class="flex items-center">
-                <input
-                  id="konsinyasi"
-                  v-model="formData.konsinyasi"
-                  type="checkbox"
-                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label for="konsinyasi" class="ml-2 block text-sm text-gray-700">
-                  Produk Konsinyasi
-                </label>
-              </div>
-              
-              <div v-if="formData.konsinyasi">
-                <label for="supplier_konsinyasi" class="block text-sm font-medium text-gray-700 mb-2">
-                  Supplier Konsinyasi *
-                </label>
-                <Select
-                  v-model="formData.supplier_konsinyasi"
-                  :options="supplierOptions"
-                  placeholder="Pilih Supplier Konsinyasi"
-                  :required="formData.konsinyasi"
-                />
               </div>
             </div>
           </div>

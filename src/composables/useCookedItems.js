@@ -338,6 +338,70 @@ export function useCookedItems() {
       isLoading.value = false
     }
   }
+
+  
+  
+  // Add reduceStock function before the return statement
+  async function reduceStock(cookedItemId, quantity) {
+    try {
+      isLoading.value = true
+      
+      // Get current item data
+      let currentItem
+      if (navigator.onLine) {
+        const response = await api.get(`/items/cooked_items/${cookedItemId}`)
+        currentItem = response.data.data
+      } else {
+        currentItem = await db.cooked_items.get(cookedItemId)
+      }
+      
+      if (!currentItem) {
+        throw new Error('Item tidak ditemukan')
+      }
+      
+      const currentStock = parseFloat(currentItem.total_stock || 0)
+      const reduceAmount = parseFloat(quantity)
+      
+      if (currentStock < reduceAmount) {
+        throw new Error(`Stok tidak mencukupi. Stok tersedia: ${currentStock}, dibutuhkan: ${reduceAmount}`)
+      }
+      
+      const newStock = currentStock - reduceAmount
+      
+      // Update stock
+      const updateData = {
+        total_stock: newStock
+      }
+      
+      if (navigator.onLine) {
+        await api.patch(`/items/cooked_items/${cookedItemId}`, updateData)
+      } else {
+        // Store offline update
+        await syncService.addPendingOperation({
+          type: 'UPDATE',
+          collection: 'cooked_items',
+          id: cookedItemId,
+          data: updateData
+        })
+      }
+      
+      // Update local storage
+      await db.cooked_items.update(cookedItemId, updateData)
+      
+      // Update local state
+      const itemIndex = cookedItems.value.findIndex(item => item.id === cookedItemId)
+      if (itemIndex !== -1) {
+        cookedItems.value[itemIndex].total_stock = newStock
+      }
+      
+      return { success: true, newStock }
+    } catch (error) {
+      console.error('Error reducing stock:', error)
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
   
   return {
     // State
@@ -374,6 +438,7 @@ export function useCookedItems() {
     loadData,
     addItem,
     updateItem,
-    deleteItem
+    deleteItem,
+    reduceStock
   }
 }

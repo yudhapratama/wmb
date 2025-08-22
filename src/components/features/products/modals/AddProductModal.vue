@@ -17,7 +17,8 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  rawMaterials: {
+  // Tambahkan props cookedItems untuk recipe-based products
+  cookedItems: {
     type: Array,
     default: () => []
   },
@@ -44,7 +45,7 @@ const formData = ref({
   total_harga_bahan: 0,
   konsinyasi: false,
   supplier_konsinyasi: null, // ← Ubah dari '' ke null
-  recipe_items: []
+  recipe_items: [] // Ubah struktur untuk menggunakan cooked_items_id
 })
 
 const errors = ref({})
@@ -66,12 +67,13 @@ const supplierOptions = computed(() => [
   }))
 ])
 
-const rawMaterialOptions = computed(() => 
-  props.rawMaterials.map(material => ({
-    value: material.id,
-    label: material.nama_item
-  }))
-)
+// Di bagian computed options (sekitar baris 65), hapus rawMaterialOptions:
+// const rawMaterialOptions = computed(() => 
+//   props.rawMaterials.map(material => ({
+//     value: material.id,
+//     label: material.nama_item
+//   }))
+// )
 
 const unitOptions = computed(() => 
   props.units.map(unit => ({
@@ -85,6 +87,14 @@ const productTypeOptions = [
   { value: 'recipe', label: 'Recipe-based Product' }
 ]
 
+// Ubah computed options untuk cooked items
+const cookedItemOptions = computed(() => 
+  props.cookedItems.map(item => ({
+    value: item.id,
+    label: item.name
+  }))
+)
+
 const isFormValid = computed(() => {
   const basicValid = formData.value.nama_produk && 
                     formData.value.kategori &&
@@ -96,7 +106,7 @@ const isFormValid = computed(() => {
     return basicValid && 
            formData.value.recipe_items.length > 0 &&
            formData.value.recipe_items.every(item => 
-             item.raw_materials_id && item.jumlah_dibutuhkan > 0
+             item.cooked_items_id && item.jumlah_dibutuhkan > 0
            )
   }
 })
@@ -107,9 +117,10 @@ watch(
   (newItems) => {
     if (formData.value.tipe_produk === 'recipe') {
       formData.value.total_harga_bahan = newItems.reduce((total, item) => {
-        const material = props.rawMaterials.find(m => m.id === item.raw_materials_id)
-        if (material && item.jumlah_dibutuhkan) {
-          return total + (material.harga_pokok_rata_rata * item.jumlah_dibutuhkan)
+        const cookedItem = props.cookedItems.find(c => c.id === item.cooked_items_id)
+        if (cookedItem && item.jumlah_dibutuhkan) {
+          // Gunakan harga_pokok_per_unit instead of harga_pokok_rata_rata
+          return total + (cookedItem.harga_pokok_per_unit * item.jumlah_dibutuhkan)
         }
         return total
       }, 0)
@@ -155,7 +166,7 @@ function resetForm() {
 
 function addRecipeItem() {
   formData.value.recipe_items.push({
-    raw_materials_id: '',
+    cooked_items_id: '',
     jumlah_dibutuhkan: 0
   })
 }
@@ -164,28 +175,29 @@ function removeRecipeItem(index) {
   formData.value.recipe_items.splice(index, 1)
 }
 
-function getRawMaterialUnit(rawMaterialId) {
-  if (!rawMaterialId) return 'Pilih bahan baku'
+function getCookedItemUnit(cookedItemId) {
+  if (!cookedItemId) return 'Pilih bahan setengah jadi'
   
-  const material = props.rawMaterials.find(m => m.id === rawMaterialId)
-  if (material && material.unit) {
-    if (typeof material.unit === 'object') {
-      return material.unit.abbreviation || material.unit.name || 'Unknown'
+  const cookedItem = props.cookedItems.find(c => c.id === cookedItemId)
+  if (cookedItem && cookedItem.unit) {
+    if (typeof cookedItem.unit === 'object') {
+      return cookedItem.unit.abbreviation || cookedItem.unit.name || 'Unknown'
     } else {
-      const unit = props.units.find(u => u.id === material.unit)
+      const unit = props.units.find(u => u.id === cookedItem.unit)
       return unit ? unit.abbreviation : 'Unknown'
     }
   }
   return 'Unknown'
 }
 
-function getRawMaterialPrice(rawMaterialId) {
-  const material = props.rawMaterials.find(m => m.id === rawMaterialId)
-  return material ? material.harga_pokok_rata_rata : 0
+function getCookedItemPrice(cookedItemId) {
+  const cookedItem = props.cookedItems.find(c => c.id === cookedItemId)
+  // Gunakan harga_pokok_per_unit instead of harga_pokok_rata_rata
+  return cookedItem ? cookedItem.harga_pokok_per_unit : 0
 }
 
 function calculateItemCost(item) {
-  const price = getRawMaterialPrice(item.raw_materials_id)
+  const price = getCookedItemPrice(item.cooked_items_id)
   return price * (item.jumlah_dibutuhkan || 0)
 }
 
@@ -225,8 +237,17 @@ function handleSubmit() {
     errors.value.harga_pokok = 'Harga pokok harus lebih dari 0'
   }
   
-  if (formData.value.tipe_produk === 'recipe' && formData.value.recipe_items.length === 0) {
-    errors.value.recipe_items = 'Minimal harus ada 1 bahan baku'
+  if (formData.value.tipe_produk === 'recipe') {
+    if (formData.value.recipe_items.length === 0) {
+      errors.value.recipe_items = 'Minimal harus ada 1 bahan setengah jadi'
+    } else {
+      const invalidItems = formData.value.recipe_items.some(item => 
+        !item.cooked_items_id || item.jumlah_dibutuhkan <= 0
+      )
+      if (invalidItems) {
+        errors.value.recipe_items = 'Semua bahan setengah jadi harus dipilih dan jumlah harus lebih dari 0'
+      }
+    }
   }
   
   if (formData.value.konsinyasi && !formData.value.supplier_konsinyasi) {
@@ -358,12 +379,40 @@ function handleSubmit() {
             required
           />
           <p v-if="errors.harga_pokok" class="mt-1 text-sm text-red-600">{{ errors.harga_pokok }}</p>
+  `        <!-- Konsinyasi -->
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <input
+                v-model="formData.konsinyasi"
+                type="checkbox"
+                id="konsinyasi"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label for="konsinyasi" class="ml-2 block text-sm text-gray-700">
+                Produk Konsinyasi
+              </label>
+            </div>
+            
+            <div v-if="formData.konsinyasi">
+              <label for="supplier_konsinyasi" class="block text-sm font-medium text-gray-700 mb-2">
+                Supplier Konsinyasi *
+              </label>
+              <Select
+                v-model="formData.supplier_konsinyasi"
+                :options="supplierOptions"
+                placeholder="Pilih supplier konsinyasi"
+                :class="{ 'border-red-500': errors.supplier_konsinyasi }"
+                required
+              />
+              <p v-if="errors.supplier_konsinyasi" class="mt-1 text-sm text-red-600">{{ errors.supplier_konsinyasi }}</p>
+            </div>
+          </div>          
         </div>
 
         <!-- Recipe-based Product Fields -->
         <div v-if="formData.tipe_produk === 'recipe'">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Resep Bahan Baku</h3>
+            <h3 class="text-lg font-medium text-gray-900">Resep Bahan Setengah Jadi</h3>
             <button
               type="button"
               @click="addRecipeItem"
@@ -380,7 +429,7 @@ function handleSubmit() {
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
-            <p>Belum ada bahan baku yang ditambahkan</p>
+            <p>Belum ada bahan setengah jadi yang ditambahkan</p>
             <p class="text-sm">Klik "Tambah Bahan" untuk menambahkan resep</p>
           </div>
           
@@ -392,12 +441,12 @@ function handleSubmit() {
             >
               <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Bahan Baku *
+                  Bahan Setengah Jadi *
                 </label>
                 <Select
-                  v-model="item.raw_materials_id"
-                  :options="rawMaterialOptions"
-                  placeholder="Pilih Bahan Baku"
+                  v-model="item.cooked_items_id"
+                  :options="cookedItemOptions"
+                  placeholder="Pilih Bahan Setengah Jadi"
                   required
                 />
               </div>
@@ -422,7 +471,7 @@ function handleSubmit() {
                   Unit
                 </label>
                 <div class="px-3 py-3 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-600">
-                  {{ getRawMaterialUnit(item.raw_materials_id) }}
+                  {{ getCookedItemUnit(item.cooked_items_id) }}
                 </div>
               </div>
               
@@ -456,35 +505,6 @@ function handleSubmit() {
           </div>
           
           <p v-if="errors.recipe_items" class="mt-1 text-sm text-red-600">{{ errors.recipe_items }}</p>
-        </div>
-
-        <!-- Konsinyasi -->
-        <div class="space-y-4">
-          <div class="flex items-center">
-            <input
-              v-model="formData.konsinyasi"
-              type="checkbox"
-              id="konsinyasi"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="konsinyasi" class="ml-2 block text-sm text-gray-700">
-              Produk Konsinyasi
-            </label>
-          </div>
-          
-          <div v-if="formData.konsinyasi">
-            <label for="supplier_konsinyasi" class="block text-sm font-medium text-gray-700 mb-2">
-              Supplier Konsinyasi *
-            </label>
-            <Select
-              v-model="formData.supplier_konsinyasi"
-              :options="supplierOptions"
-              placeholder="Pilih supplier konsinyasi"
-              :class="{ 'border-red-500': errors.supplier_konsinyasi }"
-              required
-            />
-            <p v-if="errors.supplier_konsinyasi" class="mt-1 text-sm text-red-600">{{ errors.supplier_konsinyasi }}</p>
-          </div>
         </div>
 
         <!-- Margin Calculation -->

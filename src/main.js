@@ -30,6 +30,7 @@ app.use(VueQueryPlugin, {
 
 // ✅ Pulihkan session setelah pinia diinisialisasi
 const authStore = useAuthStore()
+console.log(authStore)
 if (authStore.token) {
   authStore.restoreSession()
 }

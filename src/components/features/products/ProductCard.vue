@@ -91,7 +91,7 @@
     
     <!-- Recipe Items Summary (for recipe-based products) -->
     <div class="border-t pt-4" v-if="product.tipe_produk === 'recipe'">
-      <h4 class="text-sm font-medium text-gray-700 mb-2">Bahan Resep ({{ product.recipe_items?.length || 0 }})</h4>
+      <h4 class="text-sm font-medium text-gray-700 mb-2">Bahan Setengah Jadi ({{ product.recipe_items?.length || 0 }})</h4>
       <div class="space-y-1">
         <template v-if="product.recipe_items && product.recipe_items.length > 0">
           <div 
@@ -107,7 +107,7 @@
           </div>
         </template>
         <div v-else class="text-xs text-gray-500 italic">
-          Belum ada bahan resep
+          Belum ada bahan setengah jadi
         </div>
       </div>
     </div>

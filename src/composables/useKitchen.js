@@ -198,47 +198,59 @@ export function useKitchen() {
       // Get current cooked item data
       const response = await api.get(`/items/cooked_items/${cookedItemId}`)
       const currentItem = response.data.data
+      console.log(currentItem)
       
       const currentTotalStock = parseFloat(currentItem.total_stock || 0)
       const currentAvgCost = parseFloat(currentItem.harga_pokok_rata_rata || 0)
       const newProductionAmount = parseFloat(jumlahDihasilkan)
       const newProductionCost = parseFloat(hppPembuatan)
       
+      // Hitung HPP per unit dari produksi baru
+      // 125000 / 25 = 5000
+      let hppPerUnit = newProductionCost / newProductionAmount
+      // const currentHppPerUnit = parseFloat(currentItem.harga_pokok_per_unit || 0)
+      
       let newTotalStock, newAvgCost
       
       // 1. Cek terlebih dahulu apakah jumlah stok existing sama dengan 0
       if (currentTotalStock == 0) {
+        console.log("current total stock 0")
         // a. Jika "Ya" maka jumlah stok dan hpp pembuatan dari kitchen prep bisa langsung ditambahkan
+        // 0 + 25 = 25
         newTotalStock = currentTotalStock + newProductionAmount
         
         // Hitung weighted average cost
+        // 0 + 25 = 25
         const totalCurrentValue = currentTotalStock * currentAvgCost
-        const totalNewValue = newProductionAmount * (newProductionCost / newProductionAmount) // HPP per unit
+        // 25 * 5000 = 125000
+        const totalNewValue = newProductionAmount * hppPerUnit
         
-        console.log(totalCurrentValue, 'total current value') // 0 √
-        console.log(totalNewValue, 'total new value') // 150000
-        console.log(newTotalStock, 'new total stock') // 25 √
-        console.log(newProductionAmount, 'new production amount') // 25 √
-        console.log(newProductionCost, 'new production cost') // 150000
-
-        newAvgCost = (totalCurrentValue + totalNewValue) // newTotalStock
-        // (0+150000) / 25 = 6000
+        console.log(totalCurrentValue, 'total current value')
+        console.log(totalNewValue, 'total new value')
+        console.log(newTotalStock, 'new total stock')
+        console.log(newProductionAmount, 'new production amount')
+        console.log(newProductionCost, 'new production cost')
+        // 25 * 5000
+        newAvgCost = totalCurrentValue + totalNewValue
         
       } else {
+        console.log("current total stock lebih dari 0")
         // b. Jika "Tidak" maka tetap lakukan dengan mekanisme yang sekarang
         newTotalStock = currentTotalStock + newProductionAmount
-        newAvgCost = (newProductionCost + currentAvgCost) / 2
+        newAvgCost = newProductionCost + currentAvgCost
+        hppPerUnit = newAvgCost / newTotalStock
       }
       
-      // Update cooked item
+      // Update cooked item dengan field harga_pokok_per_unit
       const updatePayload = {
         total_stock: newTotalStock,
-        harga_pokok_rata_rata: newAvgCost
+        harga_pokok_rata_rata: newAvgCost,
+        harga_pokok_per_unit: hppPerUnit // Tambahkan field ini
       }
       console.log(updatePayload,'update payload')
       
       await api.patch(`/items/cooked_items/${cookedItemId}`, updatePayload)
-      console.log(`Updated cooked item ${cookedItemId}: stock=${newTotalStock}, avg_cost=${newAvgCost}, had_previous_stock=${currentTotalStock > 0}`)
+      console.log(`Updated cooked item ${cookedItemId}: stock=${newTotalStock}, avg_cost=${newAvgCost}, hpp_per_unit=${hppPerUnit}`)
       
     } catch (error) {
       console.error('Error updating cooked item stock:', error)

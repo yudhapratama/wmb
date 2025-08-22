@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue'
 import db from '../services/db'
 import syncService from '../services/sync'
+// Tambahkan import useRecipeItems untuk cascade delete
+import { useRecipeItems } from './useRecipeItems'
 
 export function useProducts() {
   // State
@@ -13,6 +15,9 @@ export function useProducts() {
   const selectedType = ref('all')
   const selectedConsignment = ref('all')
   const error = ref(null)
+  
+  // Initialize useRecipeItems for cascade delete
+  const { deleteRecipeItemsByProduct } = useRecipeItems(false)
   
   // Pagination state
   const currentPage = ref(1)
@@ -212,16 +217,23 @@ export function useProducts() {
     }
   }
   
-  // Delete product
+  // Delete product with cascade delete
   async function deleteProduct(id) {
     isLoading.value = true
     error.value = null
     
     try {
-      // Delete from local database first
+      // 1. First, delete related recipe_items (cascade delete)
+      const recipeDeleteResult = await deleteRecipeItemsByProduct(id)
+      if (!recipeDeleteResult.success) {
+        console.warn('Failed to delete recipe items:', recipeDeleteResult.error)
+        // Continue with product deletion even if recipe items deletion fails
+      }
+      
+      // 2. Delete the product from local database
       await db.products.delete(id)
       
-      // If online, sync to server
+      // 3. If online, sync to server
       if (syncService.isOnline()) {
         await db.addToSyncQueue('products', id, 'delete', { id })
         await syncService.processSyncQueue()
@@ -230,7 +242,7 @@ export function useProducts() {
         await db.addToSyncQueue('products', id, 'delete', { id })
       }
       
-      // Reload data
+      // 4. Reload data
       await loadData()
       
       return { success: true }

@@ -1,8 +1,13 @@
 import { ref, computed } from 'vue'
 import db from '../services/db'
 import syncService from '../services/sync'
+import { useCookedItems } from './useCookedItems'
+import api from '../services/api' // ✅ Tambahkan import api yang hilang
 
 export function useRecipeItems(autoLoad = true) {
+  // Get cooked items data
+  const { cookedItems } = useCookedItems(false)
+  
   // State
   const isLoading = ref(true)
   const recipeItems = ref([])
@@ -13,20 +18,20 @@ export function useRecipeItems(autoLoad = true) {
   // Get recipe items for a specific product
   const getRecipeItemsByProduct = computed(() => {
     return (productId) => {
-      return recipeItems.value.filter(item => item.product_id === productId)
+      return recipeItems.value.filter(item => item.products_id === productId) // ✅ Ubah dari product_id ke products_id
     }
   })
   
-  // Get recipe items with raw material details
+  // Get recipe items with cooked items details
   const getRecipeItemsWithDetails = computed(() => {
     return (productId) => {
       return recipeItems.value
-        .filter(item => item.product_id === productId)
+        .filter(item => item.products_id === productId) // ✅ Ubah dari product_id ke products_id
         .map(item => {
-          const rawMaterial = rawMaterials.value.find(rm => rm.id === item.raw_material_id)
+          const cookedItem = cookedItems.value.find(ci => ci.id === item.cooked_items_id) // ✅ Ubah ke cooked_items
           return {
             ...item,
-            raw_material: rawMaterial || { id: item.raw_material_id, nama_item: 'Unknown' }
+            cooked_item: cookedItem || { id: item.cooked_items_id, name: 'Unknown' }
           }
         })
     }
@@ -35,13 +40,24 @@ export function useRecipeItems(autoLoad = true) {
   // Calculate total cost for a product recipe
   const calculateRecipeCost = computed(() => {
     return (productId) => {
-      const items = recipeItems.value.filter(item => item.product_id === productId)
+      const items = recipeItems.value.filter(item => item.products_id === productId) // ✅ Ubah dari product_id ke products_id
       return items.reduce((total, item) => {
-        const rawMaterial = rawMaterials.value.find(rm => rm.id === item.raw_material_id)
-        const materialCost = rawMaterial?.harga_rata_rata || 0
-        return total + (materialCost * item.jumlah_dibutuhkan)
+        const cookedItem = cookedItems.value.find(ci => ci.id === item.cooked_items_id) // ✅ Ubah ke cooked_items
+        const itemCost = cookedItem?.harga_pokok_per_unit || 0
+        return total + (itemCost * item.quantity) // ✅ Ubah dari jumlah_dibutuhkan ke quantity sesuai schema
       }, 0)
     }
+  })
+  
+  // ✅ Tambahkan computed totalCost
+  const totalCost = computed(() => {
+    if (recipeItems.value.length === 0) return 0
+    
+    return recipeItems.value.reduce((total, item) => {
+      const cookedItem = cookedItems.value.find(ci => ci.id === item.cooked_items_id)
+      const itemCost = cookedItem?.harga_pokok_per_unit || 0
+      return total + (itemCost * item.quantity)
+    }, 0)
   })
   
   // Add recipe items for a product
@@ -51,33 +67,48 @@ export function useRecipeItems(autoLoad = true) {
     
     try {
       const itemsToAdd = recipeItemsData.map(item => ({
-        product_id: productId,
-        raw_material_id: item.raw_material_id,
-        jumlah_dibutuhkan: item.jumlah_dibutuhkan,
+        products_id: productId, // ✅ Ubah dari product_id ke products_id
+        cooked_items_id: item.cooked_items_id,
+        quantity: item.jumlah_dibutuhkan, // ✅ Ubah dari item.quantity ke item.jumlah_dibutuhkan
         date_created: new Date().toISOString(),
         sync_status: 'pending'
       }))
       
       // Add to local database first
-      const ids = await db.recipe_items.bulkAdd(itemsToAdd)
+      await db.recipe_items.bulkAdd(itemsToAdd)
+      
+      // Get the added items to get their IDs
+      const addedItems = await db.recipe_items
+        .where('products_id') // ✅ Ubah dari product_id ke products_id
+        .equals(productId)
+        .and(item => item.sync_status === 'pending')
+        .toArray()
       
       // If online, sync to server
       if (syncService.isOnline()) {
-        for (let i = 0; i < itemsToAdd.length; i++) {
-          await db.addToSyncQueue('recipe_items', ids[i], 'create', itemsToAdd[i])
+        for (const item of addedItems) {
+          await db.addToSyncQueue('recipe_items', item.id, 'create', {
+            products_id: item.products_id, // ✅ Ubah dari product_id ke products_id
+            cooked_items_id: item.cooked_items_id,
+            quantity: item.quantity // ✅ Ubah dari jumlah_dibutuhkan ke quantity
+          })
         }
         await syncService.processSyncQueue()
       } else {
         // Add to sync queue for later
-        for (let i = 0; i < itemsToAdd.length; i++) {
-          await db.addToSyncQueue('recipe_items', ids[i], 'create', itemsToAdd[i])
+        for (const item of addedItems) {
+          await db.addToSyncQueue('recipe_items', item.id, 'create', {
+            products_id: item.products_id, // ✅ Ubah dari product_id ke products_id
+            cooked_items_id: item.cooked_items_id,
+            quantity: item.quantity // ✅ Ubah dari jumlah_dibutuhkan ke quantity
+          })
         }
       }
       
       // Reload data
       await loadData()
       
-      return { success: true, ids }
+      return { success: true, items: addedItems }
     } catch (err) {
       console.error('Error adding recipe items:', err)
       error.value = `Failed to add recipe items: ${err.message}`
@@ -117,13 +148,13 @@ export function useRecipeItems(autoLoad = true) {
     try {
       // Get existing recipe items for this product
       const existingItems = await db.recipe_items
-        .where('product_id')
+        .where('products_id') // ✅ Ubah dari product_id ke products_id
         .equals(productId)
         .toArray()
       
       // Delete from local database
       await db.recipe_items
-        .where('product_id')
+        .where('products_id') // ✅ Ubah dari product_id ke products_id
         .equals(productId)
         .delete()
       
@@ -186,45 +217,39 @@ export function useRecipeItems(autoLoad = true) {
   
   // Load data
   async function loadData() {
-    isLoading.value = true
-    error.value = null
-    
     try {
-      // Try to sync first if online
-      if (syncService.isOnline()) {
-        await syncService.pullData('recipe_items')
-        await syncService.pullData('raw_materials')
-        await syncService.pullData('products')
-      }
+      isLoading.value = true
       
-      // Load from local database
-      recipeItems.value = await db.recipe_items.toArray()
-      rawMaterials.value = await db.raw_materials.toArray()
-      products.value = await db.products.toArray()
-    } catch (err) {
-      console.error('Error loading recipe items data:', err)
-      error.value = 'Failed to load recipe items data'
+      if (navigator.onLine) {
+        // ✅ Load dari API dengan cooked_items relation
+        const response = await api.get('/items/recipe_items?fields=*,cooked_items_id.*')
+        const apiData = response.data?.data || []
+        
+        // Cache to local storage
+        await db.recipe_items.clear()
+        await db.recipe_items.bulkAdd(apiData.map(item => ({
+          id: item.id,
+          products_id: item.products_id, // ✅ Ubah dari product_id ke products_id
+          cooked_items_id: typeof item.cooked_items_id === 'object' ? item.cooked_items_id?.id : item.cooked_items_id,
+          quantity: item.quantity, // ✅ Ubah dari jumlah_dibutuhkan ke quantity
+          date_created: item.date_created,
+          cached_at: new Date().getTime()
+        })))
+        
+        recipeItems.value = apiData
+      } else {
+        // Load from local storage
+        const localData = await db.recipe_items.toArray()
+        recipeItems.value = localData
+      }
+    } catch (error) {
+      console.error('Error loading recipe items:', error)
+      // Fallback to local storage
+      const localData = await db.recipe_items.toArray()
+      recipeItems.value = localData
     } finally {
       isLoading.value = false
     }
-  }
-  
-  // Get raw material name by ID
-  function getRawMaterialName(rawMaterialId) {
-    const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
-    return material ? material.nama_item : 'Unknown'
-  }
-  
-  // Get raw material unit by ID
-  function getRawMaterialUnit(rawMaterialId) {
-    const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
-    return material?.unit || 'Unknown'
-  }
-  
-  // Get raw material cost by ID
-  function getRawMaterialCost(rawMaterialId) {
-    const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
-    return material?.harga_rata_rata || 0
   }
   
   // Validate recipe items data
@@ -237,11 +262,11 @@ export function useRecipeItems(autoLoad = true) {
     }
     
     recipeItemsData.forEach((item, index) => {
-      if (!item.raw_material_id) {
-        errors.push(`Item ${index + 1}: Raw material ID is required`)
+      if (!item.cooked_items_id) {
+        errors.push(`Item ${index + 1}: Cooked item ID is required`)
       }
       
-      if (!item.jumlah_dibutuhkan || item.jumlah_dibutuhkan <= 0) {
+      if (!item.quantity || item.quantity <= 0) { // ✅ Ubah dari jumlah_dibutuhkan ke quantity
         errors.push(`Item ${index + 1}: Quantity must be greater than 0`)
       }
     })
@@ -269,6 +294,7 @@ export function useRecipeItems(autoLoad = true) {
     getRecipeItemsByProduct,
     getRecipeItemsWithDetails,
     calculateRecipeCost,
+    totalCost, // ✅ Tambahkan ini
     
     // Methods
     loadData,
@@ -276,9 +302,9 @@ export function useRecipeItems(autoLoad = true) {
     updateRecipeItems,
     deleteRecipeItemsByProduct,
     deleteRecipeItem,
-    getRawMaterialName,
-    getRawMaterialUnit,
-    getRawMaterialCost,
+    // getRawMaterialName,
+    // getRawMaterialUnit,
+    // getRawMaterialCost,
     validateRecipeItems
   }
 }

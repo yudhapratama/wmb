@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import api from '../services/api'
+import axios from 'axios' // ✅ Tambahkan import axios
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: null,
-    refresh_token: null, // Tambahkan refresh token
+    refresh_token: null,
     user: null,
     role: null,
     permissions: null,
@@ -50,7 +51,16 @@ export const useAuthStore = defineStore('auth', {
         if (!collection) return true
         return !!state.permissions[collection]?.[action]
       })
-    }
+    },
+    tokenAge: (state) => {
+      if (!state.tokenTimestamp) return null
+      return Date.now() - state.tokenTimestamp
+    },
+    
+    isTokenOld: (state) => {
+      const age = Date.now() - (state.tokenTimestamp || 0)
+      return age > (7 * 24 * 60 * 60 * 1000) // 7 hari
+    }    
   },
   
   actions: {
@@ -73,16 +83,36 @@ export const useAuthStore = defineStore('auth', {
       return false
     },
     
+    // Tambahkan debug logging di method login
+    // Di method login, simpan timestamp
     async login(email, password) {
       try {
         const response = await api.post('/auth/login', { 
           email, 
           password, 
-          mode: 'json' // Pastikan mendapat refresh token di response
+          mode: 'json'
         })
         
+        // Validasi response structure
+        if (!response.data?.data?.access_token || !response.data?.data?.refresh_token) {
+          throw new Error('Invalid login response: missing tokens')
+        }
+        
         this.token = response.data.data.access_token
-        this.refresh_token = response.data.data.refresh_token // Simpan refresh token
+        this.refresh_token = response.data.data.refresh_token
+        this.tokenTimestamp = Date.now() // 📝 Simpan timestamp
+        
+        // Debug logging
+        console.log('Tokens saved to state:', {
+          token: !!this.token,
+          refresh_token: !!this.refresh_token
+        })
+        
+        // Verify localStorage after state update
+        setTimeout(() => {
+          const stored = localStorage.getItem('warung-auth')
+          console.log('localStorage after login:', stored)
+        }, 100)
         
         // Set api default authorization header
         api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
@@ -90,57 +120,94 @@ export const useAuthStore = defineStore('auth', {
         // Fetch user data and permissions
         await this.fetchUserData()
         
+        console.log('Login successful, tokens saved')
         return { success: true }
       } catch (error) {
         console.error('Login failed:', error)
         return { 
           success: false, 
-          message: error.response?.data?.errors?.[0]?.message || 'Login failed' 
+          message: error.response?.data?.errors?.[0]?.message || error.message || 'Login failed' 
         }
       }
     },
     
     // Tambahkan method refresh token
+    // Tambahkan di method refreshToken
     async refreshToken() {
-      if (!this.refresh_token) {
+      console.log('Attempting token refresh...')
+      
+      // Coba ambil dari state store dulu
+      let refreshToken = this.refresh_token
+      
+      // Jika tidak ada, coba ambil dari localStorage sebagai fallback
+      if (!refreshToken) {
+        try {
+          const storedAuth = localStorage.getItem('warung-auth')
+          if (storedAuth) {
+            const authData = JSON.parse(storedAuth)
+            refreshToken = authData.refresh_token
+            console.log('Retrieved refresh_token from localStorage:', !!refreshToken)
+          }
+        } catch (error) {
+          console.error('Failed to parse localStorage auth data:', error)
+        }
+      }
+      
+      console.log('Current refresh_token exists:', !!refreshToken)
+      
+      if (!refreshToken) {
         console.error('No refresh token available')
         return false
       }
       
       try {
-        console.log('Attempting to refresh token...')
+        // ✅ Perbaiki format request untuk Directus
+        const payload = {
+          refresh_token: refreshToken,
+          mode: 'json' // Tambahkan mode untuk Directus
+        }
         
-        const response = await api.post('/auth/refresh', {
-          refresh_token: this.refresh_token,
-          mode: 'json'
-        }, {
-          // Flag khusus untuk mencegah interceptor
-          _skipAuthRefresh: true
+        console.log('Sending refresh request with payload:', {
+          refresh_token: refreshToken.substring(0, 10) + '...' // Log partial token untuk security
         })
         
-        // ✅ Validasi response structure
+        // ✅ Gunakan axios langsung untuk menghindari interceptor
+        // Dalam method refreshToken, ganti endpoint:
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8055'}/auth/refresh`,
+          { refresh_token: refreshToken }, // Tanpa mode
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+        
+        // Validasi response structure
         if (!response.data?.data?.access_token) {
-          console.error('Invalid refresh token response structure')
+          console.error('Invalid refresh token response structure:', response.data)
           return false
         }
         
+        // Update tokens
         this.token = response.data.data.access_token
-        this.refresh_token = response.data.data.refresh_token
+        this.refresh_token = response.data.data.refresh_token || this.refresh_token
+        this.tokenTimestamp = Date.now() // Update timestamp
         
         // Update authorization header
         api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
         
         console.log('Token refreshed successfully')
         return true
-      } catch (error) {
-        console.error('Token refresh failed:', error.response?.data || error.message)
         
-        // ✅ Tambahkan specific error handling
-        if (error.response?.status === 401) {
-          console.log('Refresh token expired, user needs to login again')
-        } else if (error.response?.status === 400) {
-          console.log('Invalid refresh token format')
-        }
+      } catch (error) {
+        console.error('Token refresh failed:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+          url: error.config?.url
+        })
         
         // Jika refresh gagal, logout user
         this.logout()
@@ -192,7 +259,16 @@ export const useAuthStore = defineStore('auth', {
         return false
       }
     },
-    
+
+    // Tambahkan method untuk refresh proaktif
+    async proactiveRefresh() {
+      if (this.isTokenOld) {
+        console.log('Token is old, attempting proactive refresh')
+        return await this.refreshToken()
+      }
+      return true
+    },
+
     // Update method validateSession
     async validateSession() {
       // Jika tidak ada token, tidak perlu validasi
@@ -255,7 +331,11 @@ export const useAuthStore = defineStore('auth', {
       this.permissionsVersion = null
       delete api.defaults.headers.common['Authorization']
     }
+  },
+  
+  persist: {
+    key: 'warung-auth',
+    storage: localStorage,
+    paths: ['token', 'refresh_token', 'user', 'role', 'permissions', 'permissionsTimestamp', 'permissionsVersion']
   }
-}, {
-  persist: true
 })

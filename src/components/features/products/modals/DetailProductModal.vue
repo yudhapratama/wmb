@@ -16,7 +16,7 @@ const props = defineProps({
     type: Function,
     required: true
   },
-  getRawMaterialName: {
+  getCookedItemName: {
     type: Function,
     required: true
   },
@@ -24,7 +24,7 @@ const props = defineProps({
     type: Function,
     required: true
   },
-  rawMaterials: {
+  cookedItems: {
     type: Array,
     default: () => []
   },
@@ -100,14 +100,36 @@ function getRawMaterialUnit(rawMaterialId) {
   return 'pcs'
 }
 
+function getCookedItemUnit(cookedItemId) {
+  // Jika cookedItemId sudah berupa objek
+  if (typeof cookedItemId === 'object' && cookedItemId?.unit) {
+    return cookedItemId.unit || 'pcs'
+  }
+  
+  // Jika cookedItemId masih berupa ID
+  const item = props.cookedItems.find(c => c.id === cookedItemId)
+  return item ? (item.unit || 'pcs') : 'pcs'
+}
+
 function calculateTotalRecipeCost() {
   if (!props.product?.recipe_items) return 0
   
   return props.product.recipe_items.reduce((total, item) => {
-    const material = props.rawMaterials.find(m => m.id === item.raw_material_id)
-    const materialCost = material ? (material.harga_per_unit || 0) : 0
-    return total + (materialCost * item.jumlah_dibutuhkan)
+    const itemCost = getItemCost(item)
+    return total + itemCost
   }, 0)
+}
+
+function getItemCost(item) {
+  // Jika cooked_items_id sudah berupa objek (dari relasi)
+  if (typeof item.cooked_items_id === 'object' && item.cooked_items_id?.harga_pokok_per_unit) {
+    return (item.cooked_items_id.harga_pokok_per_unit || 0) * item.quantity
+  }
+  
+  // Jika cooked_items_id masih berupa ID, cari di array cookedItems
+  const cookedItem = props.cookedItems.find(c => c.id === item.cooked_items_id)
+  const unitCost = cookedItem ? (cookedItem.harga_pokok_per_unit || 0) : 0
+  return unitCost * item.quantity
 }
 </script>
 
@@ -184,13 +206,13 @@ function calculateTotalRecipeCost() {
 
       <!-- Recipe Information (for Recipe-based products) -->
       <div v-if="product.tipe_produk === 'recipe' && product.recipe_items && product.recipe_items.length > 0" class="bg-gray-50 rounded-lg p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Resep Bahan</h3>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Resep Bahan Setengah Jadi</h3>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-100">
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bahan Baku
+                  Bahan Setengah Jadi
                 </th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Jumlah Dibutuhkan
@@ -204,18 +226,18 @@ function calculateTotalRecipeCost() {
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in product.recipe_items" :key="item.raw_material_id" class="hover:bg-gray-50">
+              <tr v-for="item in product.recipe_items" :key="item.cooked_items_id" class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-sm font-medium text-gray-900">
-                  {{ getRawMaterialName(item.raw_material_id) }}
+                  {{ item.cooked_items_id.name }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900">
-                  {{ item.jumlah_dibutuhkan }}
+                  {{ item.quantity }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500">
-                  {{ getRawMaterialUnit(item.raw_material_id) }}
+                  {{ getCookedItemUnit(item.cooked_items_id) }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900">
-                  {{ formatCurrency((rawMaterials.find(m => m.id === item.raw_material_id)?.harga_per_unit || 0) * item.jumlah_dibutuhkan) }}
+                  {{ formatCurrency(getItemCost(item)) }}
                 </td>
               </tr>
             </tbody>

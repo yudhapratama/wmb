@@ -25,11 +25,19 @@ const userRole = computed(() => {
 //   console.log('Permissions:', authStore.permissions)
 // }, { immediate: true })
 
-// Change default to true so sidebar is open by default
-const isSidebarOpen = ref(true)
+// Simpan state sidebar di localStorage untuk mempertahankannya setelah refresh token
+const getSavedSidebarState = () => {
+  const savedState = localStorage.getItem('sidebar-state')
+  return savedState !== null ? savedState === 'true' : true // Default ke true jika tidak ada
+}
+
+// Change default to use saved state from localStorage
+const isSidebarOpen = ref(getSavedSidebarState())
 
 function toggleSidebar() {
   isSidebarOpen.value = !isSidebarOpen.value
+  // Simpan state sidebar ke localStorage
+  localStorage.setItem('sidebar-state', isSidebarOpen.value)
 }
 
 // Add keyboard shortcut to toggle sidebar
@@ -152,7 +160,7 @@ const allNavItems = [
   },
   { 
     name: 'Penjualan', 
-    path: '/pos', 
+    path: '/sales', 
     icon: 'dollar-sign',
     collections: ['sales', 'sales_items'] // Collection yang perlu diakses
   },

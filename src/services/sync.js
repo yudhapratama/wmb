@@ -88,6 +88,20 @@ export const syncService = {
   async processQueueItem(item) {
     const { entity, entity_id, action, data } = item
     
+    // Bersihkan data untuk entitas sales
+    if (entity === 'sales' && data) {
+      const cleanData = { ...data }
+      // Hapus field yang tidak boleh dikirim ke Directus
+      delete cleanData.date_created
+      delete cleanData.date_updated
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      // Update data yang akan diproses
+      item.data = cleanData
+    }
+    
     switch (action) {
       case 'create':
         if (entity === 'expenses') {
@@ -108,16 +122,29 @@ export const syncService = {
             })
           }
      
-        } else {
-          // Handle case where bukti_pembayaran is null
-          if (entity === 'expenses' && data.bukti_pembayaran === null) {
+        } else if (entity === 'expenses' && data.bukti_pembayaran === null) {
             const expenseData = { ...data }
             delete expenseData.bukti_pembayaran
             await api.post(`/items/${entity}`, expenseData)
+          } else if (entity === 'sales' && data.items) {
+            // Handle sales dengan items
+            const { items, ...salesData } = data
+            
+            // Create sales record first
+            const salesResponse = await api.post(`/items/${entity}`, salesData)
+            const createdSalesId = salesResponse.data.data.id
+            
+            // Create sales_items
+            for (const item of items) {
+              await api.post('/items/sales_items', {
+                ...item,
+                sales_id: createdSalesId
+              })
+            }
           } else {
             await api.post(`/items/${entity}`, data)
           }
-        }
+
         break
       case 'update':
         if (entity === 'expenses') {

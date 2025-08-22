@@ -115,6 +115,84 @@ class WarungDatabase extends Dexie {
       // Update recipe_items dengan field yang benar
       recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at'
     })    
+
+    this.version(12).stores({
+      // Pastikan semua tabel menggunakan auto-increment yang konsisten
+      suppliers: '++id, nama_pt_toko, kategori_supplier, status, cached_at',
+      item_categories: '++id, name, status, cached_at',
+      expense_categories: '++id, name, status, cached_at',
+      raw_materials: '++id, nama_item, kategori, kategori_name, unit, unit_name, unit_abbreviation, supplier_utama, supplier_name, total_stock, harga_rata_rata, status, cached_at',
+      products: '++id, nama_produk, kategori, harga_jual, deskripsi, tipe_produk, harga_pokok, total_harga_bahan, konsinyasi, supplier_konsinyasi, status, cached_at',
+      recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at',
+      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
+      po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
+      stock_opname: '++id, raw_material_id, date, sync_status, cached_at',
+      kitchen_preparations: '++id, raw_material_id, date, sync_status, cached_at',
+      waste_records: '++id, raw_material_id, date, sync_status, cached_at',
+      sales_sessions: '++id, waktu_buka, waktu_tutup, cashier, modal_awal, date_created, date_updated, cached_at',
+      sales: '++id, sesi_penjualan, mekanisme_pembayaran, dibayarkan, kembalian, date_created, date_updated, sync_status, cached_at',
+      sales_items: '++id, sales_id, product_id, jumlah, hpp_saat_transaksi, harga_jual_saat_transaksi, margin_saat_transaksi, sync_status, cached_at',
+      expenses: '++id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at',
+      sync_queue: '++id, entity, entity_id, action, data, timestamp',
+      units: '++id, name, value, cached_at',
+      log_inventaris: '++id, item, tipe_transaksi, perubahan_jumlah, stok_sebelum, stok_setelah, dokumen_sumber, pengguna, waktu_log, sync_status, cached_at',
+      waste: '++id, item, jumlah, alasan, bukti, tanggal, pengguna, unit, sync_status, cached_at',
+      cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
+      cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at',
+      product_categories: '++id, name, status, cached_at'
+    })
+
+    this.version(13).stores({
+      // Semua tabel menggunakan auto-increment untuk konsistensi
+      suppliers: '++id, nama_pt_toko, kategori_supplier, status, cached_at',
+      item_categories: '++id, name, status, cached_at',
+      expense_categories: '++id, name, status, cached_at', 
+      raw_materials: '++id, nama_item, kategori, kategori_name, unit, unit_name, unit_abbreviation, supplier_utama, supplier_name, total_stock, harga_rata_rata, status, cached_at',
+      products: '++id, nama_produk, kategori, harga_jual, deskripsi, tipe_produk, harga_pokok, total_harga_bahan, konsinyasi, supplier_konsinyasi, status, cached_at',
+      recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at',
+      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
+      po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
+      stock_opname: '++id, raw_material_id, date, sync_status, cached_at',
+      kitchen_preparations: '++id, raw_material_id, date, sync_status, cached_at',
+      waste_records: '++id, raw_material_id, date, sync_status, cached_at',
+      sales_sessions: '++id, waktu_buka, waktu_tutup, cashier, modal_awal, date_created, date_updated, cached_at',
+      sales: '++id, sesi_penjualan, mekanisme_pembayaran, dibayarkan, kembalian, date_created, date_updated, sync_status, cached_at',
+      sales_items: '++id, sales_id, product_id, jumlah, hpp_saat_transaksi, harga_jual_saat_transaksi, margin_saat_transaksi, sync_status, cached_at',
+      expenses: '++id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at',
+      sync_queue: '++id, entity, entity_id, action, data, timestamp',
+      units: '++id, name, value, cached_at',
+      log_inventaris: '++id, item, tipe_transaksi, perubahan_jumlah, stok_sebelum, stok_setelah, dokumen_sumber, pengguna, waktu_log, sync_status, cached_at',
+      waste: '++id, item, jumlah, alasan, bukti, tanggal, pengguna, unit, sync_status, cached_at',
+      cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
+      cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at',
+      product_categories: '++id, name, status, cached_at'
+    })    
+
+    this.version(13).stores({
+      // Semua tabel menggunakan auto-increment untuk konsistensi
+      suppliers: '++id, nama_pt_toko, kategori_supplier, status, cached_at',
+      item_categories: '++id, name, status, cached_at',
+      expense_categories: '++id, name, status, cached_at', 
+      raw_materials: '++id, nama_item, kategori, kategori_name, unit, unit_name, unit_abbreviation, supplier_utama, supplier_name, total_stock, harga_rata_rata, status, cached_at',
+      products: '++id, nama_produk, kategori, harga_jual, deskripsi, tipe_produk, harga_pokok, total_harga_bahan, konsinyasi, supplier_konsinyasi, status, cached_at',
+      recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at',
+      purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
+      po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
+      stock_opname: '++id, raw_material_id, date, sync_status, cached_at',
+      kitchen_preparations: '++id, raw_material_id, date, sync_status, cached_at',
+      waste_records: '++id, raw_material_id, date, sync_status, cached_at',
+      sales_sessions: 'id, waktu_buka, waktu_tutup, cashier, modal_awal, date_created, date_updated, cached_at',
+      sales: '++id, sesi_penjualan, mekanisme_pembayaran, total, dibayarkan, kembalian, date_created, date_updated, sync_status, cached_at',
+      sales_items: '++id, sales_id, product_id, jumlah, hpp_saat_transaksi, harga_jual_saat_transaksi, margin_saat_transaksi, sync_status, cached_at',
+      expenses: '++id, nama_pengeluaran, kategori, jumlah, deskripsi, tanggal, metode_pembayaran, bukti_pembayaran, sync_status, cached_at',
+      sync_queue: '++id, entity, entity_id, action, data, timestamp',
+      units: '++id, name, value, cached_at',
+      log_inventaris: '++id, item, tipe_transaksi, perubahan_jumlah, stok_sebelum, stok_setelah, dokumen_sumber, pengguna, waktu_log, sync_status, cached_at',
+      waste: '++id, item, jumlah, alasan, bukti, tanggal, pengguna, unit, sync_status, cached_at',
+      cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
+      cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at',
+      product_categories: '++id, name, status, cached_at'
+    })        
     
     // Define tables
     this.suppliers = this.table('suppliers')
@@ -142,7 +220,17 @@ class WarungDatabase extends Dexie {
     // Tambahkan referensi untuk product_categories
     this.product_categories = this.table('product_categories')
   }
-  
+
+  async resetDatabase() {
+    try {
+      await this.delete()
+      await this.open()
+      console.log('Database reset successfully')
+    } catch (error) {
+      console.error('Error resetting database:', error)
+    }
+  }  
+
   async purgeOldCache() {
     const oneDayAgo = new Date().getTime() - (1 * 24 * 60 * 60 * 1000);
 

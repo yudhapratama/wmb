@@ -11,8 +11,8 @@ import { useOfflineStatus } from '../composables/useOfflineStatus'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import { useSuppliers } from '../composables/useSuppliers'
-// Gunakan useCookedItems untuk bahan setengah jadi sebagai bahan baku produk
 import { useCookedItems } from '../composables/useCookedItems'
+import { useRecipeItems } from '../composables/useRecipeItems'
 
 // Get offline status
 const { isOffline } = useOfflineStatus()
@@ -22,7 +22,8 @@ const { suppliers, loadData: loadSuppliersData } = useSuppliers()
 
 // Use cooked items composable untuk bahan setengah jadi sebagai bahan baku
 const { 
-  cookedItems: rawMaterials, 
+  cookedItems, 
+  reduceStock,
   units, 
   loadData: loadCookedItemsData 
 } = useCookedItems()
@@ -77,25 +78,43 @@ watch([searchQuery, selectedCategory, dateFilter], () => {
   resetPagination()
 }, { deep: true })
 
+// Add useRecipeItems composable
+const { 
+  addRecipeItems, 
+  getRecipeItemsByProduct, 
+  loadData: loadRecipeItemsData 
+} = useRecipeItems(false) // false = don't auto-load
+
 // Load data on mount
 onMounted(async () => {
   await Promise.all([
     loadData(),
     loadSuppliersData(),
-    loadCookedItemsData() // Ganti dari loadInventoryData ke loadCookedItemsData
+    loadCookedItemsData(),
+    loadRecipeItemsData() // Tambahkan ini
   ])
 })
 
 // View product details
 function viewProductDetails(product) {
-  currentProduct.value = { ...product }
+  // Tambahkan recipe_items ke produk
+  const productWithRecipe = {
+    ...product,
+    recipe_items: getRecipeItemsByProduct.value(product.id)
+  }
+  currentProduct.value = productWithRecipe
   activeTab.value = 'details'
   showDetailModal.value = true
 }
 
 // Edit product
 function editProduct(product) {
-  currentProduct.value = { ...product }
+  // Tambahkan recipe_items ke produk seperti di showDetails
+  const productWithRecipe = {
+    ...product,
+    recipe_items: getRecipeItemsByProduct.value(product.id)
+  }
+  currentProduct.value = productWithRecipe
   showEditModal.value = true
 }
 
@@ -105,14 +124,58 @@ function confirmDelete(product) {
   isConfirmDeleteOpen.value = true
 }
 
-// Handle add product
+// Handle add product with recipe items and stock reduction
 async function handleAddProduct(newProduct) {
-  const result = await addProduct(newProduct)
-  if (result.success) {
-    showAddModal.value = false
-    showSuccessNotification('Produk berhasil ditambahkan')
-  } else {
-    showErrorNotification(`Gagal menambahkan produk: ${result.error || 'Unknown error'}`)
+  try {
+    // 1. Add the product first
+    const result = await addProduct(newProduct)
+    
+    if (result.success) {
+      // If recipe-based product, save recipe_items separately and reduce stock
+      if (newProduct.tipe_produk === 'recipe' && newProduct.recipe_items?.length > 0) {
+        // 2. Add recipe items
+        const recipeResult = await addRecipeItems(result.id, newProduct.recipe_items)
+        
+        if (recipeResult.success) {
+          // 3. Reduce stock for each cooked item used in recipe
+          let stockReductionErrors = []
+          
+          for (const recipeItem of newProduct.recipe_items) {
+            if (recipeItem.cooked_items_id && recipeItem.jumlah_dibutuhkan > 0) {
+              try {
+                await reduceStock(recipeItem.cooked_items_id, recipeItem.jumlah_dibutuhkan)
+              } catch (stockError) {
+                console.error(`Failed to reduce stock for cooked item ${recipeItem.cooked_items_id}:`, stockError)
+                stockReductionErrors.push(`${getCookedItemName(recipeItem.cooked_items_id)}: ${stockError.message}`)
+              }
+            }
+          }
+          
+          // Show appropriate success message
+          if (stockReductionErrors.length > 0) {
+            showErrorNotification(`Produk dan resep berhasil ditambahkan, tetapi ada masalah pengurangan stok: ${stockReductionErrors.join(', ')}`)
+          } else {
+            showSuccessNotification('Produk berhasil ditambahkan dan stok bahan telah diperbarui')
+          }
+        } else {
+          showErrorNotification(`Produk berhasil ditambahkan, tetapi gagal menyimpan resep: ${recipeResult.error}`)
+        }
+      } else {
+        // Basic product (non-recipe)
+        showSuccessNotification('Produk berhasil ditambahkan')
+      }
+      
+      // Close modal and reload data
+      showAddModal.value = false
+      await loadData()
+      
+    } else {
+      showErrorNotification(`Gagal menambahkan produk: ${result.error || 'Unknown error'}`)
+    }
+    
+  } catch (error) {
+    console.error('Error adding product:', error)
+    showErrorNotification('Gagal menambahkan produk')
   }
 }
 
@@ -160,32 +223,34 @@ function showErrorNotification(message) {
   }, 5000)
 }
 
-// Format currency
+// Helper functions
+function getCookedItemName(cookedItemId) {
+  const item = cookedItems.value.find(c => c.id === cookedItemId)
+  return item ? item.name : 'Unknown Item'
+}
+
+function getSupplierName(supplierId) {
+  const supplier = suppliers.value.find(s => s.id === supplierId)
+  return supplier ? (supplier.nama_supplier || supplier.nama_pt_toko || 'Unknown Supplier') : 'Unknown Supplier'
+}
+
+function getUnitName(unitId) {
+  const unit = units.value.find(u => u.id === unitId)
+  return unit ? (unit.abbreviation || unit.name || 'Unknown Unit') : 'Unknown Unit'
+}
+
 function formatCurrency(value) {
-  if (!value) return 'Rp 0'
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0
-  }).format(value)
-}
-
-// Get supplier name by ID
-function getSupplierName(supplierId) {
-  const supplier = suppliers.value.find(s => s.id === supplierId)
-  return supplier ? supplier.nama_pt_toko : 'Unknown'
+  }).format(value || 0)
 }
 
 // Get raw material name by ID
 function getRawMaterialName(rawMaterialId) {
   const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
   return material ? material.nama_item : 'Unknown'
-}
-
-// Get unit name by ID
-function getUnitName(unitId) {
-  const unit = units.value.find(u => u.id === unitId)
-  return unit ? unit.name : 'Unknown'
 }
 </script>
 
@@ -319,7 +384,7 @@ function getUnitName(unitId) {
       :isOpen="showAddModal"
       :categories="categories"
       :suppliers="suppliers"
-      :rawMaterials="rawMaterials"
+      :cookedItems="cookedItems"
       :units="units"
       :isLoading="isLoading"
       @close="showAddModal = false"
@@ -330,6 +395,8 @@ function getUnitName(unitId) {
       v-if="showEditModal"
       :product="currentProduct"
       :categories="categories"
+      :cookedItems="cookedItems"
+      :units="units"
       :isLoading="isLoading"
       @close="showEditModal = false"
       @save="handleUpdateProduct"
@@ -340,9 +407,9 @@ function getUnitName(unitId) {
       :product="currentProduct"
       :getCategoryName="getCategoryName"
       :getSupplierName="getSupplierName"
-      :getRawMaterialName="getRawMaterialName"
+      :getCookedItemName="getCookedItemName"
       :getUnitName="getUnitName"
-      :rawMaterials="rawMaterials"
+      :cookedItems="cookedItems"
       :units="units"
       :formatCurrency="formatCurrency"
       v-model:activeTab="activeTab"

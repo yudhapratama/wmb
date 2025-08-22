@@ -186,6 +186,8 @@ export function useSales() {
           fields: [
             'id',
             'modal_awal',
+            'modal_akhir',  // ✅ TAMBAHKAN FIELD INI
+            'modal_selisih',
             'waktu_buka',
             'waktu_tutup',
             'cashier.id',
@@ -241,6 +243,8 @@ export function useSales() {
           fields: [
             'id',
             'modal_awal',
+            'modal_akhir',  // ✅ TAMBAHKAN FIELD 
+            'modal_selisih',
             'waktu_buka',
             'waktu_tutup',
             'cashier.id',
@@ -263,6 +267,7 @@ export function useSales() {
         const cleanSession = {
           id: currentSession.value.id,
           modal_awal: currentSession.value.modal_awal,
+          modal_akhir: currentSession.value.modal_akhir,  // ✅ TAMBAHKAN FIELD INI
           waktu_buka: currentSession.value.waktu_buka,
           waktu_tutup: currentSession.value.waktu_tutup,
           cashier_id: currentSession.value.cashier?.id,

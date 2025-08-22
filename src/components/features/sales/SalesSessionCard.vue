@@ -7,7 +7,7 @@
         <p class="text-sm text-gray-500">{{ session.cashier?.first_name }} {{ session.cashier?.last_name }}</p>
       </div>
       <div class="flex space-x-2">
-        <PermissionBasedAccess collection="sales_sessions" action="read">
+        <!-- <PermissionBasedAccess collection="sales_sessions" action="read">
           <button
             @click="$emit('view-transactions', session)"
             class="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
@@ -17,7 +17,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </button>
-        </PermissionBasedAccess>
+        </PermissionBasedAccess> -->
         
         <PermissionBasedAccess collection="sales_sessions" action="update" v-if="!session.waktu_tutup">
           <button
@@ -31,14 +31,27 @@
           </button>
         </PermissionBasedAccess>
         
-        <PermissionBasedAccess collection="sales_sessions" action="update" v-if="!session.waktu_tutup">
+        <PermissionBasedAccess collection="sales_sessions" action="update">
           <button
             @click="$emit('view-session-detail', session)"
             class="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
             title="Lihat Detail Transaksi"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
+        </PermissionBasedAccess>
+        
+        <!-- Tambahkan tombol tutup sesi untuk sesi aktif -->
+        <PermissionBasedAccess collection="sales_sessions" action="update" v-if="!session.waktu_tutup">
+          <button
+            @click="$emit('close-session', session)"
+            class="p-2 text-red-600 hover:bg-red-50 rounded-md"
+            title="Tutup Sesi"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
             </svg>
           </button>
         </PermissionBasedAccess>
@@ -70,7 +83,7 @@
       <div class="flex justify-between items-center" v-if="session.waktu_tutup">
         <span class="text-sm text-gray-600">Selisih</span>
         <span :class="`text-sm font-bold ${(session.modal_akhir || 0) >= session.modal_awal ? 'text-green-600' : 'text-red-600'}`">
-          {{ formatCurrency((session.modal_akhir || 0) - session.modal_awal) }}
+          {{ formatCurrency(session.modal_selisih) }}
         </span>
       </div>
     </div>

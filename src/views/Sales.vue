@@ -243,10 +243,10 @@
     />
 
     <CloseSessionModal
-      v-if="showCloseSessionModal && currentSession"
+      v-if="showCloseSessionModal && selectedSessionForModal"
       :isOpen="showCloseSessionModal"
-      :session="currentSession"
-      :sales="sales.filter(s => s.sesi_penjualan?.id === currentSession.id)"
+      :session="selectedSessionForModal"
+      :sales="sales.filter(s => s.sesi_penjualan?.id === selectedSessionForModal.id)"
       @close="showCloseSessionModal = false"
       @save="handleCloseSession"
     />
@@ -492,10 +492,27 @@ export default {
 
     function handleCloseSession(sessionData) {
       console.log('Closing session with data:', sessionData)
-      console.log('Current session:', currentSession.value)
-      console.log('Sales for session:', sales.value.filter(s => s.sesi_penjualan?.id === currentSession.value.id))
-      closeSalesSession(sessionData)
-      showCloseSessionModal.value = false
+      console.log('Selected session:', selectedSessionForModal.value)
+      console.log('Sales for session:', sales.value.filter(s => s.sesi_penjualan?.id === selectedSessionForModal.value.id))
+      
+      // ✅ PERBAIKAN: Gunakan selectedSessionForModal bukan currentSession
+      if (selectedSessionForModal.value?.id) {
+        closeSalesSession(selectedSessionForModal.value.id, sessionData)
+          .then(() => {
+            showNotification('Sesi berhasil ditutup', 'success')
+            showCloseSessionModal.value = false
+            selectedSessionForModal.value = null // Reset selected session
+            // Reload data setelah menutup sesi
+            loadData()
+          })
+          .catch((error) => {
+            console.error('Error closing session:', error)
+            showNotification('Gagal menutup sesi', 'error')
+          })
+      } else {
+        console.error('No selected session to close')
+        showNotification('Tidak ada sesi yang dipilih untuk ditutup', 'error')
+      }
     }
 
     // Tambahkan fungsi yang hilang

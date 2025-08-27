@@ -24,7 +24,16 @@ const emit = defineEmits(['view', 'edit', 'delete'])
 const { getFileUrl } = useFileUpload()
 
 function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('id-ID', {
+  // Parse the date and format it consistently with the filter logic
+  const date = new Date(dateString)
+  // Use the same date format as the filter (YYYY-MM-DD) to avoid timezone issues
+  const isoDate = date.toISOString().split('T')[0]
+  const [year, month, day] = isoDate.split('-')
+  
+  // Create a new date from the ISO date to avoid timezone conversion
+  const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+  
+  return localDate.toLocaleDateString('id-ID', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'

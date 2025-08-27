@@ -234,17 +234,14 @@ onMounted(() => {
             <div v-if="topProducts.length === 0" class="text-center text-gray-500 py-4">
               Tidak ada data penjualan produk
             </div>
-            <div v-else v-for="(product, index) in topProducts" :key="product.product_id" class="flex justify-between items-center py-2 border-b border-gray-100">
-              <div class="flex items-center">
-                <span class="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full mr-3">
-                  {{ index + 1 }}
-                </span>
-                <div>
-                  <p class="font-medium">{{ product.product_name }}</p>
-                  <p class="text-sm text-gray-500">{{ product.quantity }} terjual</p>
-                </div>
+            <div v-else v-for="(product, index) in topProducts" :key="product.product_id" class="flex items-center py-2 border-b border-gray-100">
+              <span class="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full mr-3">
+                {{ index + 1 }}
+              </span>
+              <div>
+                <p class="font-medium">{{ product.name }}</p>
+                <p class="text-sm text-gray-500">{{ product.quantity }} terjual</p>
               </div>
-              <p class="font-semibold">{{ formatCurrency(product.total_revenue) }}</p>
             </div>
           </div>
         </div>
@@ -262,11 +259,10 @@ onMounted(() => {
                   {{ index + 1 }}
                 </span>
                 <div>
-                  <p class="font-medium">{{ expense.category_name }}</p>
-                  <p class="text-sm text-gray-500">{{ expense.count }} transaksi</p>
+                  <p class="font-medium">{{ expense.name }}</p>
                 </div>
               </div>
-              <p class="font-semibold">{{ formatCurrency(expense.total_amount) }}</p>
+              <p class="font-semibold">{{ formatCurrency(expense.amount) }}</p>
             </div>
           </div>
         </div>

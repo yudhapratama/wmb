@@ -73,9 +73,10 @@ export function useExpenses() {
     // Filter by date range
     if (dateFilter.value.startDate || dateFilter.value.endDate) {
       filtered = filtered.filter(expense => {
-        const expenseDate = new Date(expense[dateFilter.value.dateField])
-        const startDate = dateFilter.value.startDate ? new Date(dateFilter.value.startDate) : null
-        const endDate = dateFilter.value.endDate ? new Date(dateFilter.value.endDate) : null
+        // Use ISO date format to avoid timezone issues
+        const expenseDate = new Date(expense[dateFilter.value.dateField]).toISOString().split('T')[0]
+        const startDate = dateFilter.value.startDate
+        const endDate = dateFilter.value.endDate
         
         if (startDate && endDate) {
           return expenseDate >= startDate && expenseDate <= endDate

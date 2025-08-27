@@ -78,7 +78,7 @@
                   </svg>
                 </button>
               </PermissionBasedAccess>
-              <PermissionBasedAccess collection="raw_materials" action="delete">
+              <!-- <PermissionBasedAccess collection="raw_materials" action="delete">
                 <button 
                   @click="$emit('shrinkage', item)"
                   class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
@@ -87,7 +87,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                   </svg>
                 </button>
-              </PermissionBasedAccess>
+              </PermissionBasedAccess> -->
             </div>
           </div>
         </div>

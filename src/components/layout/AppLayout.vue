@@ -119,7 +119,7 @@ const allNavItems = [
     name: 'Dashboard', 
     path: '/dashboard', 
     icon: 'chart-pie',
-    collections: ['dashboard'] // Collection yang perlu diakses
+    collections: ['raw_materials', 'item_categories', 'suppliers', 'units', 'cooked_items', 'kitchen_prep', 'expense_categories', 'products', 'product_categories'] // Collection yang perlu diakses sesuai route
   },
   { 
     name: 'Supplier', 
@@ -128,32 +128,31 @@ const allNavItems = [
     collections: ['suppliers', ''] // Collection yang perlu diakses
   },
   { 
-    name: 'Purchase', 
+    name: 'Inventori Bahan Mentah', 
+    path: '/inventory', 
+    icon: 'package',
+    collections: ['raw_materials', 'item_categories', 'suppliers', 'units'] // Collection yang perlu diakses
+  },  
+  { 
+    name: 'Pembelian Bahan Mentah', 
     path: '/purchase-orders', 
     icon: 'shopping-cart',
     collections: ['purchase_orders', 'po_items', 'suppliers'] // Collection yang perlu diakses
   },
   { 
-    name: 'Inventory', 
-    path: '/inventory', 
-    icon: 'package',
-    collections: ['raw_materials', 'item_categories', 'suppliers', 'units'] // Collection yang perlu diakses
-  },
+    name: 'Bahan Setengah Jadi', 
+    path: '/cooked-items', 
+    icon: 'utensils',
+    collections: ['cooked_items', 'cooked_items_raw_materials', 'raw_materials', 'item_categories', 'units'] // Collection yang perlu diakses
+  },    
   { 
-    name: 'Kitchen Prep', 
+    name: 'Persiapan Dapur', 
     path: '/kitchen', 
     icon: 'utensils',
     collections: ['kitchen_prep', 'raw_materials', 'cooked_items'] // Collection yang perlu diakses
   },
-
   { 
-    name: 'Cooked Items', 
-    path: '/cooked-items', 
-    icon: 'utensils',
-    collections: ['cooked_items', 'cooked_items_raw_materials', 'raw_materials', 'item_categories', 'units'] // Collection yang perlu diakses
-  },  
-  { 
-    name: 'Products', 
+    name: 'Produk', 
     path: '/products', 
     icon: 'chef-hat',
     collections: ['products', 'product_categories'] // Collection yang perlu diakses

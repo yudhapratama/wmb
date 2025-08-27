@@ -1,109 +1,124 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
-import api from '../services/api'
-import syncService from '../services/sync'
+import { useDashboard } from '../composables/useDashboard'
 
-// Dashboard data
-const isLoading = ref(true)
-const todayRevenue = ref(0)
-const todayExpenses = ref(0)
-const netProfit = ref(0)
-const shrinkageRate = ref(0)
-const activePOs = ref(0)
-const lowStockItems = ref(0)
-const activeSuppliers = ref(0)
-const recentActivities = ref([])
+// Use dashboard composable
+const {
+  isLoading,
+  error,
+  selectedDate,
+  totalRevenue,
+  totalMargin,
+  totalPaidPurchases,
+  totalUnpaidPurchases,
+  shrinkageRate,
+  topProducts,
+  totalExpenses,
+  topExpenses,
+  lowStockCookedItems,
+  loadDashboardData,
+  formatCurrency,
+  formatPercentage,
+  changeDate
+} = useDashboard()
 
-// Fetch dashboard data
-async function fetchDashboardData() {
-  isLoading.value = true
-  
-  try {
-    // In a real app, these would be actual API calls
-    // For now, we'll simulate with mock data
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
-    // Mock data
-    todayRevenue.value = 2500000
-    todayExpenses.value = 850000
-    netProfit.value = todayRevenue.value - todayExpenses.value
-    shrinkageRate.value = 2.5
-    activePOs.value = 3
-    lowStockItems.value = 5
-    activeSuppliers.value = 8
-    
-    recentActivities.value = [
-      { id: 1, type: 'sale', description: 'New sale recorded', amount: 150000, time: '10 minutes ago' },
-      { id: 2, type: 'expense', description: 'Expense added: Electricity', amount: 250000, time: '1 hour ago' },
-      { id: 3, type: 'purchase', description: 'Purchase order created', amount: 500000, time: '3 hours ago' },
-      { id: 4, type: 'inventory', description: 'Stock opname completed', amount: null, time: '5 hours ago' },
-      { id: 5, type: 'waste', description: 'Waste recorded: Daging Sapi', amount: 75000, time: 'Yesterday' },
-    ]
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error)
-  } finally {
-    isLoading.value = false
-  }
+// Computed values
+const netProfit = computed(() => totalRevenue.value - totalExpenses.value)
+const activePOs = computed(() => totalUnpaidPurchases.value > 0 ? 1 : 0)
+const lowStockItemsCount = computed(() => lowStockCookedItems.value.length)
+
+// Handle date change
+function handleDateChange(event) {
+  changeDate(event.target.value)
 }
 
-// Format currency
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
-}
-
-// Initialize
-onMounted(async () => {
-  // Check if we need to sync data
-  if (syncService.isOnline()) {
-    await syncService.initializeSync()
-  }
-  
-  // Fetch dashboard data
-  await fetchDashboardData()
+onMounted(() => {
+  loadDashboardData()
 })
 </script>
 
 <template>
   <AppLayout>
+    <!-- Date Filter -->
+    <div class="mb-6 bg-white rounded-lg shadow p-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Dashboard</h2>
+        <div class="flex items-center space-x-2">
+          <label for="date-filter" class="text-sm font-medium text-gray-700">Tanggal:</label>
+          <input 
+            id="date-filter"
+            type="date" 
+            :value="selectedDate" 
+            @change="handleDateChange"
+            class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+          <button 
+            @click="loadDashboardData" 
+            class="px-3 py-1 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="isLoading" class="flex justify-center items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
     </div>
     
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Error</h3>
+          <p class="text-sm text-red-700 mt-1">{{ error }}</p>
+        </div>
+      </div>
+    </div>
+    
     <div v-else>
-      <!-- Stats Overview -->
+      <!-- Main Stats Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <!-- Today's Revenue -->
+        <!-- Total Revenue -->
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-gray-500">Pendapatan Hari Ini</h3>
+            <h3 class="text-sm font-medium text-gray-500">Total Pendapatan</h3>
             <span class="p-2 bg-green-100 rounded-full">
               <svg class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
           </div>
-          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(todayRevenue) }}</p>
+          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(totalRevenue) }}</p>
         </div>
         
-        <!-- Today's Expenses -->
+        <!-- Total Margin -->
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-gray-500">Pengeluaran Hari Ini</h3>
+            <h3 class="text-sm font-medium text-gray-500">Total Margin</h3>
+            <span class="p-2 bg-emerald-100 rounded-full">
+              <svg class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </span>
+          </div>
+          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(totalMargin) }}</p>
+        </div>
+        
+        <!-- Total Expenses -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-medium text-gray-500">Total Pengeluaran</h3>
             <span class="p-2 bg-red-100 rounded-full">
               <svg class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
             </span>
           </div>
-          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(todayExpenses) }}</p>
+          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(totalExpenses) }}</p>
         </div>
         
         <!-- Net Profit -->
@@ -116,20 +131,49 @@ onMounted(async () => {
               </svg>
             </span>
           </div>
-          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(netProfit) }}</p>
+          <p class="mt-2 text-2xl font-semibold" :class="netProfit >= 0 ? 'text-green-600' : 'text-red-600'">{{ formatCurrency(netProfit) }}</p>
+        </div>
+      </div>
+
+      <!-- Purchase Orders & Shrinkage -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <!-- Paid Purchases -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-medium text-gray-500">Belanja Terbayar</h3>
+            <span class="p-2 bg-green-100 rounded-full">
+              <svg class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(totalPaidPurchases) }}</p>
+        </div>
+        
+        <!-- Unpaid Purchases -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-medium text-gray-500">Belanja Belum Bayar</h3>
+            <span class="p-2 bg-orange-100 rounded-full">
+              <svg class="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <p class="mt-2 text-2xl font-semibold">{{ formatCurrency(totalUnpaidPurchases) }}</p>
         </div>
         
         <!-- Shrinkage Rate -->
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-gray-500">Tingkat Shrinkage</h3>
+            <h3 class="text-sm font-medium text-gray-500">Tingkat Penyusutan</h3>
             <span class="p-2 bg-yellow-100 rounded-full">
               <svg class="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
           </div>
-          <p class="mt-2 text-2xl font-semibold">{{ shrinkageRate }}%</p>
+          <p class="mt-2 text-2xl font-semibold">{{ formatPercentage(shrinkageRate) }}</p>
         </div>
       </div>
       
@@ -159,7 +203,7 @@ onMounted(async () => {
               </svg>
             </div>
             <div>
-              <p class="text-xl font-semibold">{{ lowStockItems }}</p>
+              <p class="text-xl font-semibold">{{ lowStockItemsCount }}</p>
               <p class="text-sm text-gray-500">Item Stok Menipis</p>
             </div>
           </div>
@@ -174,69 +218,83 @@ onMounted(async () => {
               </svg>
             </div>
             <div>
-              <p class="text-xl font-semibold">{{ activeSuppliers }}</p>
+              <p class="text-xl font-semibold">-</p>
               <p class="text-sm text-gray-500">Supplier Aktif</p>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-6 border-b">
-          <h3 class="text-lg font-medium">Aktivitas Terbaru</h3>
+      <!-- Top Products, Expenses, and Low Stock -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Top 5 Best Selling Products -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Top 5 Produk Terlaris</h3>
+          <div class="space-y-3">
+            <div v-if="topProducts.length === 0" class="text-center text-gray-500 py-4">
+              Tidak ada data penjualan produk
+            </div>
+            <div v-else v-for="(product, index) in topProducts" :key="product.product_id" class="flex justify-between items-center py-2 border-b border-gray-100">
+              <div class="flex items-center">
+                <span class="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full mr-3">
+                  {{ index + 1 }}
+                </span>
+                <div>
+                  <p class="font-medium">{{ product.product_name }}</p>
+                  <p class="text-sm text-gray-500">{{ product.quantity }} terjual</p>
+                </div>
+              </div>
+              <p class="font-semibold">{{ formatCurrency(product.total_revenue) }}</p>
+            </div>
+          </div>
         </div>
-        <ul class="divide-y divide-gray-200">
-          <li v-for="activity in recentActivities" :key="activity.id" class="p-6">
-            <div class="flex items-center">
-              <!-- Icon based on activity type -->
-              <div 
-                class="p-3 rounded-full mr-4"
-                :class="{
-                  'bg-green-100': activity.type === 'sale',
-                  'bg-red-100': activity.type === 'expense',
-                  'bg-blue-100': activity.type === 'purchase',
-                  'bg-yellow-100': activity.type === 'inventory',
-                  'bg-orange-100': activity.type === 'waste',
-                }"
-              >
-                <svg 
-                  class="h-5 w-5"
-                  :class="{
-                    'text-green-500': activity.type === 'sale',
-                    'text-red-500': activity.type === 'expense',
-                    'text-blue-500': activity.type === 'purchase',
-                    'text-yellow-500': activity.type === 'inventory',
-                    'text-orange-500': activity.type === 'waste',
-                  }"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path 
-                    stroke-linecap="round" 
-                    stroke-linejoin="round" 
-                    stroke-width="2" 
-                    :d="{
-                      'sale': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-                      'expense': 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
-                      'purchase': 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
-                      'inventory': 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-                      'waste': 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                    }[activity.type]"
-                  />
-                </svg>
+        
+        <!-- Top 3 Expenses -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Top 3 Pengeluaran</h3>
+          <div class="space-y-3">
+            <div v-if="topExpenses.length === 0" class="text-center text-gray-500 py-4">
+              Tidak ada data pengeluaran
+            </div>
+            <div v-else v-for="(expense, index) in topExpenses" :key="expense.category_id" class="flex justify-between items-center py-2 border-b border-gray-100">
+              <div class="flex items-center">
+                <span class="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-800 text-xs font-medium rounded-full mr-3">
+                  {{ index + 1 }}
+                </span>
+                <div>
+                  <p class="font-medium">{{ expense.category_name }}</p>
+                  <p class="text-sm text-gray-500">{{ expense.count }} transaksi</p>
+                </div>
               </div>
-              
-              <div class="flex-1">
-                <p class="text-sm font-medium text-gray-900">{{ activity.description }}</p>
-                <p class="text-sm text-gray-500">{{ activity.time }}</p>
+              <p class="font-semibold">{{ formatCurrency(expense.total_amount) }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Top 5 Low Stock Cooked Items -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Stok Bahan Setengah Jadi Menipis</h3>
+          <div class="space-y-3">
+            <div v-if="lowStockCookedItems.length === 0" class="text-center text-gray-500 py-4">
+              Semua stok aman
+            </div>
+            <div v-else v-for="(item, index) in lowStockCookedItems" :key="item.id" class="flex justify-between items-center py-2 border-b border-gray-100">
+              <div class="flex items-center">
+                <span class="inline-flex items-center justify-center w-6 h-6 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full mr-3">
+                  {{ index + 1 }}
+                </span>
+                <div>
+                  <p class="font-medium">{{ item.name }}</p>
+                  <p class="text-sm text-gray-500">{{ item.unit_name }}</p>
+                </div>
               </div>
-              
-              <div v-if="activity.amount" class="text-sm font-medium text-gray-900">
-                {{ formatCurrency(activity.amount) }}
+              <div class="text-right">
+                <p class="font-semibold text-red-600">{{ item.current_stock }}</p>
+                <p class="text-sm text-gray-500">Min: {{ item.minimum_stock }}</p>
               </div>
             </div>
-          </li>
-        </ul>
+          </div>
+        </div>
       </div>
     </div>
   </AppLayout>

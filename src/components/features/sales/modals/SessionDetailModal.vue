@@ -68,8 +68,8 @@
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga per Item</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HPP</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total HPP</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Margin</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Transaksi</th>
                 </tr>
               </thead>
@@ -79,8 +79,8 @@
                   <td class="px-4 py-3 text-sm text-gray-900">{{ item.jumlah }}</td>
                   <td class="px-4 py-3 text-sm text-gray-900">{{ formatCurrency(item.harga_jual_saat_transaksi) }}</td>
                   <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ formatCurrency(item.total_harga) }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ formatCurrency(item.hpp_saat_transaksi) }}</td>
-                  <td class="px-4 py-3 text-sm text-green-600 font-medium">{{ formatCurrency(item.margin_saat_transaksi) }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ formatCurrency(item.hpp_saat_transaksi * item.jumlah) }}</td>
+                  <td class="px-4 py-3 text-sm text-green-600 font-medium">{{ formatCurrency(item.margin_saat_transaksi * item.jumlah) }}</td>
                   <td class="px-4 py-3 text-sm text-gray-500">{{ formatDateTime(item.date_created) }}</td>
                 </tr>
               </tbody>

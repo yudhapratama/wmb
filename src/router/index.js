@@ -13,7 +13,7 @@ const NotFound = () => import('../views/NotFound.vue')
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard'
+    redirect: '/login'
   },
   {
     path: '/login',
@@ -25,7 +25,13 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: Dashboard,
-    meta: { requiresAuth: true }
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin'],
+      requiredCollections: ['raw_materials', 'item_categories', 'suppliers', 'units', 'cooked_items', 'kitchen_prep', 'item_categories', 'expense_categories',
+        'products', 'product_categories'
+      ]
+    }
   },
   {
     path: '/inventory',

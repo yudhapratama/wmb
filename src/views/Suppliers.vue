@@ -7,6 +7,7 @@ import AddSupplierModal from '../components/features/suppliers/modals/AddSupplie
 import EditSupplierModal from '../components/features/suppliers/modals/EditSupplierModal.vue'
 import SuppliersFilters from '../components/features/suppliers/SuppliersFilters.vue'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
+import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import { useSuppliers } from '../composables/useSuppliers'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 
@@ -46,7 +47,9 @@ const filteredSuppliers = computed(() => {
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
+const isConfirmDeleteOpen = ref(false)
 const currentSupplier = ref(null)
+const supplierToDelete = ref(null)
 
 // Notification state
 const showNotification = ref(false)
@@ -71,14 +74,22 @@ function editSupplier(supplier) {
   showEditModal.value = true
 }
 
-// Handle delete supplier
-async function handleDeleteSupplier(supplier) {
-  if (confirm(`Are you sure you want to delete supplier "${supplier.nama_pt_toko}"?`)) {
-    const result = await deleteSupplier(supplier.id)
+// Confirm delete supplier
+function handleDeleteSupplier(supplier) {
+  supplierToDelete.value = supplier
+  isConfirmDeleteOpen.value = true
+}
+
+// Delete supplier
+async function confirmDeleteSupplier() {
+  if (supplierToDelete.value) {
+    const result = await deleteSupplier(supplierToDelete.value.id)
     if (result.success) {
-      showSuccessNotification('Supplier deleted successfully')
+      isConfirmDeleteOpen.value = false
+      supplierToDelete.value = null
+      showSuccessNotification('Supplier berhasil dihapus')
     } else {
-      showErrorNotification(`Failed to delete supplier: ${result.error || 'Unknown error'}`)
+      showErrorNotification(`Gagal menghapus supplier: ${result.error || 'Unknown error'}`)
     }
   }
 }
@@ -227,6 +238,15 @@ function showErrorNotification(message) {
       :supplier="currentSupplier"
       @close="showDetailModal = false"
       @edit="editSupplier"
+    />
+    
+    <!-- Delete Confirmation Modal -->
+    <ConfirmationModal
+      v-if="isConfirmDeleteOpen"
+      title="Hapus Supplier"
+      message="Apakah Anda yakin ingin menghapus supplier ini? Tindakan ini tidak dapat dibatalkan."
+      @confirm="confirmDeleteSupplier"
+      @cancel="isConfirmDeleteOpen = false"
     />
     
     <!-- Notification -->

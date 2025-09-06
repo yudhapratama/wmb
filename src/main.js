@@ -2,8 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import { VueQueryPlugin } from '@tanstack/vue-query'
-import Toast from 'vue-toastification'
-import 'vue-toastification/dist/index.css'
+// Vue Toastification is now loaded from CDN in index.html
+const Toast = window.VueToastification?.default
 import router from './router'
 import './style.css'
 import App from './App.vue'

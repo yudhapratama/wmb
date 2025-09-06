@@ -106,7 +106,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ['vue-toastification']
+      external: ['vue-toastification', 'vue-toastification/dist/index.css']
     }
   }
 })

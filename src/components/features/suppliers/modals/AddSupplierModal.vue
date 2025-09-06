@@ -22,7 +22,12 @@ const newSupplier = ref({
   no_telp_pic: '',
   kategori_supplier: '',
   alamat_pt_toko: '',
-  status: 'active'
+  status: 'active',
+  catatan: '',
+  nama_bank: '',
+  nama_pic: '',
+  nomor_rekening: '',
+  tempo_pembayaran: 'Cash'
 })
 
 // Reset form when modal opens
@@ -32,7 +37,12 @@ function resetForm() {
     no_telp_pic: '',
     kategori_supplier: '',
     alamat_pt_toko: '',
-    status: 'active'
+    status: 'active',
+    catatan: '',
+    nama_bank: '',
+    nama_pic: '',
+    nomor_rekening: '',
+    tempo_pembayaran: 'Cash'
   }
 }
 

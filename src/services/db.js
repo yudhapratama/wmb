@@ -18,7 +18,7 @@ class WarungDatabase extends Dexie {
       recipe_items: 'id, recipe_id, cooked_items_id, quantity',
       purchase_orders: '++id, supplier, status, date, sync_status',
       po_items: 'id, purchase_order_id, item, jumlah_pesan, harga_satuan',
-      stock_opname: 'id, raw_material_id, date, sync_status',
+      stock_opnames: 'id, raw_material_id, date, sync_status',
       kitchen_preparations: 'id, raw_material_id, date, sync_status',
       waste_records: 'id, raw_material_id, date, sync_status',
       sales_sessions: 'id, date, status, sync_status',
@@ -48,7 +48,7 @@ class WarungDatabase extends Dexie {
       recipe_items: 'id, recipe_id, cooked_items_id, quantity, cached_at',
       purchase_orders: '++id, supplier, status, date, sync_status, cached_at',
       po_items: 'id, purchase_order_id, item, jumlah_pesan, harga_satuan, cached_at',
-      stock_opname: 'id, raw_material_id, date, sync_status, cached_at',
+      stock_opnames: 'id, tanggal_opname, status, dicatat_oleh, catatan_keseluruhan, sync_status, cached_at',
       kitchen_preparations: 'id, raw_material_id, date, sync_status, cached_at',
       waste_records: 'id, raw_material_id, date, sync_status, cached_at',
       sales_sessions: 'id, date, status, sync_status, cached_at',
@@ -126,7 +126,7 @@ class WarungDatabase extends Dexie {
       recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at',
       purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
       po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
-      stock_opname: '++id, raw_material_id, date, sync_status, cached_at',
+      stock_opnames: '++id, raw_material_id, date, sync_status, cached_at',
       kitchen_preparations: '++id, raw_material_id, date, sync_status, cached_at',
       waste_records: '++id, raw_material_id, date, sync_status, cached_at',
       sales_sessions: '++id, waktu_buka, waktu_tutup, cashier, modal_awal, date_created, date_updated, cached_at',
@@ -152,7 +152,8 @@ class WarungDatabase extends Dexie {
       recipe_items: '++id, products_id, cooked_items_id, quantity, cached_at',
       purchase_orders: '++id, status, supplier, supplier_name, supplier_category, pembuat_po, pembuat_po_name, penerima_barang, penerima_barang_name, catatan_pembelian, tanggal_penerimaan, tanggal_pembayaran, total_pembayaran, date_created, date_updated, sync_status, cached_at',
       po_items: '++id, purchase_order, item, item_name, item_category, item_category_name, unit_id, unit_name, unit_abbreviation, jumlah_pesan, harga_satuan, total_diterima, total_penyusutan, alasan_penyusutan, bukti_penyusutan, sync_status, cached_at',
-      stock_opname: '++id, raw_material_id, date, sync_status, cached_at',
+      stock_opnames: '++id, tanggal_opname, status, dicatat_oleh, catatan_keseluruhan, sync_status, cached_at',
+      stock_opname_items: '++id, stock_opname_id, nama_bahan, nama_bahan_name, stok_sistem, stok_fisik, selisih, catatan_item, sync_status, cached_at',
       kitchen_preparations: '++id, raw_material_id, date, sync_status, cached_at',
       waste_records: '++id, raw_material_id, date, sync_status, cached_at',
       sales_sessions: '++id, waktu_buka, waktu_tutup, cashier, modal_awal, date_created, date_updated, cached_at',
@@ -198,12 +199,14 @@ class WarungDatabase extends Dexie {
     this.suppliers = this.table('suppliers')
     this.item_categories = this.table('item_categories')
     this.expense_categories = this.table('expense_categories')
+    this.stock_opnames = this.table('stock_opnames')
+    this.stock_opname_items = this.table('stock_opname_items')
     this.raw_materials = this.table('raw_materials')
     this.products = this.table('products')
     this.recipe_items = this.table('recipe_items')
     this.purchase_orders = this.table('purchase_orders')
     this.po_items = this.table('po_items')
-    this.stock_opname = this.table('stock_opname')
+
     this.kitchen_preparations = this.table('kitchen_preparations')
     this.waste_records = this.table('waste_records')
     this.sales_sessions = this.table('sales_sessions')
@@ -225,9 +228,100 @@ class WarungDatabase extends Dexie {
     try {
       await this.delete()
       await this.open()
+      await this.initSampleData()
       console.log('Database reset successfully')
     } catch (error) {
       console.error('Error resetting database:', error)
+    }
+  }
+
+  async initSampleData() {
+    try {
+      // Check if raw_materials table is empty
+      const count = await this.raw_materials.count()
+      if (count > 0) {
+        console.log('Raw materials already exist, skipping sample data')
+        return
+      }
+
+      // Add sample raw materials
+      const sampleRawMaterials = [
+        {
+          nama_item: 'Beras Premium',
+          kategori: 1,
+          kategori_name: 'Bahan Pokok',
+          unit: 1,
+          unit_name: 'Kilogram',
+          unit_abbreviation: 'kg',
+          supplier_utama: 1,
+          supplier_name: 'Supplier A',
+          total_stock: 50,
+          harga_rata_rata: 15000,
+          status: 'active',
+          cached_at: new Date().getTime()
+        },
+        {
+          nama_item: 'Minyak Goreng',
+          kategori: 2,
+          kategori_name: 'Minyak & Lemak',
+          unit: 2,
+          unit_name: 'Liter',
+          unit_abbreviation: 'L',
+          supplier_utama: 1,
+          supplier_name: 'Supplier A',
+          total_stock: 20,
+          harga_rata_rata: 18000,
+          status: 'active',
+          cached_at: new Date().getTime()
+        },
+        {
+          nama_item: 'Garam Dapur',
+          kategori: 3,
+          kategori_name: 'Bumbu & Rempah',
+          unit: 1,
+          unit_name: 'Kilogram',
+          unit_abbreviation: 'kg',
+          supplier_utama: 2,
+          supplier_name: 'Supplier B',
+          total_stock: 10,
+          harga_rata_rata: 8000,
+          status: 'active',
+          cached_at: new Date().getTime()
+        },
+        {
+          nama_item: 'Cabai Merah',
+          kategori: 4,
+          kategori_name: 'Sayuran',
+          unit: 1,
+          unit_name: 'Kilogram',
+          unit_abbreviation: 'kg',
+          supplier_utama: 3,
+          supplier_name: 'Supplier C',
+          total_stock: 5,
+          harga_rata_rata: 25000,
+          status: 'active',
+          cached_at: new Date().getTime()
+        },
+        {
+          nama_item: 'Bawang Putih',
+          kategori: 3,
+          kategori_name: 'Bumbu & Rempah',
+          unit: 1,
+          unit_name: 'Kilogram',
+          unit_abbreviation: 'kg',
+          supplier_utama: 2,
+          supplier_name: 'Supplier B',
+          total_stock: 3,
+          harga_rata_rata: 30000,
+          status: 'active',
+          cached_at: new Date().getTime()
+        }
+      ]
+
+      await this.raw_materials.bulkAdd(sampleRawMaterials)
+      console.log('Sample raw materials added successfully')
+    } catch (error) {
+      console.error('Error adding sample data:', error)
     }
   }  
 
@@ -294,5 +388,10 @@ class WarungDatabase extends Dexie {
 
 // Create and export a singleton instance
 const db = new WarungDatabase()
+
+// Initialize sample data when database is ready
+db.on('ready', () => {
+  db.initSampleData()
+})
 
 export default db

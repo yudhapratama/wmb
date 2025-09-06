@@ -27,6 +27,22 @@
           <p class="text-gray-900">{{ supplier.no_telp_pic || '-' }}</p>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+          <p class="text-gray-900">{{ supplier.nama_pic || '-' }}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Pembayaran</label>
+          <p class="text-gray-900">{{ supplier.tempo_pembayaran || '-' }}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
+          <p class="text-gray-900">{{ supplier.nama_bank || '-' }}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening</label>
+          <p class="text-gray-900">{{ supplier.nomor_rekening || '-' }}</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
           <p class="text-gray-900">{{ supplier.kategori_supplier || '-' }}</p>
         </div>
@@ -37,6 +53,10 @@
         <div class="col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
           <p class="text-gray-900">{{ supplier.alamat_pt_toko || '-' }}</p>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+          <p class="text-gray-900">{{ supplier.catatan || '-' }}</p>
         </div>
       </div>
 

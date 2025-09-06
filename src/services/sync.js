@@ -102,6 +102,18 @@ export const syncService = {
       item.data = cleanData
     }
     
+    // Bersihkan data untuk entitas stock_opname_items
+    if (entity === 'stock_opname_items' && data) {
+      const cleanData = { ...data }
+      // Hapus field yang tidak boleh dikirim ke Directus
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      // Update data yang akan diproses
+      item.data = cleanData
+    }
+    
     switch (action) {
       case 'create':
         if (entity === 'expenses') {
@@ -141,6 +153,12 @@ export const syncService = {
                 sales_id: createdSalesId
               })
             }
+          } else if (entity === 'stock_opnames') {
+            // Handle stock opnames
+            await api.post(`/items/${entity}`, data)
+          } else if (entity === 'stock_opname_items') {
+            // Handle stock opname items
+            await api.post(`/items/${entity}`, data)
           } else {
             await api.post(`/items/${entity}`, data)
           }
@@ -149,12 +167,20 @@ export const syncService = {
       case 'update':
         if (entity === 'expenses') {
           await this.handleExpenseFileUpload(data, entity, 'update', entity_id)
+        } else if (entity === 'stock_opname_items') {
+          // Handle stock opname items update
+          await api.patch(`/items/${entity}/${entity_id}`, data)
         } else {
           await api.patch(`/items/${entity}/${entity_id}`, data)
         }
         break
       case 'delete':
-        await api.delete(`/items/${entity}/${entity_id}`)
+        if (entity === 'stock_opname_items') {
+          // Handle stock opname items delete
+          await api.delete(`/items/${entity}/${entity_id}`)
+        } else {
+          await api.delete(`/items/${entity}/${entity_id}`)
+        }
         break
       default:
         throw new Error(`Unknown action: ${action}`)
@@ -489,6 +515,245 @@ export const syncService = {
     }))
     
     await db.raw_materials.bulkPut(itemsToCache)
+  },
+
+  // Create stock opname
+  async createStockOpname(data) {
+    try {
+      // Clean data for API
+      const cleanData = { ...data }
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      if (this.isOnline()) {
+        // If online, create directly via API
+        const response = await api.post('/items/stock_opnames', cleanData)
+        return { success: true, data: response.data.data }
+      } else {
+        // If offline, add to sync queue and store locally
+        const localId = Date.now()
+        const localData = { ...cleanData, id: localId, sync_status: 'pending' }
+        
+        // Store in local database
+        await db.stock_opnames.add(localData)
+        
+        // Add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opnames',
+          entity_id: null,
+          action: 'create',
+          data: cleanData,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true, data: localData }
+      }
+    } catch (error) {
+      console.error('Error creating stock opname:', error)
+      throw error
+    }
+  },
+
+  // Update stock opname
+  async updateStockOpname(id, data) {
+    try {
+      // Clean data for API
+      const cleanData = { ...data }
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      if (this.isOnline()) {
+        // If online, update directly via API
+        const response = await api.patch(`/items/stock_opnames/${id}`, cleanData)
+        return { success: true, data: response.data.data }
+      } else {
+        // If offline, add to sync queue and update locally
+        await db.stock_opnames.update(id, { ...cleanData, sync_status: 'pending' })
+        
+        // Add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opnames',
+          entity_id: id,
+          action: 'update',
+          data: cleanData,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true, data: { ...cleanData, id } }
+      }
+    } catch (error) {
+      console.error('Error updating stock opname:', error)
+      throw error
+    }
+  },
+
+  // Delete stock opname
+  async deleteStockOpname(id) {
+    try {
+      if (this.isOnline()) {
+        // If online, delete directly via API
+        await api.delete(`/items/stock_opnames/${id}`)
+        
+        // Also delete from local database
+        await db.stock_opnames.delete(id)
+        
+        return { success: true }
+      } else {
+        // If offline, mark as deleted locally and add to sync queue
+        await db.stock_opnames.update(id, { sync_status: 'pending_delete' })
+        
+        // Add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opnames',
+          entity_id: id,
+          action: 'delete',
+          data: null,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true }
+      }
+    } catch (error) {
+      console.error('Error deleting stock opname:', error)
+      throw error
+    }
+  },
+
+  // Create stock opname item
+  async createStockOpnameItem(data) {
+    try {
+      // Clean data for API
+      const cleanData = { ...data }
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      if (this.isOnline()) {
+        // If online, create directly via API
+        const response = await api.post('/items/stock_opname_items', cleanData)
+        return { success: true, data: response.data.data }
+      } else {
+        // If offline, add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opname_items',
+          entity_id: null,
+          action: 'create',
+          data: cleanData,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true, data: cleanData }
+      }
+    } catch (error) {
+      console.error('Error creating stock opname item:', error)
+      throw error
+    }
+  },
+
+  // Update stock opname item
+  async updateStockOpnameItem(id, data) {
+    try {
+      // Clean data for API
+      const cleanData = { ...data }
+      delete cleanData.id
+      delete cleanData.sync_status
+      delete cleanData.cached_at
+      
+      if (this.isOnline()) {
+        // If online, update directly via API
+        const response = await api.patch(`/items/stock_opname_items/${id}`, cleanData)
+        return { success: true, data: response.data.data }
+      } else {
+        // If offline, add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opname_items',
+          entity_id: id,
+          action: 'update',
+          data: cleanData,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true, data: cleanData }
+      }
+    } catch (error) {
+      console.error('Error updating stock opname item:', error)
+      throw error
+    }
+  },
+
+  // Delete stock opname item
+  async deleteStockOpnameItem(id) {
+    try {
+      if (this.isOnline()) {
+        // If online, delete directly via API
+        await api.delete(`/items/stock_opname_items/${id}`)
+        
+        // Also delete from local database
+        await db.stock_opname_items.delete(id)
+        
+        return { success: true }
+      } else {
+        // If offline, mark as deleted locally and add to sync queue
+        await db.stock_opname_items.update(id, { sync_status: 'pending_delete' })
+        
+        // Add to sync queue
+        await db.sync_queue.add({
+          entity: 'stock_opname_items',
+          entity_id: id,
+          action: 'delete',
+          data: null,
+          created_at: new Date().toISOString()
+        })
+        
+        return { success: true }
+      }
+    } catch (error) {
+      console.error('Error deleting stock opname item:', error)
+      throw error
+    }
+  },
+
+  // Pull stock opname with items
+  async pullStockOpnameWithItems(id) {
+    if (!this.isOnline()) {
+      return { success: false, message: 'Device is offline' }
+    }
+    
+    try {
+      // Fetch stock opname with items
+      const response = await api.get(`/items/stock_opnames/${id}`, {
+        params: {
+          fields: '*,items_opname.*,items_opname.nama_bahan.*'
+        }
+      })
+      
+      const opname = response.data.data
+      const timestamp = new Date().getTime()
+      
+      // Save stock opname to local database
+      await db.stock_opnames.put({
+        ...opname,
+        cached_at: timestamp
+      })
+      
+      // Process and save items if they exist
+      if (opname.items_opname && Array.isArray(opname.items_opname)) {
+        for (const item of opname.items_opname) {
+          await db.stock_opname_items.put({
+            ...item,
+            stock_opname_id: id,
+            cached_at: timestamp
+          })
+        }
+      }
+      
+      return { success: true, data: opname }
+    } catch (error) {
+      console.error(`Failed to fetch stock opname ${id} with items:`, error)
+      return { success: false, message: error.message }
+    }
   }
 }
 

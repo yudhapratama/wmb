@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import { VueQueryPlugin } from '@tanstack/vue-query'
+import Toast from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
 import router from './router'
 import './style.css'
 import App from './App.vue'
@@ -26,6 +28,13 @@ app.use(VueQueryPlugin, {
       retry: 1
     }
   }
+})
+
+// Register Toast Notification
+app.use(Toast, {
+  transition: "Vue-Toastification__bounce",
+  maxToasts: 5,
+  newestOnTop: true
 })
 
 // ✅ Pulihkan session setelah pinia diinisialisasi

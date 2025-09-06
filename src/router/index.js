@@ -128,6 +128,16 @@ const routes = [
       requiredCollections: ['sales', 'sales_items', 'sales_sessions', 'products']
     }
   },
+  {
+    path: '/stock-opnames',
+    name: 'stock-opnames',
+    component: () => import('../views/StockOpnames.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['superadmin', 'admin', 'warehouse'],
+      requiredCollections: ['stock_opnames', 'raw_materials', 'products']
+    }
+  },
   // 404 route
   {
     path: '/:pathMatch(.*)*',

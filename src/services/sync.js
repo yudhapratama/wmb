@@ -167,6 +167,26 @@ export const syncService = {
       case 'update':
         if (entity === 'expenses') {
           await this.handleExpenseFileUpload(data, entity, 'update', entity_id)
+        } else if (entity === 'purchase_orders' && data.items) {
+          // Handle purchase order update dengan items (untuk penerimaan PO)
+          const { items, ...orderData } = data
+          
+          // Update purchase order first
+          await api.patch(`/items/${entity}/${entity_id}`, orderData)
+          
+          // Update po_items
+          for (const item of items) {
+            if (item.id) {
+              console.log('Updating po_item:', item.id, 'with data:', JSON.stringify(item))
+              await api.patch(`/items/po_items/${item.id}`, {
+                total_diterima: item.total_diterima,
+                total_penyusutan: item.total_penyusutan,
+                alasan_penyusutan: item.alasan_penyusutan,
+                bukti_penyusutan: item.bukti_penyusutan,
+                jumlah_dapat_digunakan: item.jumlah_dapat_digunakan
+              })
+            }
+          }
         } else if (entity === 'stock_opname_items') {
           // Handle stock opname items update
           await api.patch(`/items/${entity}/${entity_id}`, data)

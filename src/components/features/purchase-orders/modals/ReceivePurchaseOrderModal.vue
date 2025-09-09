@@ -133,8 +133,10 @@
                   <img
                     v-if="item.bukti_penyusutan_preview"
                     :src="item.bukti_penyusutan_preview"
-                    alt="Shrinkage evidence"
+                    alt="Bukti Penyusutan"
                     class="w-20 h-20 object-cover rounded border"
+                    @error="console.error('Error loading image:', $event)"
+                    @load="console.log('Image loaded successfully')"
                   />
                 </div>
                 <p class="text-xs text-red-600 mt-1">Format: JPG, PNG, maksimal 5MB</p>
@@ -183,6 +185,8 @@ import { ref, computed, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Select from '../../../ui/Select.vue'
 import Modal from '../../../ui/Modal.vue'
+import { useFileUpload } from '../../../../composables/useFileUpload'
+import { validateFile, createFilePreview } from '../../../../utils/fileUtils'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -202,6 +206,9 @@ const reasonOptions = [
   { value: 'theft', label: 'Pencurian' },
   { value: 'other', label: 'Lainnya' }
 ]
+
+// Inisialisasi useFileUpload untuk setiap item
+const fileUploads = ref({})
 
 // Computed property untuk menghitung total dari semua items
 const calculatedTotal = computed(() => {
@@ -241,7 +248,8 @@ const isFormValid = computed(() => {
     const validShrinkage = !item.has_penyusutan || (
       item.total_penyusutan >= 0 && 
       item.total_penyusutan <= item.total_diterima &&
-      item.alasan_penyusutan?.trim()
+      item.alasan_penyusutan?.trim() &&
+      item.bukti_penyusutan // Pastikan bukti penyusutan ada jika ada penyusutan
     )
     return hasReceived && validShrinkage
   })
@@ -255,7 +263,20 @@ const triggerFileInput = (index) => {
   }
 }
 
-const handleFileUpload = (event, index) => {
+// Inisialisasi fileUpload untuk setiap item saat diperlukan
+const initFileUploadForItem = (index) => {
+  if (!fileUploads.value[index]) {
+    fileUploads.value[index] = useFileUpload({
+      multiple: false,
+      autoUpload: false,
+      featureName: 'PurchaseOrderReceipt',
+      dataId: `po_receipt_${props.order.id}_item_${index}`
+    })
+  }
+  return fileUploads.value[index]
+}
+
+const handleFileUpload = async (event, index) => {
   const file = event.target.files[0]
   if (file) {
     // Gunakan utility validation
@@ -265,38 +286,104 @@ const handleFileUpload = (event, index) => {
       return
     }
     
-    // Set file untuk upload
-    receiptItems.value[index].bukti_penyusutan = file
-    
-    // Buat preview gambar
-    createFilePreview(file)
-      .then(preview => {
-        receiptItems.value[index].bukti_penyusutan_preview = preview
-      })
-      .catch(error => {
-        console.error('Error creating preview:', error)
-      })
+    try {
+      // Buat preview langsung menggunakan createFilePreview
+      const preview = await createFilePreview(file)
+      
+      // Simpan file dan preview
+      receiptItems.value[index].bukti_penyusutan = file
+      receiptItems.value[index].bukti_penyusutan_preview = preview
+      
+      console.log('File diupload:', file.name)
+      console.log('Preview dibuat:', preview.substring(0, 50) + '...')
+      
+      // Inisialisasi fileUpload untuk item ini (untuk upload nanti)
+      const fileUpload = initFileUploadForItem(index)
+      
+      // Tambahkan file ke fileUpload untuk diupload nanti
+      fileUpload.files.value = [file]
+      fileUpload.previews.value = [{ file, preview, info: { name: file.name, size: file.size } }]
+    } catch (error) {
+      console.error('Error saat membuat preview:', error)
+      alert('Gagal membuat preview gambar. Silakan coba lagi.')
+    }
   }
 }
 
-const handleSubmit = () => {
-  const receiptData = {
-    orderId: props.order.id,
-    items: receiptItems.value.map(item => ({
+const handleSubmit = async () => {
+  if (!isFormValid.value) return
+  
+  // Buat array untuk menyimpan semua promise upload file
+  const uploadPromises = []
+  
+  // Persiapkan data item dengan nilai null untuk bukti_penyusutan (akan diupdate setelah upload)
+  const itemsData = receiptItems.value.map((item, index) => {
+    // Jika item memiliki penyusutan dan bukti penyusutan, tambahkan ke daftar upload
+    if (item.has_penyusutan && item.bukti_penyusutan) {
+      const fileUpload = initFileUploadForItem(index)
+      
+      // Tambahkan promise upload ke array
+      const uploadPromise = fileUpload.uploadFiles(`po_receipt_${props.order.id}_item_${index}`)
+        .then(uploadedIds => {
+          // Simpan ID file yang diupload
+          if (uploadedIds && uploadedIds.length > 0) {
+            item.bukti_penyusutan_id = uploadedIds[0]
+            console.log(`File ID untuk item ${index}:`, uploadedIds[0])
+          }
+          return uploadedIds
+        })
+      
+      uploadPromises.push(uploadPromise)
+    }
+    
+    return {
       id: item.id,
       item: item.nama_item,
       raw_material_id: item.raw_material_id,
       total_diterima: item.total_diterima,
       total_penyusutan: item.has_penyusutan ? item.total_penyusutan : 0,
       alasan_penyusutan: item.has_penyusutan ? item.alasan_penyusutan : null,
-      bukti_penyusutan: item.has_penyusutan ? item.bukti_penyusutan : null,
+      // Jangan gunakan placeholder, biarkan null untuk diupdate nanti setelah upload
+      bukti_penyusutan: null,
       harga_satuan: item.harga_satuan,
       unit: item.unit,
       jumlah_dapat_digunakan: calculateUsableQuantity(item)
-    }))
-  }
+    }
+  })
   
-  emit('submit', receiptData)
+  try {
+    // Tunggu semua file selesai diupload
+    if (uploadPromises.length > 0) {
+      console.log(`Menunggu ${uploadPromises.length} file selesai diupload...`)
+      const uploadResults = await Promise.all(uploadPromises)
+      console.log('Semua file berhasil diupload:', uploadResults)
+    }
+    
+    // Sekarang update data item dengan ID file yang sudah diupload
+    itemsData.forEach((item, index) => {
+      if (receiptItems.value[index].bukti_penyusutan_id) {
+        // Pastikan nilai bukti_penyusutan adalah ID file yang diupload
+        item.bukti_penyusutan = receiptItems.value[index].bukti_penyusutan_id
+        console.log(`Item ${index} bukti_penyusutan diupdate dengan ID:`, item.bukti_penyusutan)
+      } else if (receiptItems.value[index].has_penyusutan) {
+        console.warn(`Item ${index} memiliki penyusutan tapi tidak ada bukti_penyusutan_id`)
+      }
+    })
+    
+    // Siapkan data penerimaan
+    const receiptData = {
+      id: props.order.id,
+      items: itemsData
+    }
+    
+    console.log('Data penerimaan final:', JSON.stringify(receiptData, null, 2))
+    
+    // Kirim data ke parent component
+    emit('submit', receiptData)
+  } catch (error) {
+    console.error('Error uploading files:', error)
+    alert('Gagal mengupload bukti penyusutan. Silakan coba lagi.')
+  }
 }
 
 const formatDate = (date) => {

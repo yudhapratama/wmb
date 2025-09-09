@@ -112,6 +112,9 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
                       Nilai Penyusutan
                     </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
+                      Bukti
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-red-200">
@@ -127,6 +130,12 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
                       {{ formatCurrency(calculateShrinkageValue(item)) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <a v-if="item.bukti_penyusutan_preview" :href="item.bukti_penyusutan_preview" target="_blank" class="block">
+                        <img :src="item.bukti_penyusutan_preview" alt="Bukti Penyusutan" class="h-16 w-auto object-cover rounded border border-gray-300 hover:border-blue-500 transition-colors" />
+                      </a>
+                      <span v-else class="text-gray-400 italic">Tidak ada bukti</span>
                     </td>
                   </tr>
                 </tbody>

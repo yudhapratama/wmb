@@ -420,29 +420,32 @@ export function usePurchaseOrders() {
   async function receivePurchaseOrder(receiptData) {
     isLoading.value = true
     error.value = null
-    console.log('receiptData di usePurchaseOrder', receiptData)
+    console.log('receiptData di usePurchaseOrder', JSON.stringify(receiptData))
     
     try {
-      const orderId = receiptData.orderId
-      const currentUserId = authStore.user?.id || 1 // Gunakan current user ID dengan fallback
+      const orderId = receiptData.id // Gunakan id dari receiptData
+      const currentUserId = authStore.user?.id || receiptData.penerima_barang // Gunakan current user ID dengan fallback
       
       // 1. Update PO status menjadi "Diterima"
       const updateData = {
         status: 'Diterima',
-        tanggal_penerimaan: new Date().toISOString().split('T')[0],
+        tanggal_penerimaan: receiptData.tanggal_penerimaan || new Date().toISOString().split('T')[0],
         penerima_barang: currentUserId, // Gunakan current user ID
         sync_status: 'pending',
-        items: receiptData.items.map(item => ({
-          id: item.id,
-          raw_material_id: item.raw_material_id,
-          total_diterima: item.total_diterima,
-          total_penyusutan: item.total_penyusutan || 0,
-          alasan_penyusutan: item.alasan_penyusutan,
-          bukti_penyusutan: item.bukti_penyusutan,
-          jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
-          harga_satuan: item.harga_satuan,
-          unit: item.unit
-        }))        
+        items: receiptData.items.map(item => {
+          console.log(`Item ${item.id} bukti_penyusutan:`, item.bukti_penyusutan)
+          return {
+            id: item.id,
+            raw_material_id: item.raw_material_id,
+            total_diterima: item.total_diterima,
+            total_penyusutan: item.total_penyusutan || 0,
+            alasan_penyusutan: item.alasan_penyusutan,
+            bukti_penyusutan: item.bukti_penyusutan, // Pastikan ini adalah ID file yang diupload
+            jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
+            harga_satuan: item.harga_satuan,
+            unit: item.unit
+          }
+        })        
       }
       
       await db.purchase_orders.update(orderId, updateData)

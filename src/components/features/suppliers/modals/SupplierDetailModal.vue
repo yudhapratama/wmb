@@ -32,7 +32,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Pembayaran</label>
-          <p class="text-gray-900">{{ supplier.tempo_pembayaran || '-' }}</p>
+          <p class="text-gray-900">{{ supplier.tempo_pembayaran === 1 ? 'Cash' : supplier.tempo_pembayaran === 2 ? 'Tempo' : '-' }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
@@ -57,18 +57,6 @@
         <div class="col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
           <p class="text-gray-900">{{ supplier.catatan || '-' }}</p>
-        </div>
-      </div>
-
-      <!-- Timestamps -->
-      <div class="border-t pt-4">
-        <div class="grid grid-cols-2 gap-4 text-sm text-gray-500">
-          <div>
-            <span class="font-medium">Created:</span> {{ formatDate(supplier.date_created) }}
-          </div>
-          <div>
-            <span class="font-medium">Updated:</span> {{ formatDate(supplier.date_updated) }}
-          </div>
         </div>
       </div>
     </div>

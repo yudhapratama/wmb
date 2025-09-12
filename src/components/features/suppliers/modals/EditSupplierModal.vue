@@ -30,7 +30,13 @@ const supplierFormRef = ref(null)
 // Initialize form data when supplier changes
 watch(() => props.supplier, (newSupplier) => {
   if (newSupplier) {
-    editedSupplier.value = { ...newSupplier }
+    editedSupplier.value = { 
+      ...newSupplier,
+      // Ensure tempo_pembayaran has a proper value
+      tempo_pembayaran: newSupplier.tempo_pembayaran || null
+    }
+    // Reset validation state when supplier changes
+    showValidation.value = false
   }
 }, { immediate: true, deep: true })
 

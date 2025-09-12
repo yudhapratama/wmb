@@ -69,8 +69,8 @@ const statusOptions = computed(() => [
 ])
 
 const paymentTypeOptions = computed(() => [
-  { value: '1', label: 'Cash' },
-  { value: '2', label: 'Tempo' }
+  { value: 1, label: 'Cash' },
+  { value: 2, label: 'Tempo' }
 ])
 </script>
 

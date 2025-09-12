@@ -69,14 +69,6 @@
         >
           Tutup
         </button>
-        <PermissionBasedAccess collection="suppliers" action="update">
-          <button
-            @click="$emit('edit', supplier)"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Edit Supplier
-          </button>
-        </PermissionBasedAccess>
       </div>
     </template>
   </Modal>

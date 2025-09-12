@@ -53,7 +53,7 @@ const paymentTypeOptions = computed(() => [
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Kontak *</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Kontak</label>
         <input
           :value="supplier.no_telp_pic"
           @input="updateSupplier('no_telp_pic', $event.target.value)"

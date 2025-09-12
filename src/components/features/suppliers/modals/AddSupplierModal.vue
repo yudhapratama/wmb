@@ -85,7 +85,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !newSupplier?.nama_pt_toko || !newSupplier?.no_telp_pic"
+            :disabled="isLoading || !newSupplier?.nama_pt_toko"
           >
             <svg v-if="isLoading" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

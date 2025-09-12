@@ -71,7 +71,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !editedSupplier?.nama_pt_toko || !editedSupplier?.no_telp_pic"
+            :disabled="isLoading || !editedSupplier?.nama_pt_toko"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

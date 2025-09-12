@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import SupplierForm from '../SupplierForm.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
@@ -23,6 +23,10 @@ const emit = defineEmits(['close', 'submit'])
 
 const editedSupplier = ref(null)
 
+// Form validation state
+const showValidation = ref(false)
+const supplierFormRef = ref(null)
+
 // Initialize form data when supplier changes
 watch(() => props.supplier, (newSupplier) => {
   if (newSupplier) {
@@ -32,7 +36,11 @@ watch(() => props.supplier, (newSupplier) => {
 
 // Submit form
 function handleSubmit() {
-  emit('submit', editedSupplier.value)
+  showValidation.value = true
+  
+  if (supplierFormRef.value && supplierFormRef.value.validateForm()) {
+    emit('submit', editedSupplier.value)
+  }
 }
 </script>
 
@@ -46,8 +54,10 @@ function handleSubmit() {
     <PermissionBasedAccess collection="suppliers" action="update">
       <div v-if="supplier && editedSupplier">
         <SupplierForm
+          ref="supplierFormRef"
           :supplier="editedSupplier"
           :isLoading="isLoading"
+          :showValidation="showValidation"
           @update:supplier="(val) => editedSupplier = val"
         />
       </div>
@@ -71,7 +81,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !editedSupplier?.nama_pt_toko"
+            :disabled="isLoading || !editedSupplier?.nama_pt_toko || !editedSupplier?.tempo_pembayaran"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

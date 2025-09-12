@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import SupplierForm from '../SupplierForm.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
@@ -27,8 +27,12 @@ const newSupplier = ref({
   nama_bank: '',
   nama_pic: '',
   nomor_rekening: '',
-  tempo_pembayaran: 'Cash'
+  tempo_pembayaran: ''
 })
+
+// Form validation state
+const showValidation = ref(false)
+const supplierFormRef = ref(null)
 
 // Reset form when modal opens
 function resetForm() {
@@ -42,13 +46,18 @@ function resetForm() {
     nama_bank: '',
     nama_pic: '',
     nomor_rekening: '',
-    tempo_pembayaran: 'Cash'
+    tempo_pembayaran: ''
   }
+  showValidation.value = false
 }
 
 // Submit form
 function handleSubmit() {
-  emit('submit', newSupplier.value)
+  showValidation.value = true
+  
+  if (supplierFormRef.value && supplierFormRef.value.validateForm()) {
+    emit('submit', newSupplier.value)
+  }
 }
 </script>
 
@@ -61,8 +70,10 @@ function handleSubmit() {
   >
     <PermissionBasedAccess collection="suppliers" action="create">
       <SupplierForm
+        ref="supplierFormRef"
         :supplier="newSupplier"
         :isLoading="isLoading"
+        :showValidation="showValidation"
         @update:supplier="newSupplier = $event"
       />
     </PermissionBasedAccess>
@@ -85,7 +96,7 @@ function handleSubmit() {
           <button
             @click="handleSubmit"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-sm text-white rounded-md hover:bg-blue-700"
-            :disabled="isLoading || !newSupplier?.nama_pt_toko"
+            :disabled="isLoading || !newSupplier?.nama_pt_toko || !newSupplier?.tempo_pembayaran"
           >
             <svg v-if="isLoading" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

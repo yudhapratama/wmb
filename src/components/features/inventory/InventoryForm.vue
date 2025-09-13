@@ -30,8 +30,10 @@
           type="number"
           min="0"
           placeholder="10"
-          class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed"
           required
+          disabled
+          readonly
         />
       </div>
       
@@ -67,8 +69,10 @@
           type="number"
           min="0"
           placeholder="25000"
-          class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed"
           required
+          disabled
+          readonly          
         />
       </div>
       

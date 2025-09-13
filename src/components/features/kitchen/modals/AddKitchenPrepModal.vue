@@ -61,7 +61,7 @@
           <div v-if="form.bahan_hasil_olahan" class="mb-8">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-gray-900">Langkah B: Resep Bahan Baku</h3>
-              <button
+              <!-- <button
                 type="button"
                 @click="addRawMaterial"
                 class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
@@ -70,7 +70,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Tambah Bahan
-              </button>
+              </button> -->
             </div>
             
             <div v-if="isLoadingRecipe" class="flex justify-center py-8">

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PurchaseOrderForm from '../PurchaseOrderForm.vue'
+import db from '../../../../services/db'
 
 const props = defineProps({
   isOpen: {
@@ -25,17 +26,38 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submit'])
 
 const editedOrder = ref(null)
+const originalItemsSnapshot = ref([]) // ✅ Snapshot data asli
 
 // Initialize form data when order changes
-watch(() => props.order, (newOrder) => {
+watch(() => props.order, async (newOrder) => {
   if (newOrder) {
     editedOrder.value = { ...newOrder }
+    
+    // ✅ PENTING: Ambil snapshot data asli SEGERA saat modal edit dibuka
+    if (newOrder.orderNumber || newOrder.id) {
+      const orderId = newOrder.orderNumber || newOrder.id
+      try {
+        // ✅ Perbaiki: Gunakan ID yang benar untuk query
+        const actualId = newOrder.id || parseInt(newOrder.orderNumber)
+        originalItemsSnapshot.value = await db.po_items.where('purchase_order').equals(actualId).toArray()
+        // console.log('📸 Snapshot original items saat modal edit dibuka:', originalItemsSnapshot.value)
+        // console.log('🔍 Query dengan ID:', actualId)
+      } catch (error) {
+        // console.error('Error mengambil snapshot original items:', error)
+        originalItemsSnapshot.value = []
+      }
+    }
   }
 }, { immediate: true, deep: true })
 
 // Submit form
 function handleSubmit(order) {
-  emit('submit', order)
+  // ✅ Kirim data order beserta snapshot original items
+  const orderWithSnapshot = {
+    ...order,
+    _originalItemsSnapshot: originalItemsSnapshot.value
+  }
+  emit('submit', orderWithSnapshot)
 }
 </script>
 

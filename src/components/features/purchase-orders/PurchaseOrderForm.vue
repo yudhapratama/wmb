@@ -174,14 +174,20 @@ function initFormData() {
       ...props.order,
       supplier: props.order.supplier ? parseInt(props.order.supplier) : '',
       orderDate: props.order.orderDate ? new Date(props.order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      items: props.order.items ? props.order.items.map(item => ({
-        raw_material_id: item.raw_material_id || item.item || '',
-        item: item.item_name || item.nama_item || item.item || '',
-        quantity: item.jumlah_pesan || item.quantity || 1,
-        unit: item.unit_name || item.unit || 'pcs',
-        total_price: item.total_price || item.harga_satuan || item.total || (item.price * item.quantity) || 0
-      })) : []
+      items: props.order.items ? props.order.items.map(item => {
+        const mappedItem = {
+          id: item.id,
+          raw_material_id: parseInt(item.raw_material_id || item.item || ''),
+          item: item.item_name || item.nama_item || item.item || '',
+          quantity: item.jumlah_pesan || item.quantity || 1,
+          unit: item.unit_name || item.unit || 'pcs',
+          total_price: item.total_price || item.harga_satuan || item.total || (item.price * item.quantity) || 0
+        }
+        // console.log('🔍 Mapped item raw_material_id:', mappedItem.raw_material_id, 'type:', typeof mappedItem.raw_material_id)
+        return mappedItem
+      }) : []
     }
+    // console.log('✅ Form data initialized:', formData.value)
   } else {
     formData.value = {
       orderNumber: '',
@@ -207,7 +213,6 @@ initFormData()
 watch(() => props.order, (newOrder) => {
   // Tambahkan flag untuk mencegah recursive updates
   if (isUpdatingFromParent.value) return
-  
   const currentOrderData = {
     orderNumber: newOrder?.orderNumber || '',
     supplier: newOrder?.supplier ? parseInt(newOrder.supplier) : '',
@@ -216,6 +221,7 @@ watch(() => props.order, (newOrder) => {
     createdBy: newOrder?.createdBy || 'Admin',
     notes: newOrder?.notes || '',
     items: newOrder?.items?.map(item => ({
+      id: item.id,
       raw_material_id: item.raw_material_id || item.item || '',
       item: item.item_name || item.nama_item || item.item || '',
       quantity: item.jumlah_pesan || item.quantity || 1,
@@ -223,7 +229,6 @@ watch(() => props.order, (newOrder) => {
       total_price: item.harga_satuan || item.total_price || 0
     })) || []
   };
-  
   // Hanya update jika data benar-benar berbeda
   if (JSON.stringify(formData.value) !== JSON.stringify(currentOrderData)) {
     isUpdatingFromParent.value = true
@@ -254,18 +259,15 @@ function getRawMaterialById(id) {
 
 // Handle raw material selection
 function onRawMaterialSelect(index, materialId) {
-  // console.log('Selected material ID:', materialId)
-  // console.log('Available materials:', rawMaterials.value)
-  
   const material = getRawMaterialById(materialId)
-  // console.log('Found material:', material)
   
   if (material) {
     const item = formData.value.items[index]
     item.raw_material_id = materialId
     item.item = material.nama_item
     item.unit = getUnitName(material.unit) || 'pcs'
-    // console.log('Updated item:', item)
+  } else {
+    console.warn('⚠️ Material not found for ID:', materialId)
   }
 }
 
@@ -323,10 +325,16 @@ const supplierOptions = computed(() =>
   }))
 )
 
-const rawMaterialOptions = computed(() => 
-  rawMaterials.value.map(material => ({
-    value: material.id,
-    label: `${material.nama_item} - ${getCategoryName(material.kategori)}`
+const rawMaterialOptions = computed(() => {
+  const options = rawMaterials.value.map(rm => ({
+    value: rm.id,
+    label: `${rm.nama_item} - ${getCategoryName(rm.kategori)}`
   }))
-)
+  // console.log('🔍 Current form items raw_material_ids:', formData.value.items.map(item => ({ 
+  //   raw_material_id: item.raw_material_id, 
+  //   type: typeof item.raw_material_id,
+  //   found: options.find(opt => opt.value === item.raw_material_id)
+  // })))
+  return options
+})
 </script>

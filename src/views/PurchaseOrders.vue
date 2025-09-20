@@ -297,6 +297,11 @@ async function openEditModal(order) {
   const result = await fetchOrderDetail(order.id)
   if (result.success) {
     const orderData = result.data;
+    // console.log('Full orderData:', orderData)
+    // console.log('orderData.po_items:', orderData.po_items)
+    // console.log('Type of po_items:', typeof orderData.po_items)
+    // console.log('Is array:', Array.isArray(orderData.po_items))
+    
     // ✅ Perbaiki mapping data untuk EditPurchaseOrderModal
     editingOrder.value = {
       id: orderData.id,
@@ -307,25 +312,32 @@ async function openEditModal(order) {
       expectedDelivery: orderData.tanggal_pembayaran ? new Date(orderData.tanggal_pembayaran).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       createdBy: orderData.pembuat_po?.first_name || 'Admin',
       notes: orderData.catatan_pembelian || '',
-      // ✅ Perbaiki mapping items
-      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
-        raw_material_id: item.item?.id || item.item,
-        item: item.item?.nama_item || item.item_name || '',
-        quantity: item.jumlah_pesan || 1,
-        unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
-        total_price: item.harga_satuan || 0
-      })) : []
-    };
-    // Jika tidak ada items, tambahkan item kosong
-    if (!editingOrder.value.items.length) {
-      editingOrder.value.items.push({
+      // ✅ Perbaiki mapping items - handle case dimana item bisa berupa ID atau object
+      items: Array.isArray(orderData.po_items) && orderData.po_items.length > 0 ? orderData.po_items.map(item => {
+        // Debug setiap item
+        // console.log('Processing po_item:', item);
+        
+        return {
+          id: item.id,
+          raw_material_id: typeof item.item === 'object' ? item.item?.id?.toString() : item.item?.toString() || '',
+          item: typeof item.item === 'object' ? item.item?.nama_item : '', // Nama akan diisi dari raw_materials
+          quantity: parseInt(item.jumlah_pesan) || 1,
+          unit: typeof item.item === 'object' ? item.item?.unit?.abbreviation : 'pcs',
+          total_price: parseFloat(item.harga_satuan) || 0
+        };
+      }) : [{
+        // Hanya tambahkan item kosong jika benar-benar tidak ada po_items
         raw_material_id: '',
         item: '',
         quantity: 1,
         unit: 'pcs',
         total_price: 0
-      });
-    }
+      }]
+    };
+    
+    // console.log('Editing Order',editingOrder) // sudah sesuai dengan penambahan po_items_id
+    // console.log('Order Data po_items:', orderData.po_items) // Debug po_items
+    // console.log('Mapped items:', editingOrder.value.items) // Debug mapped items
     
     showEditModal.value = true;
   } else {
@@ -368,7 +380,7 @@ async function openReceiveModal(order) {
       date_created: orderData.date_created,
       pembuat_po: orderData.pembuat_po,
       // Format items dari po_items untuk modal receive
-      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+      items: Array.isArray(orderData.po_items) ? orderData.po_items.map(item => ({
         id: item.id, // po_items.id
         nama_item: item.item?.nama_item || 'Unknown Item',
         unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
@@ -409,7 +421,7 @@ async function openPayModal(order) {
       penerima_barang: orderData.penerima_barang,
       date_created: orderData.date_created,
       date_updated: orderData.date_updated,
-      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+      items: Array.isArray(orderData.po_items) ? orderData.po_items.map(item => ({
         id: item.id,
         nama_item: item.item?.nama_item || 'Unknown Item',
         unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',
@@ -501,7 +513,7 @@ async function openDetailModal(order) {
       date_updated: orderData.date_updated,
       tanggal_pembayaran: orderData.tanggal_pembayaran,
       catatan_pembelian: orderData.catatan_pembelian,
-      items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
+      items: Array.isArray(orderData.po_items) ? orderData.po_items.map(item => ({
         id: item.id,
         nama_item: item.item?.nama_item || 'Unknown Item',
         unit: item.item?.unit?.abbreviation || item.unit_name || 'pcs',

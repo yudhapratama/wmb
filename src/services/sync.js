@@ -58,7 +58,7 @@ export const syncService = {
     try {
       // Get all items from sync queue
       const queueItems = await db.sync_queue.toArray()
-      
+      console.log('queueItems', queueItems)
       if (queueItems.length === 0) {
         return { success: true, message: 'No items to sync' }
       }
@@ -168,22 +168,103 @@ export const syncService = {
         if (entity === 'expenses') {
           await this.handleExpenseFileUpload(data, entity, 'update', entity_id)
         } else if (entity === 'purchase_orders' && data.items) {
+          // console.log('ini adalah data di process queue item',data)
           // Handle purchase order update dengan items (untuk penerimaan PO)
-          const { items, ...orderData } = data
+          const { items, deletedItems, ...orderData } = data
+          // console.log('items', items)
+          // console.log('deletedItems', deletedItems)
           
           // Update purchase order first
           await api.patch(`/items/${entity}/${entity_id}`, orderData)
           
-          // Update po_items
-          for (const item of items) {
-            if (item.id) {
-              console.log('Updating po_item:', item.id, 'with data:', JSON.stringify(item))
-              await api.patch(`/items/po_items/${item.id}`, {
-                total_diterima: item.total_diterima,
-                total_penyusutan: item.total_penyusutan,
-                alasan_penyusutan: item.alasan_penyusutan,
-                bukti_penyusutan: item.bukti_penyusutan,
-                jumlah_dapat_digunakan: item.jumlah_dapat_digunakan
+          // Hapus item yang dihapus dari server
+          if (deletedItems && deletedItems.length > 0) {
+            for (const deletedItem of deletedItems) {
+              // console.log('Deleting po_item:', deletedItem.id)
+              await api.delete(`/items/po_items/${deletedItem.id}`)
+            }
+          }
+          
+          // Pisahkan item yang sudah ada (dengan id) dan item baru (tanpa id)
+          const existingItems = items.filter(item => item.id && item.id !== undefined)
+          const newItems = items.filter(item => !item.id || item.id === undefined)
+          // console.log('existingItems', existingItems)
+          // console.log('newItems', newItems)
+          // Update existing po_items
+          if (existingItems.length > 0) {
+            for (const item of existingItems) {
+              /**
+               * data item ketika proses penerimaan
+               * alasan_penyusutan: null
+               * bukti_penyusutan: null
+               * harga_satuan: 12500
+               * id: 36
+               * jumlah_dapat_digunakan: 400
+               * raw_material_id: 41
+               * total_diterima: 400
+               * total_penyusutan: 100
+               * unit: "gr"
+               */
+
+              /**
+               * data item ketika proses update
+               * 0: 
+               * item: "Item Test A"
+               * quantity: 1600
+               * raw_material_id: 41s
+               * total_price: 60000
+               * unit: "gr"
+               */
+              // console.log('Updating po_item:', item.id, 'with data:', JSON.stringify(item))
+              
+              // Tentukan field yang akan di-update berdasarkan data yang tersedia
+              const updateData = {}
+              
+              // Untuk penerimaan PO (ada field total_diterima)
+              if (item.total_diterima !== undefined) {
+                updateData.total_diterima = item.total_diterima
+                updateData.total_penyusutan = item.total_penyusutan
+                updateData.alasan_penyusutan = item.alasan_penyusutan
+                updateData.bukti_penyusutan = item.bukti_penyusutan
+                updateData.jumlah_dapat_digunakan = item.jumlah_dapat_digunakan
+              }
+              
+              // Untuk update biasa (edit PO)
+              if (item.quantity !== undefined) {
+                updateData.jumlah_pesan = item.quantity
+              }
+              if (item.price !== undefined) {
+                updateData.harga_satuan = item.price
+              }
+              if (item.harga_satuan !== undefined) {
+                updateData.harga_satuan = item.harga_satuan
+              }
+              if (item.jumlah_pesan !== undefined) {
+                updateData.jumlah_pesan = item.jumlah_pesan
+              }
+              if (item.raw_material_id !== undefined) {
+                updateData.raw_material_id = item.raw_material_id
+              }
+              if (item.unit !== undefined) {
+                updateData.unit = item.unit
+              }
+              
+              await api.patch(`/items/po_items/${item.id}`, updateData)
+            }
+          }
+          // Create new po_items
+          if (newItems.length > 0) {
+            for (const item of newItems) {
+              // console.log('Creating new po_item with data:', JSON.stringify(item))
+              await api.post('/items/po_items', {
+                raw_material_id: item.raw_material_id,
+                item: item.raw_material_id,
+                quantity: item.quantity,
+                price: item.price,
+                unit: item.unit,
+                jumlah_pesan: item.quantity || item.jumlah_pesan,
+                harga_satuan: item.price || item.harga_satuan,
+                purchase_order: entity_id
               })
             }
           }
@@ -255,7 +336,7 @@ export const syncService = {
       
       return { success: true, data: items }
     } catch (error) {
-      console.error(`Failed to pull ${entity}:`, error)
+      // console.error(`Failed to pull ${entity}:`, error)
       return { success: false, message: error.message }
     }
   },

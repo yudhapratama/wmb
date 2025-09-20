@@ -171,18 +171,26 @@ export function usePurchaseOrders() {
     error.value = null
     
     try {
+      // console.log(`🔍 Fetching order detail for ID: ${id}`)
+      
       // Try to fetch from API if online
       if (syncService.isOnline()) {
+        // console.log('📡 Fetching from API...')
         const result = await syncService.pullPurchaseOrdersWithDenormalization(id)
-        // console.log("data dari dapatkan detail order ketika open modal")
-        // console.log(result)
+        // console.log('API result:', result)
+        
         if (!result.success) {
           console.warn(`Failed to fetch order ${id} from API, falling back to local data`)
         } else {
           // Simpan po_items dari API response
           const order = result.data
-          if (order.po_items && Array.isArray(order.po_items)) {
-            for (const item of order.po_items) {
+          // console.log('Order from API:', order)
+          // console.log('po_items from API:', order.po_items)
+          // console.log('items from API:', order.items) // ✅ API menggunakan field 'items', bukan 'po_items'
+          
+          if (order.items && Array.isArray(order.items)) {
+            // console.log(`💾 Saving ${order.items.length} po_items to local DB`)
+            for (const item of order.items) {
               await db.po_items.put({
                 ...item,
                 purchase_order: id, // ✅ Gunakan field name yang benar
@@ -190,15 +198,25 @@ export function usePurchaseOrders() {
               })
             }
           }
-          return { success: true, data: result.data }
+          
+          // ✅ Perbaiki: API response menggunakan field 'items', bukan 'po_items'
+          // Rename field untuk konsistensi dengan kode lainnya
+          order.po_items = order.items
+          delete order.items // Hapus field items untuk menghindari konfusi
+          
+          return { success: true, data: order }
         }
       }
       
+      // console.log('💾 Fetching from local database...')
       // Fall back to local data
       const order = await db.purchase_orders.get(id)
       if (!order) {
+        // console.error(`❌ Purchase order ${id} not found in local DB`)
         return { success: false, error: 'Purchase order not found' }
       }
+      
+      // console.log('Order from local DB:', order)
       
       // ✅ Perbaiki query po_items
       const items = await db.po_items
@@ -206,12 +224,15 @@ export function usePurchaseOrders() {
         .equals(id)
         .toArray()
       
+      // console.log(`📦 Found ${items.length} po_items for order ${id}:`, items)
+      
       // Attach items ke order dengan nama yang konsisten
       order.po_items = items
       
+      // console.log('Final order data with po_items:', order)
       return { success: true, data: order }
     } catch (err) {
-      console.error(`Error fetching purchase order ${id}:`, err)
+      // console.error(`Error fetching purchase order ${id}:`, err)
       error.value = `Failed to fetch purchase order: ${err.message}`
       return { success: false, error: err.message }
     } finally {
@@ -306,28 +327,63 @@ export function usePurchaseOrders() {
   async function updatePurchaseOrder(order) {
     isLoading.value = true
     error.value = null
-  
+
     try {
       const plainOrder = JSON.parse(JSON.stringify(order))
+      // data order disini reactive, mengikuti perubahan yang terjadi di form
+      
+      // mengeluarkan data items sehingga terpisah dari data order nya
       const orderItems = [...plainOrder.items]
+      
+      // ✅ Validasi: Purchase Order harus memiliki minimal 1 item
+      if (!orderItems || orderItems.length === 0) {
+        throw new Error('Purchase Order harus memiliki minimal 1 item')
+      }
+          
       delete plainOrder.items
+
+      // mendapatkan purchase order id
+      const orderId = plainOrder.orderNumber
       
-      // Update order in local database first
-      await db.purchase_orders.update(plainOrder.id, {
-        ...plainOrder,
+      // ✅ PENTING: Gunakan snapshot dari EditModal jika tersedia, jika tidak ambil dari database
+      let originalItemsInDb
+      if (plainOrder._originalItemsSnapshot && plainOrder._originalItemsSnapshot.length >= 0) {
+        originalItemsInDb = plainOrder._originalItemsSnapshot
+        console.log('🎯 Menggunakan snapshot dari EditModal:', originalItemsInDb)
+      } else {
+        originalItemsInDb = await db.po_items.where('purchase_order').equals(orderId).toArray()
+        console.log('📂 Menggunakan data dari database (fallback):', originalItemsInDb)
+      }
+      
+      // Hapus field snapshot dari plainOrder
+      delete plainOrder._originalItemsSnapshot
+      
+      // mempersiapkan payload untuk dikirim ke directus
+      const directusOrder = {
+        supplier: parseInt(plainOrder.supplier), // Pastikan ini integer
+        catatan_pembelian: plainOrder.notes || '',
+        date_created: new Date().toISOString(),
         sync_status: 'pending'
-      })
+      }     
+
+      // Validasi supplier
+      if (!plainOrder.supplier || isNaN(parseInt(plainOrder.supplier))) {
+        throw new Error('Supplier ID tidak valid')
+      }      
+
+      // Update data purchase order in local database first
+      await db.purchase_orders.update(orderId, directusOrder)
       
-      // ✅ Perbaiki delete existing items
+      // tujuannya adalah hapus yang lama dan tambahkan data yang baru instead of update satu satu
       await db.po_items
         .where('purchase_order')  // ✅ Gunakan field name yang benar
-        .equals(plainOrder.id)
+        .equals(orderId)
         .delete()
-      
-      // Add updated items dengan struktur yang benar
+
+      // Add items dengan struktur yang benar
       for (const item of orderItems) {
         await db.po_items.add({
-          purchase_order: plainOrder.id,  // ✅ Gunakan field name yang benar
+          purchase_order: orderId,  // ✅ Gunakan field name yang benar
           item: item.raw_material_id,
           item_name: item.item,
           jumlah_pesan: item.quantity,
@@ -338,14 +394,16 @@ export function usePurchaseOrders() {
         })
       }
       
+      // TODO: Perludicek lagi karena sepertinya tidak diperlukan mengingat fungsi terima ada di receivePurchaseOrder()
       // Check if status is changed to "Diterima"
-      const isReceived = plainOrder.status === 'Diterima'
+      const isReceived = directusOrder.status === 'Diterima'
       
       // If online, sync to server
       if (syncService.isOnline()) {
+        // TODO: Bisa abaikan dulu untukfungsi di dalam block receive ini
         // Add additional data for stock update if status is "Diterima"
         if (isReceived) {
-          plainOrder.items = orderItems.map(item => ({
+          directusOrder.items = orderItems.map(item => ({
             id: item.id,
             raw_material_id: item.raw_material_id,
             item: item.item,
@@ -356,13 +414,97 @@ export function usePurchaseOrders() {
             shrinkage: item.shrinkage || 0,
             usable_quantity: item.usable_quantity || 0
           }))
+        } else {
+          // Format untuk update biasa (status "Dibuat", "Selesai", dll)
+          // Pisahkan item yang sudah ada (dengan id) dan item baru (tanpa id)
+          const existingItems = orderItems.filter(item => item.id && item.id !== undefined)
+          const newItems = orderItems.filter(item => !item.id || item.id === undefined)
+          console.log('existingItems', existingItems)
+          console.log('newItems', newItems)          
+          // Gunakan snapshot originalItemsInDb untuk mendeteksi item yang dihapus
+          const currentItemIds = existingItems.map(item => item.id)
+          const deletedItems = originalItemsInDb.filter(dbItem => !currentItemIds.includes(dbItem.id))
+          console.log('originalItemsInDb (snapshot):', originalItemsInDb)
+          console.log('currentItemIds', currentItemIds)
+          console.log('deletedItems', deletedItems)
+          directusOrder.items = [
+            // Item yang sudah ada - untuk di-update
+            ...existingItems.map(item => ({
+              id: item.id,
+              raw_material_id: item.raw_material_id,
+              item: item.item,
+              quantity: item.quantity,
+              price: item.total_price,
+              unit: item.unit,
+              jumlah_pesan: item.quantity,
+              harga_satuan: item.total_price
+            })),
+            // Item baru - untuk di-create
+            ...newItems.map(item => ({
+              raw_material_id: item.raw_material_id,
+              item: item.raw_material_id,
+              quantity: item.quantity,
+              price: item.total_price,
+              unit: item.unit,
+              jumlah_pesan: item.quantity,
+              harga_satuan: item.total_price,
+              purchase_order: orderId
+            }))
+          ]
+          
+          // Tambahkan informasi item yang dihapus
+          if (deletedItems.length > 0) {
+            directusOrder.deletedItems = deletedItems.map(item => ({
+              id: item.id
+            }))
+          }
         }
-        
-        await db.addToSyncQueue('purchase_orders', plainOrder.id, 'update', plainOrder)
+        console.log('plainOrder', directusOrder)
+        await db.addToSyncQueue('purchase_orders', orderId, 'update', directusOrder)
         await syncService.processSyncQueue()
       } else {
+        // Format untuk offline sync
+        const existingItems = orderItems.filter(item => item.id && item.id !== undefined)
+        const newItems = orderItems.filter(item => !item.id || item.id === undefined)
+        
+        // Gunakan snapshot originalItemsInDb untuk mendeteksi item yang dihapus
+        const currentItemIds = existingItems.map(item => item.id)
+        const deletedItems = originalItemsInDb.filter(dbItem => !currentItemIds.includes(dbItem.id))
+        
+        directusOrder.items = [
+          // Item yang sudah ada - untuk di-update
+          ...existingItems.map(item => ({
+            id: item.id,
+            raw_material_id: item.raw_material_id,
+            item: item.item,
+            quantity: item.quantity,
+            price: item.total_price,
+            unit: item.unit,
+            jumlah_pesan: item.quantity,
+            harga_satuan: item.total_price
+          })),
+          // Item baru - untuk di-create
+          ...newItems.map(item => ({
+            raw_material_id: item.raw_material_id,
+            item: item.raw_material_id,
+            quantity: item.quantity,
+            price: item.total_price,
+            unit: item.unit,
+            jumlah_pesan: item.quantity,
+            harga_satuan: item.total_price,
+            purchase_order: orderId
+          }))
+        ]
+        
+        // Tambahkan informasi item yang dihapus
+        if (deletedItems.length > 0) {
+          directusOrder.deletedItems = deletedItems.map(item => ({
+            id: item.id
+          }))
+        }
+        
         // Add to sync queue for later
-        await db.addToSyncQueue('purchase_orders', plainOrder.id, 'update', plainOrder)
+        await db.addToSyncQueue('purchase_orders', orderId, 'update', directusOrder)
       }
       
       // Reload data
@@ -449,22 +591,24 @@ export function usePurchaseOrders() {
       }
       
       await db.purchase_orders.update(orderId, updateData)
+
+      console.log('setelah update local data updateData', updateData)
       
       // Tambahkan ke sync queue untuk update purchase order
       await db.addToSyncQueue('purchase_orders', orderId, 'update', updateData)
       
       // 2. Update items dengan data penerimaan
-      // for (const item of receiptData.items) {
-      //   const itemUpdateData = {
-      //     total_diterima: item.total_diterima,
-      //     total_penyusutan: item.total_penyusutan,
-      //     alasan_penyusutan: item.alasan_penyusutan,
-      //     bukti_penyusutan: item.bukti_penyusutan,
-      //     jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
-      //     sync_status: 'pending'
-      //   }
+      for (const item of receiptData.items) {
+        const itemUpdateData = {
+          total_diterima: item.total_diterima,
+          total_penyusutan: item.total_penyusutan,
+          alasan_penyusutan: item.alasan_penyusutan,
+          bukti_penyusutan: item.bukti_penyusutan,
+          jumlah_dapat_digunakan: item.jumlah_dapat_digunakan,
+          sync_status: 'pending'
+        }
         
-      //   await db.po_items.update(item.id, itemUpdateData)
+        await db.po_items.update(item.id, itemUpdateData)
         
       //   // Tambahkan ke sync queue untuk update po_items
       //   await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
@@ -568,7 +712,7 @@ export function usePurchaseOrders() {
           
         //   await db.waste.add(wasteData)
         // }
-      // }
+      }
       
       // 6. Sync ke server jika online
       if (syncService.isOnline()) {

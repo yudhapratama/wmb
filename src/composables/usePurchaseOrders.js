@@ -3,6 +3,47 @@ import db from '../services/db'
 import syncService from '../services/sync'
 import { useAuthStore } from '../stores/auth'
 
+// Fungsi untuk menghitung stok dan harga baru berdasarkan penerimaan barang
+function calculateNewStockAndPrice(existingMaterial, receivedItem) {
+  // stok yang ada saat ini
+  const currentStock = existingMaterial.total_stock || 0
+  // harga rata-rata saat ini
+  const currentPrice = existingMaterial.harga_rata_rata || 0
+  // harga per unit saat ini
+  const currentStockPricePerUnit = currentStock > 0 ? currentPrice / currentStock : 0
+  // stok yang diterima dan dapat digunakan
+  const receivedStock = receivedItem.jumlah_dapat_digunakan
+  // harga beli stok yang diterima
+  const receivedStockPrice = receivedItem.harga_satuan // abaikan penamaan harga_satuan karena sebenaranya ini adalah harga beli
+  // harga per unit ketika diterima
+  const receivedStockPricePerUnit = receivedStockPrice / receivedStock
+  
+  let newStock = 0
+  let newStockPricePerUnit
+  
+  if (currentStock === 0) {
+    newStock = receivedStock
+    // Jika stok sebelumnya 0, harga rata-rata menjadi harga beli
+    newStockPricePerUnit = receivedStockPricePerUnit
+  } else {
+    // mulai ini hitung untuk disimpan menjadi stok baru dan harga rata-rata baru
+    newStock = currentStock + receivedStock
+    // harga baru per unit
+    newStockPricePerUnit = ((currentStockPricePerUnit * currentStock) + (receivedStockPricePerUnit * receivedStock)) / newStock
+  }
+  
+  const totalNewStockPrice = newStockPricePerUnit * newStock
+  
+  return {
+    new_stock: newStock,
+    new_price: totalNewStockPrice,
+    new_unit_price: newStockPricePerUnit,
+    current_stock: currentStock,
+    current_price: currentPrice,
+    current_unit_price: currentStockPricePerUnit
+  }
+}
+
 export function usePurchaseOrders() {
   const authStore = useAuthStore()
   
@@ -611,107 +652,88 @@ export function usePurchaseOrders() {
         await db.po_items.update(item.id, itemUpdateData)
         
       //   // Tambahkan ke sync queue untuk update po_items
-      //   await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
+        await db.addToSyncQueue('po_items', item.id, 'update', itemUpdateData)
         
       //   // 3. update existing intentory
       //   // 4. Update atau tambah data di raw_material
-      //   const materialId = item.raw_material_id
-      //   if (!materialId) {
-      //     console.error('Material ID tidak valid:', item)
-      //     continue
-      //   }  
+        const materialId = item.raw_material_id
+        if (!materialId) {
+          console.error('Material ID tidak valid:', item)
+          continue
+        }  
 
-      //   const existingMaterial = await db.raw_materials.get(materialId)
-      //   console.log('existingMaterial', existingMaterial);
+        const existingMaterial = await db.raw_materials.get(materialId)
+        console.log('existingMaterial', existingMaterial);
         
-      //   if (existingMaterial) {
-      //     // stok yang ada saat ini
-      //     const currentStock = existingMaterial.total_stock || 0
-      //     // harga rata-rata saat ini
-      //     const currentPrice = existingMaterial.harga_rata_rata || 0
-      //     // harga per unit saat ini
-      //     const currentStockPricePerUnit = currentPrice / currentStock
-      //     // stok yang diterima dan dapat digunakan
-      //     const receivedStock = item.jumlah_dapat_digunakan
-      //     // harga beli stok yang diterima
-      //     const receivedStockPrice = item.harga_satuan // abaikan penamaan harga_satuan karena sebenaranya ini adalah harga beli
-      //     // harga per unit ketika diterima
-      //     const receivedStockPricePerUnit = receivedStockPrice / receivedStock
+        if (existingMaterial) {
+          // Menggunakan fungsi calculateNewStockAndPrice untuk menghitung stok dan harga baru
+          const stockCalculation = calculateNewStockAndPrice(existingMaterial, item)
+          
+          const materialUpdateData = {
+            total_stock: stockCalculation.new_stock,
+            harga_rata_rata: stockCalculation.new_price,
+            sync_status: 'pending'
+          }
+          
+          await db.raw_materials.update(materialId, materialUpdateData)
+          
+          // Tambahkan ke sync queue untuk raw_materials
+          await db.addToSyncQueue('raw_materials', materialId, 'update', materialUpdateData)
 
-      //     // mulai ini hitung untuk disimpan menjadi stok baru dan harga rata-rata baru
-      //     const newStock = currentStock + receivedStock
-      //     // harga baru per unit
-      //     const newStockPricePerUnit = ((currentStockPricePerUnit * currentStock) + (receivedStockPricePerUnit * receivedStock)) / newStock
-      //     // harga baru rata-rata
-      //     const totalNewStockPrice = newStockPricePerUnit * newStock
+          // 4. Input data ke log_inventory
+          /**
+           * yang kurang:
+           * harga_sebelum -> currentPrice
+           * harga_setelah -> totalNewStockPrice
+           * harga_per_unit_sebelum -> currentStockPricePerUnit
+           * harga_per_unit_setelah -> newStockPricePerUnit
+           * 
+          */
+          const logInventoryData = {
+            item: item.raw_material_id,
+            tipe_transaksi: 'PENERIMAAN_PO',
+            perubahan_jumlah: item.jumlah_dapat_digunakan,
+            stok_sebelum: stockCalculation.current_stock,
+            stok_setelah: stockCalculation.new_stock,
+            harga_sebelum: stockCalculation.current_price,
+            harga_setelah: stockCalculation.new_price,
+            harga_per_unit_sebelum: stockCalculation.current_unit_price,
+            harga_per_unit_setelah: stockCalculation.new_unit_price,
+            dokumen_sumber: `${orderId}`,
+            pengguna: currentUserId, // Gunakan current user ID
+            waktu_log: new Date().toISOString(),
+            sync_status: 'pending',
+            cached_at: new Date().getTime()
+          }
+          console.log('logInventoryData', logInventoryData);
           
-      //     const materialUpdateData = {
-      //       total_stock: newStock,
-      //       harga_rata_rata: totalNewStockPrice,
-      //       sync_status: 'pending'
-      //     }
+          await db.log_inventaris.add(logInventoryData)
           
-      //     await db.raw_materials.update(materialId, materialUpdateData)
-          
-      //     // Tambahkan ke sync queue untuk raw_materials
-      //     await db.addToSyncQueue('raw_materials', materialId, 'update', materialUpdateData)
-      //   } else {
-      //     // Jika material belum ada, buat baru
-      //     const newMaterialData = {
-      //       id: materialId,
-      //       nama_item: item.nama_item || 'Unknown',
-      //       total_stock: item.jumlah_dapat_digunakan,
-      //       harga_rata_rata: item.harga_satuan || 0,
-      //       sync_status: 'pending',
-      //       cached_at: new Date().getTime()
-      //     }
-          
-      //     await db.raw_materials.add(newMaterialData)
-          
-      //     // Tambahkan ke sync queue untuk raw_materials
-      //     await db.addToSyncQueue('raw_materials', materialId, 'create', newMaterialData)
-      //   }
-
-      //   // 4. Input data ke log_inventory
-      //   const logInventoryData = {
-      //     item: item.raw_material_id,
-      //     tipe_transaksi: 'PENERIMAAN_PO',
-      //     perubahan_jumlah: item.jumlah_dapat_digunakan,
-      //     stok_sebelum: existingMaterial.total_stock || 0,
-      //     stok_setelah: (item.jumlah_dapat_digunakan + existingMaterial.total_stock),
-      //     dokumen_sumber: `${orderId}`,
-      //     pengguna: currentUserId, // Gunakan current user ID
-      //     waktu_log: new Date().toISOString(),
-      //     sync_status: 'pending',
-      //     cached_at: new Date().getTime()
-      //   }
-      //   console.log('logInventoryData', logInventoryData);
-        
-      //   await db.log_inventaris.add(logInventoryData)
-        
-      //   // Tambahkan ke sync queue untuk log_inventaris
-      //   await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)      
+          // Tambahkan ke sync queue untuk log_inventaris
+          await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)              
+        }
+  
         
         // 5. Tambahkan data ke waste jika ada penyusutan
-        // if (item.total_penyusutan > 0) {
-        //   const wasteData = {
-        //     id: `waste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        //     raw_material: item.item?.id || item.item,
-        //     jenis: 'Penyusutan',
-        //     jumlah: item.total_penyusutan,
-        //     unit: item.unit, // Gunakan unit langsung dari item
-        //     alasan: item.alasan_penyusutan,
-        //     keterangan: item.alasan_penyusutan, // Perbaiki field name
-        //     bukti_foto: item.bukti_penyusutan,
-        //     tanggal: new Date().toISOString().split('T')[0],
-        //     user_id: 1,
-        //     purchase_order_id: orderId,
-        //     sync_status: 'pending',
-        //     cached_at: new Date().getTime()
-        //   }
+        if (item.total_penyusutan > 0) {
+          const wasteData = {
+            id: `waste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            raw_material: item.item?.id || item.item,
+            jenis: 'Penyusutan',
+            jumlah: item.total_penyusutan,
+            unit: item.unit, // Gunakan unit langsung dari item
+            alasan: item.alasan_penyusutan,
+            keterangan: item.alasan_penyusutan, // Perbaiki field name
+            bukti_foto: item.bukti_penyusutan,
+            tanggal: new Date().toISOString().split('T')[0],
+            user_id: 1,
+            purchase_order_id: orderId,
+            sync_status: 'pending',
+            cached_at: new Date().getTime()
+          }
           
-        //   await db.waste.add(wasteData)
-        // }
+          await db.waste.add(wasteData)
+        }
       }
       
       // 6. Sync ke server jika online

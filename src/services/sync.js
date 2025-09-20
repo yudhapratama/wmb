@@ -113,6 +113,14 @@ export const syncService = {
       // Update data yang akan diproses
       item.data = cleanData
     }
+
+    // log inventori tidak butuh id
+    if (entity === 'log_inventaris' && data) {
+      const cleanData = { ...data }
+      delete cleanData.id
+      // Update data yang akan diproses
+      item.data = cleanData
+    }
     
     switch (action) {
       case 'create':

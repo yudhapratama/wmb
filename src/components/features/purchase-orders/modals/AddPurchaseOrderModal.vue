@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PurchaseOrderForm from '../PurchaseOrderForm.vue'
 
@@ -44,6 +44,13 @@ function resetForm() {
     items: []
   }
 }
+
+// Watch for modal open/close to reset form
+watch(() => props.isOpen, (newValue) => {
+  if (newValue) {
+    resetForm()
+  }
+})
 
 // Submit form
 function handleSubmit(order) {

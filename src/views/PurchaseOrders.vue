@@ -521,11 +521,11 @@ async function openDetailModal(order) {
         total_diterima: item.total_diterima || item.jumlah_pesan || 0,
         total_penyusutan: item.total_penyusutan || 0,
         alasan_penyusutan: item.alasan_penyusutan,
+        bukti_penyusutan: item.bukti_penyusutan,
         harga_satuan: item.harga_satuan || 0,
         raw_material_id: item.item?.id
       })) : []
     }
-    
     showDetailModal.value = true
   } else {
     showErrorNotification(`Failed to fetch order details: ${result.error || 'Unknown error'}`)

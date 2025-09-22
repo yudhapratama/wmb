@@ -173,6 +173,10 @@
 import { computed } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
+import { useFileUpload } from '../../../../composables/useFileUpload'
+
+// Add useFileUpload to get getFileUrl function
+const { getFileUrl } = useFileUpload()
 
 const props = defineProps({
   isOpen: {
@@ -210,7 +214,15 @@ const hasShrinkage = computed(() => {
 
 const shrinkageItems = computed(() => {
   if (!props.order?.items) return []
-  return props.order.items.filter(item => item.total_penyusutan > 0)
+  return props.order.items
+    .filter(item => item.total_penyusutan > 0)
+    .map(item => ({
+      ...item,
+      // Convert bukti_penyusutan file ID to preview URL with authentication
+      bukti_penyusutan_preview: item.bukti_penyusutan 
+        ? getFileUrl(item.bukti_penyusutan)
+        : null
+    }))
 })
 
 const totalAmount = computed(() => {

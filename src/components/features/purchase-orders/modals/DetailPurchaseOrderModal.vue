@@ -44,6 +44,15 @@
               <span class="text-gray-600">Tanggal Pembayaran:</span>
               <span class="font-medium ml-2">{{ formatDate(order?.tanggal_pembayaran) }}</span>
             </div>
+            <div v-if="order?.status === 'Selesai'">
+              <span class="text-gray-600">Bukti Pembayaran:</span>
+              <template v-if="paymentProofUrl">
+                <a :href="paymentProofUrl" target="_blank" class="ml-2 inline-block">
+                  <img :src="paymentProofUrl" alt="Bukti Pembayaran" class="h-16 w-auto object-cover rounded border border-gray-300 hover:border-blue-500 transition-colors" />
+                </a>
+              </template>
+              <span v-else class="font-medium ml-2 text-gray-400 italic">Tidak ada bukti</span>
+            </div>
           </div>
           <div v-if="order?.catatan_pembelian" class="mt-3">
             <span class="text-gray-600">Catatan:</span>
@@ -223,6 +232,12 @@ const shrinkageItems = computed(() => {
         ? getFileUrl(item.bukti_penyusutan)
         : null
     }))
+})
+
+// Preview URL untuk bukti pembayaran purchase order (file privat)
+const paymentProofUrl = computed(() => {
+  const fileId = props.order?.bukti_bayar
+  return fileId ? getFileUrl(fileId) : null
 })
 
 const totalAmount = computed(() => {

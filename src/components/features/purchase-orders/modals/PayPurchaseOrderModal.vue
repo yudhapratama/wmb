@@ -176,12 +176,32 @@
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Bukti Pembayaran</label>
-            <input 
-              @change="handleFileUpload"
-              type="file" 
-              accept="image/*"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div class="flex items-center gap-4">
+              <button
+                type="button"
+                @click="triggerPaymentFileInput"
+                class="flex items-center gap-2 px-3 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Ambil Foto
+              </button>
+              <input 
+                id="paymentProofInput"
+                @change="handleFileUpload"
+                type="file" 
+                accept="image/*"
+                class="hidden"
+              />
+              <img
+                v-if="paymentPreview"
+                :src="paymentPreview"
+                alt="Bukti Pembayaran"
+                class="w-20 h-20 object-cover rounded border"
+              />
+            </div>
             <p class="text-xs text-gray-600 mt-1">Format: JPG, PNG, maksimal 5MB</p>
           </div>
           
@@ -227,6 +247,8 @@
 import { ref, computed, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
+import { validateFile, createFilePreview } from '../../../../utils/fileUtils'
+import { useFileUpload } from '../../../../composables/useFileUpload'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -241,6 +263,24 @@ const paymentData = ref({
   total_pembayaran: 0,
   bukti_bayar: null,
   catatan_pembayaran: ''
+})
+const paymentPreview = ref(null)
+
+// Setup single-file upload for payment proof
+const { 
+  files,
+  previews,
+  errors: fileErrors,
+  isUploading,
+  uploadFiles,
+  handleFileSelect,
+  clearFiles,
+  removeFile
+} = useFileUpload({
+  multiple: false,
+  autoUpload: false,
+  featureName: 'PurchaseOrderPayment',
+  dataId: null
 })
 
 // Reset form when modal opens
@@ -306,26 +346,60 @@ const getShrinkageReasonLabel = (reason) => {
   return reasons[reason] || reason
 }
 
-const handleFileUpload = (event) => {
+const triggerPaymentFileInput = () => {
+  const input = document.getElementById('paymentProofInput')
+  if (input) {
+    input.click()
+  }
+}
+
+const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (file) {
-    // Gunakan utility validation
     const validation = validateFile(file)
     if (!validation.isValid) {
       alert(validation.error)
       return
     }
-    paymentData.value.bukti_bayar = file
+    try {
+      // Clear previous selection and use composable to manage files
+      clearFiles()
+      await handleFileSelect(event)
+      
+      // Set preview from composable
+      if (previews.value && previews.value.length > 0) {
+        const previewData = previews.value[0]
+        paymentPreview.value = previewData.preview || previewData
+      } else {
+        // Fallback
+        paymentPreview.value = await createFilePreview(file)
+      }
+    } catch (error) {
+      console.error('Error creating preview:', error)
+      paymentPreview.value = URL.createObjectURL(file)
+    }
+    
+    // Do NOT assign raw File to bukti_bayar; will upload on submit
   }
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const submitData = {
     orderId: props.order.id,
     ...paymentData.value,
     final_total: finalTotal.value,
     subtotal: subtotal.value,
     total_shrinkage: totalShrinkageValue.value
+  }
+  
+  // Upload payment proof if selected and attach asset ID
+  if (files.value && files.value.length > 0) {
+    const tempId = `po_payment_${props.order.id}`
+    const uploadedIds = await uploadFiles(tempId)
+    submitData.bukti_bayar = uploadedIds?.[0] || null
+  } else {
+    // Keep existing value if any (e.g., when re-opening modal)
+    submitData.bukti_bayar = paymentData.value.bukti_bayar
   }
   
   emit('submit', submitData)

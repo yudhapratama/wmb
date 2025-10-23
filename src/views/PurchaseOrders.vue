@@ -512,6 +512,7 @@ async function openDetailModal(order) {
       date_created: orderData.date_created,
       date_updated: orderData.date_updated,
       tanggal_pembayaran: orderData.tanggal_pembayaran,
+      bukti_bayar: orderData.bukti_bayar,
       catatan_pembelian: orderData.catatan_pembelian,
       items: Array.isArray(orderData.po_items) ? orderData.po_items.map(item => ({
         id: item.id,

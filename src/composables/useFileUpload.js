@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { validateFile, createFilePreview, getFileInfo, getAllowedFileTypes } from '../utils/fileUtils'
 import api from '../services/api'
+import { useAuthStore } from '../stores/auth'
 
 /**
  * Composable for handling file uploads with organized folder structure
@@ -273,13 +274,16 @@ export function useFileUpload(options = {}) {
   }
 
   /**
-   * Get file URL from Directus
+   * Get file URL from Directus (authenticated)
    * @param {string} fileId - File ID from Directus
-   * @returns {string} - File URL
+   * @returns {string} - File URL with access_token if available
    */
   const getFileUrl = (fileId) => {
     if (!fileId) return ''
-    return `${import.meta.env.VITE_API_URL}/assets/${fileId}`
+    const authStore = useAuthStore()
+    const token = authStore?.token
+    const baseUrl = `${import.meta.env.VITE_API_URL}/assets/${fileId}`
+    return token ? `${baseUrl}?access_token=${encodeURIComponent(token)}` : baseUrl
   }
 
   return {

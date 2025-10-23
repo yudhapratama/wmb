@@ -67,15 +67,14 @@
                     v-model.number="item.quantity" 
                     type="number" 
                     min="1" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </td>
                 <td class="px-4 py-3">
                   <input 
                     v-model="item.unit" 
                     type="text" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     readonly
                   />
                 </td>
@@ -84,18 +83,16 @@
                     v-model.number="item.total_price" 
                     type="number" 
                     min="0" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    required
-                    placeholder="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-4 py-3">
                   <button 
                     type="button"
-                    @click="removeItem(index)" 
-                    class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+                    @click="removeItem(index)"
+                    class="p-2 text-red-600 hover:bg-red-50 rounded-md"
                   >
-                    <TrashIcon class="w-4 h-4" />
+                    <TrashIcon class="w-5 h-5" />
                   </button>
                 </td>
               </tr>
@@ -154,9 +151,6 @@ const {
   getUnitName
 } = useInventory()
 
-// Tambahkan flag untuk mencegah recursive updates
-const isUpdatingFromParent = ref(false)
-
 const formData = ref({
   orderNumber: '',
   supplier: '',
@@ -167,27 +161,29 @@ const formData = ref({
   items: []
 })
 
-// Initialize form data from props
+// Flag to prevent recursive updates
+const isUpdatingFromParent = ref(false)
+
 function initFormData() {
   if (props.order && Object.keys(props.order).length > 0) {
+    isUpdatingFromParent.value = true
     formData.value = {
-      ...props.order,
+      orderNumber: props.order.orderNumber || props.order.nomor_po || '',
       supplier: props.order.supplier ? parseInt(props.order.supplier) : '',
+      status: props.order.status || 'Dibuat',
       orderDate: props.order.orderDate ? new Date(props.order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      items: props.order.items ? props.order.items.map(item => {
-        const mappedItem = {
-          id: item.id,
-          raw_material_id: parseInt(item.raw_material_id || item.item || ''),
-          item: item.item_name || item.nama_item || item.item || '',
-          quantity: item.jumlah_pesan || item.quantity || 1,
-          unit: item.unit_name || item.unit || 'pcs',
-          total_price: item.total_price || item.harga_satuan || item.total || (item.price * item.quantity) || 0
-        }
-        // console.log('🔍 Mapped item raw_material_id:', mappedItem.raw_material_id, 'type:', typeof mappedItem.raw_material_id)
-        return mappedItem
-      }) : []
+      createdBy: props.order.createdBy || 'Admin',
+      notes: props.order.notes || '',
+      items: props.order.items?.map(item => ({
+        id: item.id,
+        raw_material_id: normalizeId(item.raw_material_id ?? item.item),
+        item: item.item_name || item.nama_item || item.item || '',
+        quantity: item.jumlah_pesan || item.quantity || 1,
+        unit: item.unit_name || item.unit || 'pcs',
+        total_price: item.harga_satuan || item.total_price || 0
+      })) || []
     }
-    // console.log('✅ Form data initialized:', formData.value)
+    isUpdatingFromParent.value = false
   } else {
     formData.value = {
       orderNumber: '',
@@ -222,7 +218,7 @@ watch(() => props.order, (newOrder) => {
     notes: newOrder?.notes || '',
     items: newOrder?.items?.map(item => ({
       id: item.id,
-      raw_material_id: item.raw_material_id || item.item || '',
+      raw_material_id: normalizeId(item.raw_material_id ?? item.item),
       item: item.item_name || item.nama_item || item.item || '',
       quantity: item.jumlah_pesan || item.quantity || 1,
       unit: item.unit_name || item.unit || 'pcs',
@@ -254,7 +250,8 @@ onMounted(async () => {
 
 // Get raw material by ID
 function getRawMaterialById(id) {
-  return rawMaterials.value.find(material => material.id === id)
+  const idNum = typeof id === 'number' ? id : parseInt(id)
+  return rawMaterials.value.find(material => material.id === idNum)
 }
 
 // Handle raw material selection
@@ -263,7 +260,7 @@ function onRawMaterialSelect(index, materialId) {
   
   if (material) {
     const item = formData.value.items[index]
-    item.raw_material_id = materialId
+    item.raw_material_id = normalizeId(materialId)
     item.item = material.nama_item
     item.unit = getUnitName(material.unit) || 'pcs'
   } else {
@@ -282,6 +279,25 @@ function addItem() {
   })
 }
 
+// Reset item selections if supplier change invalidates current raw materials
+watch(() => formData.value.supplier, () => {
+  // Jangan reset saat sedang update dari parent (edit mode init)
+  if (isUpdatingFromParent.value) return
+  // Jangan reset jika data bahan baku belum selesai dimuat
+  if (materialsLoading.value) return
+  const options = rawMaterialOptions.value
+  // Jika opsi belum tersedia, jangan lakukan apa-apa
+  if (!options || options.length === 0) return
+
+  const allowedIds = new Set(options.map(opt => Number(opt.value)))
+  formData.value.items = formData.value.items.map(item => {
+    const idNum = typeof item.raw_material_id === 'number' ? item.raw_material_id : parseInt(item.raw_material_id)
+    if (!Number.isFinite(idNum) || !allowedIds.has(idNum)) {
+      return { ...item, raw_material_id: '', item: '', unit: 'pcs', total_price: 0 }
+    }
+    return item
+  })
+})
 // Remove item
 function removeItem(index) {
   formData.value.items.splice(index, 1)
@@ -318,6 +334,12 @@ function handleSubmit() {
   emit('save', orderData)
 }
 
+// Helper: normalize numeric ID
+function normalizeId(val) {
+  const num = typeof val === 'number' ? val : parseInt(val)
+  return Number.isFinite(num) ? num : ''
+}
+
 const supplierOptions = computed(() => 
   props.suppliers.map(supplier => ({
     value: supplier.id,
@@ -325,16 +347,19 @@ const supplierOptions = computed(() =>
   }))
 )
 
+// Filter raw materials by selected supplier when available
 const rawMaterialOptions = computed(() => {
-  const options = rawMaterials.value.map(rm => ({
+  const supplierId = parseInt(formData.value.supplier)
+  const filtered = rawMaterials.value.filter(rm => {
+    if (!supplierId || Number.isNaN(supplierId)) return true
+    const supplierByRelation = typeof rm.supplier_id === 'object' ? rm.supplier_id?.id : rm.supplier_id
+    const supplierByPrimary = rm.supplier_utama
+    return supplierByRelation === supplierId || supplierByPrimary === supplierId
+  })
+  return filtered.map(rm => ({
     value: rm.id,
     label: `${rm.nama_item} - ${getCategoryName(rm.kategori)}`
   }))
-  // console.log('🔍 Current form items raw_material_ids:', formData.value.items.map(item => ({ 
-  //   raw_material_id: item.raw_material_id, 
-  //   type: typeof item.raw_material_id,
-  //   found: options.find(opt => opt.value === item.raw_material_id)
-  // })))
-  return options
 })
+
 </script>

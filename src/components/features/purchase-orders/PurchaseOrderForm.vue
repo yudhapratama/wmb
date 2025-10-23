@@ -356,10 +356,13 @@ const rawMaterialOptions = computed(() => {
     const supplierByPrimary = rm.supplier_utama
     return supplierByRelation === supplierId || supplierByPrimary === supplierId
   })
-  return filtered.map(rm => ({
+  const options = filtered.map(rm => ({
     value: rm.id,
     label: `${rm.nama_item} - ${getCategoryName(rm.kategori)}`
   }))
+  // Urutkan secara abjad berdasarkan label (nama item + kategori)
+  options.sort((a, b) => a.label.localeCompare(b.label, 'id', { sensitivity: 'base' }))
+  return options
 })
 
 </script>

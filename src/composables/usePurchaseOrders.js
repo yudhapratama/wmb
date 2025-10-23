@@ -383,8 +383,8 @@ export function usePurchaseOrders() {
           
       delete plainOrder.items
 
-      // mendapatkan purchase order id
-      const orderId = plainOrder.orderNumber
+      // mendapatkan purchase order id (pastikan integer, hindari mismatch key)
+      const orderId = parseInt(plainOrder.orderNumber)
       
       // ✅ PENTING: Gunakan snapshot dari EditModal jika tersedia, jika tidak ambil dari database
       let originalItemsInDb

@@ -24,42 +24,52 @@
           <ListboxOptions
             v-if="isDropdownOpen"
             :style="dropdownStyle"
-            class="fixed z-[9999] overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
-            @click="closeDropdown"
+            class="fixed z-[9999] overflow-hidden rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
           >
-            <div v-if="filteredOptions.length === 0" class="px-4 py-2 text-gray-500 text-center">
-              Tidak ada data ditemukan
+            <div v-if="props.searchable" class="px-3 py-2 border-b bg-white">
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Cari..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                @click.stop
+              />
             </div>
-            <ListboxOption
-              v-else
-              v-slot="{ active, selected }"
-              v-for="option in filteredOptions"
-              :key="option.value"
-              :value="option.value"
-              as="template"
-            >
-              <li
-                :class="[
-                  active ? 'bg-blue-100 text-blue-900' : 'text-gray-900',
-                  'relative cursor-default select-none py-2 pl-10 pr-4 hover:bg-gray-50',
-                ]"
+            <div :style="{ maxHeight: dropdownScrollMaxHeight }" class="overflow-auto">
+              <div v-if="filteredOptions.length === 0" class="px-4 py-2 text-gray-500 text-center">
+                Tidak ada data ditemukan
+              </div>
+              <ListboxOption
+                v-else
+                v-slot="{ active, selected }"
+                v-for="option in filteredOptions"
+                :key="option.value"
+                :value="option.value"
+                as="template"
               >
-                <span
+                <li
                   :class="[
-                    selected ? 'font-medium' : 'font-normal',
-                    'block truncate',
+                    active ? 'bg-blue-100 text-blue-900' : 'text-gray-900',
+                    'relative cursor-default select-none py-2 pl-10 pr-4 hover:bg-gray-50',
                   ]"
                 >
-                  {{ option.label }}
-                </span>
-                <span
-                  v-if="selected"
-                  class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600"
-                >
-                  <CheckIcon class="h-5 w-5" aria-hidden="true" />
-                </span>
-              </li>
-            </ListboxOption>
+                  <span
+                    :class="[
+                      selected ? 'font-medium' : 'font-normal',
+                      'block truncate',
+                    ]"
+                  >
+                    {{ option.label }}
+                  </span>
+                  <span
+                    v-if="selected"
+                    class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600"
+                  >
+                    <CheckIcon class="h-5 w-5" aria-hidden="true" />
+                  </span>
+                </li>
+              </ListboxOption>
+            </div>
           </ListboxOptions>
         </transition>
       </Teleport>
@@ -102,6 +112,7 @@ const containerRef = ref(null)
 const buttonRef = ref(null)
 const isDropdownOpen = ref(false)
 const dropdownStyle = ref({})
+const dropdownScrollMaxHeight = ref('240px')
 const searchQuery = ref('')
 
 const selectedValue = computed({
@@ -133,30 +144,34 @@ function calculateDropdownPosition() {
   const buttonRect = buttonRef.value.$el.getBoundingClientRect()
   const viewportHeight = window.innerHeight
   const viewportWidth = window.innerWidth
-  const dropdownMaxHeight = 240 // max-h-60
+  const dropdownMaxHeight = 240 // total dropdown max height
   const optionHeight = 40 // approximate height per option
-  const actualDropdownHeight = Math.min(dropdownMaxHeight, filteredOptions.value.length * optionHeight + 16)
+  const searchInputHeight = props.searchable ? 48 : 0 // tinggi input cari
+
+  // Total konten termasuk input + options + padding
+  const optionsAreaNeeded = filteredOptions.value.length * optionHeight + 16
+  const actualDropdownHeight = Math.min(dropdownMaxHeight, searchInputHeight + optionsAreaNeeded)
   
   const spaceBelow = viewportHeight - buttonRect.bottom - 8
   const spaceAbove = buttonRect.top - 8
   
   let top, maxHeight, transformOrigin
   
-  // Determine if dropdown should open upward or downward
+  // Tentukan buka ke bawah atau ke atas
   if (spaceBelow >= actualDropdownHeight || spaceBelow >= spaceAbove) {
-    // Open downward
-    top = buttonRect.bottom + window.scrollY + 4
+    // Buka ke bawah
+    top = buttonRect.bottom + 4 // gunakan koordinat viewport untuk posisi fixed
     maxHeight = Math.min(actualDropdownHeight, spaceBelow)
     transformOrigin = 'top'
   } else {
-    // Open upward
+    // Buka ke atas
     maxHeight = Math.min(actualDropdownHeight, spaceAbove)
-    top = buttonRect.top + window.scrollY - maxHeight - 4
+    top = buttonRect.top - maxHeight - 4 // gunakan koordinat viewport untuk posisi fixed
     transformOrigin = 'bottom'
   }
   
-  // Ensure dropdown doesn't overflow horizontally
-  let left = buttonRect.left + window.scrollX
+  // Pastikan tidak overflow secara horizontal
+  let left = buttonRect.left
   const dropdownWidth = buttonRect.width
   
   if (left + dropdownWidth > viewportWidth - 16) {
@@ -170,6 +185,10 @@ function calculateDropdownPosition() {
     maxHeight: `${maxHeight}px`,
     transformOrigin
   }
+
+  // Set max-height area scroll internal agar mengurangi tinggi input cari
+  const scrollMax = Math.max(0, maxHeight - searchInputHeight)
+  dropdownScrollMaxHeight.value = `${scrollMax}px`
 }
 
 function toggleDropdown() {

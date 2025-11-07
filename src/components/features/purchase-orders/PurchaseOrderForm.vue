@@ -66,7 +66,7 @@
                   <input 
                     v-model.number="item.quantity" 
                     type="number" 
-                    min="1" 
+                    min="0" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </td>
@@ -178,7 +178,7 @@ function initFormData() {
         id: item.id,
         raw_material_id: normalizeId(item.raw_material_id ?? item.item),
         item: item.item_name || item.nama_item || item.item || '',
-        quantity: item.jumlah_pesan || item.quantity || 1,
+        quantity: item.jumlah_pesan || item.quantity || 0,
         unit: item.unit_name || item.unit || 'pcs',
         total_price: item.harga_satuan || item.total_price || 0
       })) || []
@@ -220,7 +220,7 @@ watch(() => props.order, (newOrder) => {
       id: item.id,
       raw_material_id: normalizeId(item.raw_material_id ?? item.item),
       item: item.item_name || item.nama_item || item.item || '',
-      quantity: item.jumlah_pesan || item.quantity || 1,
+      quantity: item.jumlah_pesan || item.quantity || 0,
       unit: item.unit_name || item.unit || 'pcs',
       total_price: item.harga_satuan || item.total_price || 0
     })) || []
@@ -273,7 +273,7 @@ function addItem() {
   formData.value.items.push({
     raw_material_id: '',
     item: '',
-    quantity: 1,
+    quantity: 0,
     unit: 'pcs',
     total_price: 0
   })

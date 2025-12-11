@@ -31,23 +31,68 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     
-    // ✅ Tambahkan pengecekan _skipAuthRefresh untuk mencegah infinite loop
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest._skipAuthRefresh) {
+    // Skip refresh for auth endpoints to prevent infinite loops
+    if (originalRequest.url?.includes('/auth/')) {
+      return Promise.reject(error)
+    }
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       
-      console.log('Token expired, attempting refresh...')
-      const authStore = useAuthStore()
-      const refreshSuccess = await authStore.refreshToken()
+      console.log('API Interceptor: Token expired, attempting refresh...')
       
-      if (refreshSuccess) {
-        // Update header dan retry
-        originalRequest.headers.Authorization = `Bearer ${authStore.token}`
-        return api(originalRequest)
-      } else {
-        console.log('Refresh failed, forcing complete logout')
+      try {
+        const authStore = useAuthStore()
+        
+        // Safety check: reset stuck refresh flag (older than 10 seconds)
+        if (authStore.isRefreshing && authStore.refreshStartTime && 
+            (Date.now() - authStore.refreshStartTime) > 10000) {
+          console.log('API Interceptor: Resetting stuck refresh flag')
+          authStore.isRefreshing = false
+        }
+        
+        // Check if refresh is already in progress
+        if (authStore.isRefreshing) {
+          console.log('API Interceptor: Refresh already in progress, waiting...')
+          // Wait for refresh to complete with timeout
+          let waitTime = 0
+          const maxWait = 5000 // 5 seconds max wait
+          
+          while (authStore.isRefreshing && waitTime < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            waitTime += 100
+          }
+          
+          if (authStore.token && !authStore.isRefreshing) {
+            console.log('API Interceptor: Refresh completed, retrying with new token')
+            originalRequest.headers.Authorization = `Bearer ${authStore.token}`
+            return api(originalRequest)
+          } else {
+            console.log('API Interceptor: Refresh timeout or failed')
+            return Promise.reject(error)
+          }
+        }
+        
+        const refreshSuccess = await authStore.refreshToken()
+        
+        if (refreshSuccess && authStore.token) {
+          console.log('API Interceptor: Refresh successful, retrying request')
+          originalRequest.headers.Authorization = `Bearer ${authStore.token}`
+          return api(originalRequest)
+        } else {
+          console.log('API Interceptor: Refresh failed, logging out')
+          authStore.logout()
+          
+          // Redirect to login
+          if (router.currentRoute.value.name !== 'Login') {
+            router.push({ name: 'Login', query: { expired: 'true' } })
+          }
+        }
+      } catch (refreshError) {
+        console.error('API Interceptor: Error during refresh:', refreshError)
+        const authStore = useAuthStore()
         authStore.logout()
         
-        // Redirect ke login dengan parameter untuk clear cache
         if (router.currentRoute.value.name !== 'Login') {
           router.push({ name: 'Login', query: { expired: 'true' } })
         }

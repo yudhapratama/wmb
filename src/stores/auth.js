@@ -10,7 +10,11 @@ export const useAuthStore = defineStore('auth', {
     role: null,
     permissions: null,
     permissionsTimestamp: null,
-    permissionsVersion: null
+    permissionsVersion: null,
+    tokenTimestamp: null,
+    refreshInterval: null,
+    isRefreshing: false,
+    refreshStartTime: null
   }),
   
   getters: {
@@ -59,7 +63,8 @@ export const useAuthStore = defineStore('auth', {
     
     isTokenOld: (state) => {
       const age = Date.now() - (state.tokenTimestamp || 0)
-      return age > (7 * 24 * 60 * 60 * 1000) // 7 hari
+      const expiryMinutes = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MINUTES) || 10080 // Default 7 days
+      return age > (expiryMinutes * 60 * 1000) // Configurable minutes
     }    
   },
   
@@ -73,6 +78,8 @@ export const useAuthStore = defineStore('auth', {
         // Validasi token masih valid
         try {
           await api.get('/users/me')
+          // Start auto-refresh if session is valid
+          this.startAutoRefresh()
           return true
         } catch (error) {
           console.error('Token tidak valid, logout user:', error)
@@ -120,6 +127,9 @@ export const useAuthStore = defineStore('auth', {
         // Fetch user data and permissions
         await this.fetchUserData()
         
+        // Start automatic token refresh
+        this.startAutoRefresh()
+        
         console.log('Login successful, tokens saved')
         return { success: true }
       } catch (error) {
@@ -134,6 +144,14 @@ export const useAuthStore = defineStore('auth', {
     // Tambahkan method refresh token
     // Tambahkan di method refreshToken
     async refreshToken() {
+      // Prevent multiple simultaneous refresh attempts
+      if (this.isRefreshing) {
+        console.log('Refresh already in progress, skipping...')
+        return false
+      }
+      
+      this.isRefreshing = true
+      this.refreshStartTime = Date.now()
       console.log('Attempting token refresh...')
       
       // Coba ambil dari state store dulu
@@ -161,25 +179,20 @@ export const useAuthStore = defineStore('auth', {
       }
       
       try {
-        // ✅ Perbaiki format request untuk Directus
-        const payload = {
-          refresh_token: refreshToken,
-          mode: 'json' // Tambahkan mode untuk Directus
-        }
+        console.log('Sending refresh request with token:', refreshToken.substring(0, 10) + '...')
+        console.log('Full refresh token for debugging:', refreshToken)
         
-        console.log('Sending refresh request with payload:', {
-          refresh_token: refreshToken.substring(0, 10) + '...' // Log partial token untuk security
-        })
-        
-        // ✅ Gunakan axios langsung untuk menghindari interceptor
-        // Dalam method refreshToken, ganti endpoint:
+        // Use axios directly to avoid interceptor loops
         const response = await axios.post(
           `${import.meta.env.VITE_API_URL || 'http://localhost:8055'}/auth/refresh`,
-          { refresh_token: refreshToken }, // Tanpa mode
+          { 
+            refresh_token: refreshToken
+          },
           {
             headers: {
               'Content-Type': 'application/json'
-            }
+            },
+            timeout: 10000 // Add timeout to prevent hanging
           }
         )
         
@@ -198,6 +211,8 @@ export const useAuthStore = defineStore('auth', {
         api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
         
         console.log('Token refreshed successfully')
+        this.isRefreshing = false
+        this.refreshStartTime = null
         return true
         
       } catch (error) {
@@ -210,8 +225,13 @@ export const useAuthStore = defineStore('auth', {
         })
         
         // Jika refresh gagal, logout user
+        this.isRefreshing = false
+        this.refreshStartTime = null
         this.logout()
         return false
+      } finally {
+        this.isRefreshing = false
+        this.refreshStartTime = null
       }
     },
     
@@ -269,6 +289,31 @@ export const useAuthStore = defineStore('auth', {
       return true
     },
 
+    // Start automatic token refresh checker
+    startAutoRefresh() {
+      // Clear any existing interval
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval)
+      }
+      
+      // Check interval configurable via env
+      const checkIntervalMinutes = parseInt(import.meta.env.VITE_TOKEN_CHECK_INTERVAL_MINUTES) || 1
+      this.refreshInterval = setInterval(async () => {
+        if (this.token && this.isTokenOld) {
+          console.log('Auto-refresh: Token is old, refreshing...')
+          await this.refreshToken()
+        }
+      }, checkIntervalMinutes * 60 * 1000) // Configurable check interval
+    },
+
+    // Stop automatic token refresh checker
+    stopAutoRefresh() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval)
+        this.refreshInterval = null
+      }
+    },
+
     // Update method validateSession
     async validateSession() {
       // Jika tidak ada token, tidak perlu validasi
@@ -322,13 +367,18 @@ export const useAuthStore = defineStore('auth', {
     },
     
     logout() {
+      // Stop auto-refresh
+      this.stopAutoRefresh()
+      
       this.token = null
-      this.refresh_token = null // Clear refresh token
+      this.refresh_token = null
       this.user = null
       this.role = null
       this.permissions = null
       this.permissionsTimestamp = null
       this.permissionsVersion = null
+      this.tokenTimestamp = null
+      this.isRefreshing = false
       delete api.defaults.headers.common['Authorization']
     }
   },
@@ -336,6 +386,6 @@ export const useAuthStore = defineStore('auth', {
   persist: {
     key: 'warung-auth',
     storage: localStorage,
-    paths: ['token', 'refresh_token', 'user', 'role', 'permissions', 'permissionsTimestamp', 'permissionsVersion']
+    paths: ['token', 'refresh_token', 'user', 'role', 'permissions', 'permissionsTimestamp', 'permissionsVersion', 'tokenTimestamp']
   }
 })

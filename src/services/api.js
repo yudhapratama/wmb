@@ -44,16 +44,33 @@ api.interceptors.response.use(
       try {
         const authStore = useAuthStore()
         
+        // Safety check: reset stuck refresh flag (older than 10 seconds)
+        if (authStore.isRefreshing && authStore.refreshStartTime && 
+            (Date.now() - authStore.refreshStartTime) > 10000) {
+          console.log('API Interceptor: Resetting stuck refresh flag')
+          authStore.isRefreshing = false
+        }
+        
         // Check if refresh is already in progress
         if (authStore.isRefreshing) {
           console.log('API Interceptor: Refresh already in progress, waiting...')
-          // Wait a bit and retry
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          if (authStore.token) {
+          // Wait for refresh to complete with timeout
+          let waitTime = 0
+          const maxWait = 5000 // 5 seconds max wait
+          
+          while (authStore.isRefreshing && waitTime < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            waitTime += 100
+          }
+          
+          if (authStore.token && !authStore.isRefreshing) {
+            console.log('API Interceptor: Refresh completed, retrying with new token')
             originalRequest.headers.Authorization = `Bearer ${authStore.token}`
             return api(originalRequest)
+          } else {
+            console.log('API Interceptor: Refresh timeout or failed')
+            return Promise.reject(error)
           }
-          return Promise.reject(error)
         }
         
         const refreshSuccess = await authStore.refreshToken()

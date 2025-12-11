@@ -13,7 +13,8 @@ export const useAuthStore = defineStore('auth', {
     permissionsVersion: null,
     tokenTimestamp: null,
     refreshInterval: null,
-    isRefreshing: false
+    isRefreshing: false,
+    refreshStartTime: null
   }),
   
   getters: {
@@ -150,6 +151,7 @@ export const useAuthStore = defineStore('auth', {
       }
       
       this.isRefreshing = true
+      this.refreshStartTime = Date.now()
       console.log('Attempting token refresh...')
       
       // Coba ambil dari state store dulu
@@ -178,13 +180,13 @@ export const useAuthStore = defineStore('auth', {
       
       try {
         console.log('Sending refresh request with token:', refreshToken.substring(0, 10) + '...')
+        console.log('Full refresh token for debugging:', refreshToken)
         
         // Use axios directly to avoid interceptor loops
         const response = await axios.post(
           `${import.meta.env.VITE_API_URL || 'http://localhost:8055'}/auth/refresh`,
           { 
-            refresh_token: refreshToken,
-            mode: 'json'
+            refresh_token: refreshToken
           },
           {
             headers: {
@@ -210,6 +212,7 @@ export const useAuthStore = defineStore('auth', {
         
         console.log('Token refreshed successfully')
         this.isRefreshing = false
+        this.refreshStartTime = null
         return true
         
       } catch (error) {
@@ -223,10 +226,12 @@ export const useAuthStore = defineStore('auth', {
         
         // Jika refresh gagal, logout user
         this.isRefreshing = false
+        this.refreshStartTime = null
         this.logout()
         return false
       } finally {
         this.isRefreshing = false
+        this.refreshStartTime = null
       }
     },
     

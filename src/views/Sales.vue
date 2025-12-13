@@ -86,7 +86,7 @@
             </button>
             <button
               v-else
-              @click="showCloseSessionModal = true"
+              @click="openCloseSessionModal(salesSessions.find(v => v.waktu_tutup == null))"
               class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,7 +301,8 @@ import Modal from '../components/ui/Modal.vue'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import { useSales } from '../composables/useSales'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
-
+import { useNotification } from '../composables/useNotification'
+const { showNotification } = useNotification()
 export default {
   name: 'Sales',
   components: {

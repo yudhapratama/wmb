@@ -323,6 +323,60 @@ export function useSales() {
     }
   }
 
+  // Alias for createSale to match naming convention
+  const addSale = createSale
+
+  async function updateSale(saleId, saleData) {
+    try {
+      // Calculate totals
+      const totalAmount = saleData.items.reduce((sum, item) => {
+        return sum + (item.harga_jual_saat_transaksi * item.jumlah)
+      }, 0)
+
+      // Prepare update data
+      const updateData = {
+        mekanisme_pembayaran: saleData.mekanisme_pembayaran,
+        dibayarkan: saleData.dibayarkan || totalAmount,
+        items: saleData.items.map(item => ({
+          id: item.id, // Include ID for existing items
+          product_id: item.product_id,
+          jumlah: item.jumlah,
+          harga_jual_saat_transaksi: item.harga_jual_saat_transaksi,
+          hpp_saat_transaksi: item.hpp_saat_transaksi,
+          margin_saat_transaksi: item.margin_saat_transaksi
+        }))
+      }
+
+      const response = await api.patch(`/items/sales/${saleId}`, updateData)
+      
+      // Reload data to get updated list
+      await loadSales()
+      
+      showNotification('Penjualan berhasil diperbarui', 'success')
+      return response.data.data
+    } catch (error) {
+      console.error('Error updating sale:', error)
+      showNotification('Gagal memperbarui penjualan', 'error')
+      throw error
+    }
+  }
+
+  async function deleteSale(saleId) {
+    try {
+      await api.delete(`/items/sales/${saleId}`)
+      
+      // Reload data to get updated list
+      await loadSales()
+      
+      showNotification('Penjualan berhasil dihapus', 'success')
+      return true
+    } catch (error) {
+      console.error('Error deleting sale:', error)
+      showNotification('Gagal menghapus penjualan', 'error')
+      throw error
+    }
+  }
+
   async function openSalesSession(sessionData) {
     try {
       // Tidak perlu menyertakan cashier karena sudah dikonfigurasi di Directus
@@ -438,6 +492,9 @@ export function useSales() {
     loadProducts,        // Tambahkan ini jika belum ada
     loadCurrentSession,
     createSale,
+    addSale,             // Alias for createSale
+    updateSale,          // New function
+    deleteSale,          // New function
     openSalesSession,
     closeSalesSession,
     updateDateFilter,

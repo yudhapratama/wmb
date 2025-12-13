@@ -183,7 +183,8 @@ export default {
   },
   emits: ['close', 'save'],
   setup(props, { emit }) {
-    const { products } = useProducts()
+    const { products, loadData: loadDataProduct } = useProducts()
+    loadDataProduct()
     const { categories } = useProductCategories()
     
     const productSearch = ref('')
@@ -208,7 +209,7 @@ export default {
       { value: 'all', label: 'Semua Kategori' },
       ...categories.value.map(category => ({
         value: category.id,
-        label: category.nama_kategori
+        label: category.name
       }))
     ])
     

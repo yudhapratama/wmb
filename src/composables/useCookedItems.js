@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import db from '../services/db'
 import api from '../services/api'
 import syncService from '../services/sync'
+import { formatDate, formatDateISO } from '../utils/helpers'
 
 export function useCookedItems() {
   // State
@@ -18,9 +19,12 @@ export function useCookedItems() {
   const itemsPerPageOptions = [5, 10, 25, 50]
   
   // Date filter
+  const today = new Date();
+  const todayFormatted = formatDateISO(today)
+  
   const dateFilter = ref({
-    startDate: '',
-    endDate: ''
+    startDate: todayFormatted,
+    endDate: todayFormatted
   })
   
   // Computed properties
@@ -73,6 +77,8 @@ export function useCookedItems() {
   
   // Date filter function
   function updateDateFilter(filter) {
+    console.log('filter', filter);
+    // TODO: check again its not working
     dateFilter.value = { ...filter }
     resetPagination()
   }

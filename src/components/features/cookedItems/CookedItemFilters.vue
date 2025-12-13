@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   searchQuery: {
     type: String,
     default: ''

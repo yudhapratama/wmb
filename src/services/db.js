@@ -193,8 +193,8 @@ class WarungDatabase extends Dexie {
       cooked_items: '++id, name, total_stock, harga_pokok_rata_rata, unit, date_created, date_updated, sync_status, cached_at',
       cooked_items_raw_materials: '++id, cooked_items_id, raw_materials_id, jumlah_dibutuhkan, sync_status, cached_at',
       product_categories: '++id, name, status, cached_at'
-    })        
-    
+    })
+
     // Define tables
     this.suppliers = this.table('suppliers')
     this.item_categories = this.table('item_categories')

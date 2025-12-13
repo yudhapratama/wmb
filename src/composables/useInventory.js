@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import db from '../services/db'
 import api from '../services/api'
 import syncService from '../services/sync'
+import { useAuthStore } from '../stores/auth'
 // Remove this import
 // import { unitOptions } from '../constants/units'
 
@@ -13,6 +14,7 @@ export function useInventory() {
   const searchQuery = ref('')
   const selectedCategory = ref('all')
   const error = ref(null)
+  const authStore = useAuthStore()
   
   // Pagination state
   const currentPage = ref(1)
@@ -140,6 +142,7 @@ export function useInventory() {
   
   // Add new item
   async function addItem(item) {
+    const currentUserId = authStore.user?.id || receiptData.penerima_barang // Gunakan current user ID dengan fallback
     isLoading.value = true
     error.value = null
     
@@ -148,19 +151,59 @@ export function useInventory() {
       
       // No need to convert unit string to unit ID anymore
       // as it's already an ID
-      
+      let id = null;
       if (syncService.isOnline()) {
         // Online: Directly add to server
         const response = await api.post('/items/raw_materials', plainItem)
-        await loadData() // Refresh data from server
-        return { success: true, id: response.data.data.id }
+        id = response.data.data.id;
+
+        const idMaterials = id;
+        const logInventoryData = {
+          item: idMaterials,
+          tipe_transaksi: 'STOK_AWAL',
+          perubahan_jumlah: 0,
+          stok_sebelum: 0,
+          stok_setelah: 0,
+          harga_sebelum: 0,
+          harga_setelah: 0,
+          harga_per_unit_sebelum: 0,
+          harga_per_unit_setelah: 0,
+          dokumen_sumber: `inventory#${response.data.data.id}`,
+          pengguna: currentUserId, // Gunakan current user ID
+          waktu_log: new Date().toISOString(),
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
+        }
+        const generatedId = await db.log_inventaris.add(logInventoryData)
+        await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })
       } else {
         // Offline: Add to local DB and sync queue
-        const id = await db.raw_materials.add(plainItem)
-        await db.addToSyncQueue('raw_materials', id, 'create', plainItem)
-        await loadData() // Refresh data from local DB
-        return { success: true, id }
+        const idMaterials = await db.raw_materials.add(plainItem)
+        const logInventoryData = {
+          item: idMaterials,
+          tipe_transaksi: 'STOK_AWAL',
+          perubahan_jumlah: 0,
+          stok_sebelum: 0,
+          stok_setelah: 0,
+          harga_sebelum: 0,
+          harga_setelah: 0,
+          harga_per_unit_sebelum: 0,
+          harga_per_unit_setelah: 0,
+          dokumen_sumber: `inventory#${response.data.data.id}`,
+          pengguna: currentUserId, // Gunakan current user ID
+          waktu_log: new Date().toISOString(),
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
+        }
+        const generatedId = await db.log_inventaris.add(logInventoryData)
+        id = generatedId
+        await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })
       }
+      if (syncService.isOnline()) {
+        await syncService.processSyncQueue()
+      }
+      await loadData() // Refresh data from server / localDB
+      return { success: true, id }
     } catch (err) {
       console.error('Error adding item:', err)
       error.value = `Failed to add item: ${err.message}`

@@ -8,6 +8,188 @@ export const syncService = {
     return navigator.onLine
   },
 
+  // Get the latest ID from server for log_inventaris table
+  async getLatestLogInventarisId() {
+    try {
+      const response = await api.get('/items/log_inventaris', {
+        params: {
+          sort: ['-id'],
+          limit: 1,
+          fields: ['id']
+        }
+      })
+      
+      const data = response.data.data
+      return data.length > 0 ? data[0].id : 0
+    } catch (error) {
+      console.error('Failed to get latest log_inventaris ID:', error)
+      return 0
+    }
+  },
+
+  // Check if there are pending log_inventaris records to sync
+  async hasPendingLogInventaris() {
+    try {
+      const pendingCount = await db.sync_queue
+        .where('entity')
+        .equals('log_inventaris')
+        .and(item => item.action === 'create')
+        .count()
+      
+      return pendingCount > 0
+    } catch (error) {
+      console.error('Failed to check pending log_inventaris:', error)
+      return false
+    }
+  },
+
+  // Reassign IDs for pending log_inventaris records
+  async reassignPendingLogInventarisIds(startingId) {
+    try {
+      console.log(`Starting ID reassignment from ID: ${startingId}`)
+      
+      // Use transaction to ensure atomicity
+      await db.transaction('rw', [db.log_inventaris, db.sync_queue], async () => {
+        // Get all pending log_inventaris records from sync queue
+        const pendingQueueItems = await db.sync_queue
+          .where('entity')
+          .equals('log_inventaris')
+          .and(item => item.action === 'create')
+          .toArray()
+
+        if (pendingQueueItems.length === 0) {
+          console.log('No pending log_inventaris records to reassign')
+          return
+        }
+
+        console.log(`Found ${pendingQueueItems.length} pending log_inventaris records`)
+        
+        let currentId = startingId
+        const idMapping = new Map() // old_id -> new_id
+
+        // Process each pending queue item
+        for (const queueItem of pendingQueueItems) {
+          const oldId = queueItem.entity_id || queueItem.data?.id
+          
+          if (oldId && oldId < currentId) {
+            // Create mapping of old ID to new ID
+            idMapping.set(oldId, currentId)
+            
+            // Update the local log_inventaris record
+            const existingRecord = await db.log_inventaris.get(oldId)
+            if (existingRecord) {
+              // Remove old record
+              await db.log_inventaris.delete(oldId)
+              
+              // Add record with new ID
+              const updatedRecord = {
+                ...existingRecord,
+                id: currentId
+              }
+              await db.log_inventaris.put(updatedRecord)
+              
+              console.log(`Reassigned log_inventaris ID: ${oldId} -> ${currentId}`)
+            }
+
+            // Update sync queue item
+            await db.sync_queue.update(queueItem.id, {
+              entity_id: currentId,
+              data: {
+                ...queueItem.data,
+                id: currentId
+              }
+            })
+
+            currentId++
+          }
+        }
+
+        console.log(`Successfully reassigned ${idMapping.size} log_inventaris IDs`)
+        
+        // Set the local auto-increment counter to prevent future conflicts
+        if (currentId > startingId) {
+          await this.setLocalLogInventarisCounter(currentId)
+        }
+      })
+
+      return true
+    } catch (error) {
+      console.error('Failed to reassign log_inventaris IDs:', error)
+      throw error
+    }
+  },
+
+  // Set local auto-increment counter for log_inventaris to prevent future conflicts
+  async setLocalLogInventarisCounter(nextId) {
+    try {
+      console.log(`Setting local log_inventaris counter to start from ID: ${nextId}`)
+      
+      // In Dexie, we can set the auto-increment counter by adding and removing a record with a high ID
+      await db.transaction('rw', db.log_inventaris, async () => {
+        // Add a temporary record with the desired ID to set the counter
+        const tempId = await db.log_inventaris.add({
+          id: nextId,
+          item: -1, // Temporary marker
+          tipe_transaksi: 'TEMP_COUNTER_SET',
+          perubahan_jumlah: 0,
+          stok_sebelum: 0,
+          stok_setelah: 0,
+          harga_sebelum: 0,
+          harga_setelah: 0,
+          harga_per_unit_sebelum: 0,
+          harga_per_unit_setelah: 0,
+          dokumen_sumber: 'TEMP',
+          pengguna: 0,
+          waktu_log: new Date().toISOString(),
+          sync_status: 'temp',
+          cached_at: new Date().getTime()
+        })
+        
+        // Immediately delete the temporary record
+        await db.log_inventaris.delete(tempId)
+        
+        console.log(`✅ Local counter set - next auto-increment ID will be: ${nextId}`)
+      })
+      
+      return true
+    } catch (error) {
+      console.error('Failed to set local counter:', error)
+      // Don't throw - this is an optimization, not critical
+      return false
+    }
+  },
+
+  // Initialize local counter on app startup or after sync
+  async initializeLocalLogInventarisCounter() {
+    try {
+      if (!this.isOnline()) {
+        console.log('Offline: Cannot initialize counter from server')
+        return false
+      }
+      
+      // Get latest server ID
+      const latestServerId = await this.getLatestLogInventarisId()
+      
+      // Get latest local ID
+      const localRecords = await db.log_inventaris.orderBy('id').reverse().limit(1).toArray()
+      const latestLocalId = localRecords.length > 0 ? localRecords[0].id : 0
+      
+      console.log(`Server latest ID: ${latestServerId}, Local latest ID: ${latestLocalId}`)
+      
+      // Set counter to be higher than both server and local
+      const nextSafeId = Math.max(latestServerId, latestLocalId) + 1
+      
+      await this.setLocalLogInventarisCounter(nextSafeId)
+      
+      console.log(`✅ Initialized local counter to start from ID: ${nextSafeId}`)
+      return true
+      
+    } catch (error) {
+      console.error('Failed to initialize local counter:', error)
+      return false
+    }
+  },
+
   // New helper method to handle expense file upload
   async handleExpenseFileUpload(expenseData, entity, action, entityId = null) {
     // Remove problematic fields
@@ -54,9 +236,40 @@ export const syncService = {
       console.log('Offline: Sync postponed')
       return { success: false, message: 'Device is offline' }
     }
+
+    // After successful sync, initialize counter to prevent future conflicts
+    try {
+      await this.initializeLocalLogInventarisCounter()
+    } catch (error) {
+      console.error('Failed to initialize counter after sync:', error)
+      // Don't fail the sync for this
+    }
     
     try {
-      // Get all items from sync queue
+      // Step 1: Handle log_inventaris ID conflicts before syncing
+      const hasPendingLogs = await this.hasPendingLogInventaris()
+      
+      if (hasPendingLogs) {
+        console.log('Found pending log_inventaris records, checking for ID conflicts...')
+        
+        try {
+          // Get the latest ID from server
+          const latestId = await this.getLatestLogInventarisId()
+          const nextSafeId = latestId + 1
+          
+          console.log(`Latest server ID: ${latestId}, next safe ID: ${nextSafeId}`)
+          
+          // Reassign local IDs to avoid conflicts
+          await this.reassignPendingLogInventarisIds(nextSafeId)
+          
+          console.log('Successfully reassigned log_inventaris IDs')
+        } catch (error) {
+          console.error('Failed to reassign log_inventaris IDs:', error)
+          // Continue with sync anyway, but log the error
+        }
+      }
+      
+      // Step 2: Get all items from sync queue (refreshed after ID reassignment)
       const queueItems = await db.sync_queue.toArray()
       console.log('queueItems', queueItems)
       if (queueItems.length === 0) {
@@ -65,7 +278,7 @@ export const syncService = {
       
       console.log(`Processing ${queueItems.length} items in sync queue`)
       
-      // Process each item in the queue
+      // Step 3: Process each item in the queue
       for (const item of queueItems) {
         try {
           await this.processQueueItem(item)
@@ -172,6 +385,8 @@ export const syncService = {
           } else if (entity === 'stock_opname_items') {
             // Handle stock opname items
             await api.post(`/items/${entity}`, data)
+          } else if(entity === 'log_inventaris') {
+            await api.post(`/items/${entity}`, data)
           } else {
             await api.post(`/items/${entity}`, data)
           }
@@ -180,7 +395,7 @@ export const syncService = {
       case 'update':
         if (entity === 'expenses') {
           await this.handleExpenseFileUpload(data, entity, 'update', entity_id)
-        } else if (entity === 'purchase_orders' && data.items) {
+        } else if (entity === 'purchase_orders') {
           // console.log('ini adalah data di process queue item',data)
           // Handle purchase order update dengan items (untuk penerimaan PO)
           const { items, deletedItems, ...orderData } = data
@@ -188,7 +403,13 @@ export const syncService = {
           // console.log('deletedItems', deletedItems)
           
           // Update purchase order first
-          await api.patch(`/items/${entity}/${entity_id}`, orderData)
+          const order = {
+            ...orderData,
+            catatan_pembelian: orderData.catatan_pembelian ?? orderData.catatan_pembayaran
+          }
+          delete order.catatan_pembayaran;
+          delete order.sync_status
+          await api.patch(`/items/${entity}/${entity_id}`, order)
           
           // Hapus item yang dihapus dari server
           if (deletedItems && deletedItems.length > 0) {
@@ -197,89 +418,90 @@ export const syncService = {
               await api.delete(`/items/po_items/${deletedItem.id}`)
             }
           }
-          
-          // Pisahkan item yang sudah ada (dengan id) dan item baru (tanpa id)
-          const existingItems = items.filter(item => item.id && item.id !== undefined)
-          const newItems = items.filter(item => !item.id || item.id === undefined)
-          // console.log('existingItems', existingItems)
-          // console.log('newItems', newItems)
-          // Update existing po_items
-          if (existingItems.length > 0) {
-            for (const item of existingItems) {
-              /**
-               * data item ketika proses penerimaan
-               * alasan_penyusutan: null
-               * bukti_penyusutan: null
-               * harga_satuan: 12500
-               * id: 36
-               * jumlah_dapat_digunakan: 400
-               * raw_material_id: 41
-               * total_diterima: 400
-               * total_penyusutan: 100
-               * unit: "gr"
-               */
+          if (items) {
+            // Pisahkan item yang sudah ada (dengan id) dan item baru (tanpa id)
+            const existingItems = items.filter(item => item.id && item.id !== undefined)
+            const newItems = items.filter(item => !item.id || item.id === undefined)
+            // console.log('existingItems', existingItems)
+            // console.log('newItems', newItems)
+            // Update existing po_items
+            if (existingItems.length > 0) {
+              for (const item of existingItems) {
+                /**
+                 * data item ketika proses penerimaan
+                 * alasan_penyusutan: null
+                 * bukti_penyusutan: null
+                 * harga_satuan: 12500
+                 * id: 36
+                 * jumlah_dapat_digunakan: 400
+                 * raw_material_id: 41
+                 * total_diterima: 400
+                 * total_penyusutan: 100
+                 * unit: "gr"
+                 */
 
-              /**
-               * data item ketika proses update
-               * 0: 
-               * item: "Item Test A"
-               * quantity: 1600
-               * raw_material_id: 41s
-               * total_price: 60000
-               * unit: "gr"
-               */
-              // console.log('Updating po_item:', item.id, 'with data:', JSON.stringify(item))
-              
-              // Tentukan field yang akan di-update berdasarkan data yang tersedia
-              const updateData = {}
-              
-              // Untuk penerimaan PO (ada field total_diterima)
-              if (item.total_diterima !== undefined) {
-                updateData.total_diterima = item.total_diterima
-                updateData.total_penyusutan = item.total_penyusutan
-                updateData.alasan_penyusutan = item.alasan_penyusutan
-                updateData.bukti_penyusutan = item.bukti_penyusutan
-                updateData.jumlah_dapat_digunakan = item.jumlah_dapat_digunakan
+                /**
+                 * data item ketika proses update
+                 * 0: 
+                 * item: "Item Test A"
+                 * quantity: 1600
+                 * raw_material_id: 41s
+                 * total_price: 60000
+                 * unit: "gr"
+                 */
+                // console.log('Updating po_item:', item.id, 'with data:', JSON.stringify(item))
+                
+                // Tentukan field yang akan di-update berdasarkan data yang tersedia
+                const updateData = {}
+                
+                // Untuk penerimaan PO (ada field total_diterima)
+                if (item.total_diterima !== undefined) {
+                  updateData.total_diterima = item.total_diterima
+                  updateData.total_penyusutan = item.total_penyusutan
+                  updateData.alasan_penyusutan = item.alasan_penyusutan
+                  updateData.bukti_penyusutan = item.bukti_penyusutan
+                  updateData.jumlah_dapat_digunakan = item.jumlah_dapat_digunakan
+                }
+                
+                // Untuk update biasa (edit PO)
+                if (item.quantity !== undefined) {
+                  updateData.jumlah_pesan = item.quantity
+                }
+                if (item.price !== undefined) {
+                  updateData.harga_satuan = item.price
+                }
+                if (item.harga_satuan !== undefined) {
+                  updateData.harga_satuan = item.harga_satuan
+                }
+                if (item.jumlah_pesan !== undefined) {
+                  updateData.jumlah_pesan = item.jumlah_pesan
+                }
+                if (item.raw_material_id !== undefined) {
+                  updateData.raw_material_id = item.raw_material_id
+                }
+                if (item.unit !== undefined) {
+                  updateData.unit = item.unit
+                }
+                
+                await api.patch(`/items/po_items/${item.id}`, updateData)
               }
-              
-              // Untuk update biasa (edit PO)
-              if (item.quantity !== undefined) {
-                updateData.jumlah_pesan = item.quantity
-              }
-              if (item.price !== undefined) {
-                updateData.harga_satuan = item.price
-              }
-              if (item.harga_satuan !== undefined) {
-                updateData.harga_satuan = item.harga_satuan
-              }
-              if (item.jumlah_pesan !== undefined) {
-                updateData.jumlah_pesan = item.jumlah_pesan
-              }
-              if (item.raw_material_id !== undefined) {
-                updateData.raw_material_id = item.raw_material_id
-              }
-              if (item.unit !== undefined) {
-                updateData.unit = item.unit
-              }
-              
-              await api.patch(`/items/po_items/${item.id}`, updateData)
             }
-          }
-          // Create new po_items
-          if (newItems.length > 0) {
-            for (const item of newItems) {
-              // console.log('Creating new po_item with data:', JSON.stringify(item))
-              await api.post('/items/po_items', {
-                raw_material_id: item.raw_material_id,
-                item: item.raw_material_id,
-                quantity: item.quantity,
-                price: item.price,
-                unit: item.unit,
-                jumlah_pesan: item.quantity || item.jumlah_pesan,
-                harga_satuan: item.price || item.harga_satuan,
-                purchase_order: entity_id
-              })
-            }
+            // Create new po_items
+            if (newItems.length > 0) {
+              for (const item of newItems) {
+                // console.log('Creating new po_item with data:', JSON.stringify(item))
+                await api.post('/items/po_items', {
+                  raw_material_id: item.raw_material_id,
+                  item: item.raw_material_id,
+                  quantity: item.quantity,
+                  price: item.price,
+                  unit: item.unit,
+                  jumlah_pesan: item.quantity || item.jumlah_pesan,
+                  harga_satuan: item.price || item.harga_satuan,
+                  purchase_order: entity_id
+                })
+              }
+            }  
           }
         } else if (entity === 'stock_opname_items') {
           // Handle stock opname items update
@@ -387,6 +609,15 @@ export const syncService = {
   
       // Process any pending sync items
       const syncResult = await this.processSyncQueue()
+      
+      // Initialize local counter to prevent future ID conflicts
+      try {
+        await this.initializeLocalLogInventarisCounter()
+        console.log('✅ Local ID counter initialized')
+      } catch (error) {
+        console.error('Failed to initialize local counter:', error)
+        // Don't fail initialization for this
+      }
       
       console.log('Data synchronization completed successfully')
       return syncResult

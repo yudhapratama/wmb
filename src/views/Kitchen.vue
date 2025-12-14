@@ -339,9 +339,3 @@ function showErrorNotification(message) {
   }, 3000)
 }
 </script>
-
-<style scoped>
-.kitchen-page {
-  @apply p-6;
-}
-</style>

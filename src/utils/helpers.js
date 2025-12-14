@@ -39,6 +39,23 @@ export function formatDate(date, format = 'DD/MM/YYYY') {
 }
 
 /**
+ * Format date to ISO string (YYYY-MM-DD)
+ * @param {Date|string} date - The date to format
+ * @returns {string} ISO formatted date string (YYYY-MM-DD)
+ */
+export function formatDateISO(date) {
+  if (!date) return ''
+  
+  const d = new Date(date)
+  
+  // Check if date is valid
+  if (isNaN(d.getTime())) return ''
+  
+  // Return ISO date string (YYYY-MM-DD format)
+  return d.toISOString().split('T')[0]
+}
+
+/**
  * Generate a UUID v4
  * @returns {string} A UUID v4 string
  */

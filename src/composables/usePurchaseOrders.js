@@ -707,10 +707,11 @@ export function usePurchaseOrders() {
           }
           console.log('logInventoryData', logInventoryData);
           
-          await db.log_inventaris.add(logInventoryData)
+          // Add to local database and get the generated ID
+          const generatedId = await db.log_inventaris.add(logInventoryData)
           
-          // Tambahkan ke sync queue untuk log_inventaris
-          await db.addToSyncQueue('log_inventaris', logInventoryData.id, 'create', logInventoryData)              
+          // Tambahkan ke sync queue untuk log_inventaris dengan ID yang benar
+          await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })              
         }
   
         

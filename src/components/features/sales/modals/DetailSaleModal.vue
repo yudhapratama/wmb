@@ -139,7 +139,7 @@ import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useProducts } from '@/composables/useProducts'
-import { formatCurrency, formatDateTime } from '@/utils/helpers'
+import { formatCurrency, formatDateTime, formatNumber } from '@/utils/helpers'
 
 export default {
   name: 'DetailSaleModal',
@@ -187,18 +187,13 @@ export default {
       return product ? product.nama_produk : 'Unknown Product'
     }
     
-    function formatNumber(value) {
-      if (!value) return '0'
-      return new Intl.NumberFormat('id-ID').format(value)
-    }
-    
     return {
       paymentMethodStatus,
       totalMargin,
       getProductName,
       formatCurrency,
-      formatDateTime,
-      formatNumber
+      formatDateTime, 
+      formatNumber,
     }
   }
 }

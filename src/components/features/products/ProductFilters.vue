@@ -107,7 +107,7 @@ const categoryOptions = computed(() => [
   { value: 'all', label: 'Semua Kategori' },
   ...props.categories.map(category => ({
     value: category.id,
-    label: category.nama_kategori
+    label: category.name
   }))
 ])
 

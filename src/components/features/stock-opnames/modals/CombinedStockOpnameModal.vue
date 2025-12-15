@@ -4,7 +4,7 @@ import { useToast } from 'vue-toastification'
 import { useFileUpload } from '@/composables/useFileUpload'
 import { useStockOpnames } from '@/composables/useStockOpnames'
 import { CheckIcon, XMarkIcon, PencilIcon, TrashIcon, ClipboardDocumentListIcon, PhotoIcon } from '@heroicons/vue/24/outline'
-import { formatDate, formatCurrency } from '@/utils/helpers'
+import { formatDate } from '@/utils/helpers'
 import Select from '@/components/ui/Select.vue'
 
 const props = defineProps({

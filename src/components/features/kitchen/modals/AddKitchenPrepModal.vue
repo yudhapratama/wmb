@@ -148,7 +148,7 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span class="text-gray-600">Total Biaya Bahan:</span>
-                  <div class="font-semibold text-blue-900">Rp {{ formatCurrency(totalMaterialCost) }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatCurrency(totalMaterialCost) }}</div>
                 </div>
                 <div>
                   <span class="text-gray-600">Jumlah Dihasilkan:</span>
@@ -156,7 +156,7 @@
                 </div>
                 <div>
                   <span class="text-gray-600">HPP per Unit:</span>
-                  <div class="font-semibold text-blue-900">Rp {{ formatCurrency(hppPerUnit) }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatCurrency(hppPerUnit) }}</div>
                 </div>
               </div>
             </div>
@@ -194,7 +194,7 @@ import { ref, computed, watch } from 'vue'
 import { useKitchen } from '../../../../composables/useKitchen'
 import AddMaterialModal from './AddMaterialModal.vue'
 import Select from '../../../ui/Select.vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 // Props
 const props = defineProps({
   cookedItems: {
@@ -418,11 +418,5 @@ function addRawMaterial() {
     jumlah_diambil: 0
   })
 }
-// Fungsi untuk format currency
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(amount || 0)
-}
+
 </script>

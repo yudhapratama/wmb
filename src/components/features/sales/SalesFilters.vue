@@ -71,7 +71,7 @@
 <script setup>
 import { computed } from 'vue'
 import Select from '../../ui/Select.vue'
-
+import { formatDateTime } from '../../../utils/helpers'
 const props = defineProps({
   sessionOptions: {
     type: Array,
@@ -117,19 +117,6 @@ const sessionOptions = computed(() => {
     label: `Sesi ${session.id} - ${formatDateTime(session.created_at)}`
   }))
 })
-
-// Tambahkan fungsi formatDateTime
-function formatDateTime(dateString) {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date)
-}
 
 function clearFilters() {
   emit('update:searchQuery', '')

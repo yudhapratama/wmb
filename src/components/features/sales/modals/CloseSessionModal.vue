@@ -152,7 +152,7 @@
 <script>
 import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
-import { formatCurrency, formatDateTime } from '../../../../utils/helpers'
+import { formatCurrency, formatDateTime } from '@/utils/helpers'
 
 export default {
   name: 'CloseSessionModal',

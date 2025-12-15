@@ -201,14 +201,17 @@ function removeImage() {
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
-          <select
-            v-model="formData.metode_pembayaran"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          >
-            <option value="cash">Cash</option>
-            <option value="transfer">Transfer</option>
-            <option value="debit">Kartu Debit</option>
-          </select>
+          <Select
+            :modelValue="formData.metode_pembayaran"
+            @update:modelValue="formData.metode_pembayaran = $event"
+            :options="[
+              { value: 'cash', label: 'Cash'},
+              { value: 'transfer', label: 'Transfer'},
+              { value: 'debit', label: 'Kartu Debit'}
+            ]"
+            placeholder="Pilih Metode Pembayaran"
+          />
+          <p v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">{{ errors.metode_pembayaran }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal *</label>

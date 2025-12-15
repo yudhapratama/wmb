@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import { useFileUpload } from '../../../../composables/useFileUpload'
-
+import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -30,24 +30,6 @@ const categoryName = computed(() => {
   return category?.name || '-'
 })
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount || 0)
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
 const getPaymentMethodLabel = (method) => {
   const methods = {
     cash: 'Cash',
@@ -67,7 +49,7 @@ const getPaymentMethodLabel = (method) => {
   >
     <div v-if="expense" class="space-y-6">
       <!-- Header Info -->
-      <div class="bg-gray-50 rounded-lg p-4">
+      <div class="bg-gray-50 rounded-lg">
         <h3 class="font-semibold mb-3">Informasi Pengeluaran</h3>
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -80,6 +62,7 @@ const getPaymentMethodLabel = (method) => {
           </div>
         </div>
       </div>
+      <hr>
       
       <!-- Details Grid -->
       <div>
@@ -101,7 +84,7 @@ const getPaymentMethodLabel = (method) => {
           
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-500 mb-2">Tanggal</label>
-            <p class="text-gray-900">{{ formatDate(expense.tanggal) }}</p>
+            <p class="text-gray-900">{{ formatDateTimeIndonesian(expense.tanggal, false, { weekday: 'long' }) }}</p>
           </div>
         </div>
       </div>
@@ -109,7 +92,7 @@ const getPaymentMethodLabel = (method) => {
       <!-- Description -->
       <div v-if="expense.deskripsi">
         <label class="block text-sm font-medium text-gray-500 mb-2">Deskripsi</label>
-        <div class="bg-gray-50 rounded-lg p-4">
+        <div class="bg-gray-50 rounded-lg">
           <p class="text-gray-900 whitespace-pre-wrap">{{ expense.deskripsi }}</p>
         </div>
       </div>
@@ -134,11 +117,11 @@ const getPaymentMethodLabel = (method) => {
         <div class="grid grid-cols-2 gap-4 text-sm text-gray-500">
           <div v-if="expense.date_created">
             <label class="block font-medium mb-1">Dibuat pada</label>
-            <p>{{ formatDate(expense.date_created) }}</p>
+            <p>{{ formatDateTimeIndonesian(expense.date_created, false, { weekday: 'long' }) }}</p>
           </div>
           <div v-if="expense.date_updated">
             <label class="block font-medium mb-1">Terakhir diupdate</label>
-            <p>{{ formatDate(expense.date_updated) }}</p>
+            <p>{{ formatDateTimeIndonesian(expense.date_updated, false, { weekday: 'long' }) }}</p>
           </div>
           <div v-if="expense.user_created">
             <label class="block font-medium mb-1">Dibuat oleh</label>

@@ -22,7 +22,7 @@
         </div>
         <div>
           <p class="text-sm text-gray-600">Tanggal Order</p>
-          <p class="font-medium">{{ formatDate(order.date_created) }}</p>
+          <p class="font-medium">{{ formatDateTimeIndonesian(order.date_created, false, { day: 'numeric', month: 'numeric', year: 'numeric' }) }}</p>
         </div>
         <div>
           <p class="text-sm text-gray-600">Total</p>
@@ -187,7 +187,7 @@ import Select from '../../../ui/Select.vue'
 import Modal from '../../../ui/Modal.vue'
 import { useFileUpload } from '../../../../composables/useFileUpload'
 import { validateFile } from '../../../../utils/fileUtils'
-
+import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
 const props = defineProps({
   isOpen: Boolean,
   order: Object,
@@ -412,16 +412,5 @@ const handleSubmit = async () => {
     console.error('Error uploading files:', error)
     alert('Gagal mengupload bukti penyusutan. Silakan coba lagi.')
   }
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('id-ID')
-}
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR'
-  }).format(amount)
 }
 </script>

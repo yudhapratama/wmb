@@ -10,7 +10,8 @@ import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import { useExpenses } from '../composables/useExpenses'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
-
+import { formatDateLong } from '../utils/helpers'
+import DatatablesVue from './Datatables.vue'
 // Get offline status
 const { isOffline } = useOfflineStatus()
 
@@ -30,7 +31,6 @@ const {
   updateExpense,
   deleteExpense,
   getCategoryName,
-  formatCurrency,
   // Pagination
   currentPage,
   itemsPerPage,
@@ -160,6 +160,15 @@ function showErrorNotification(message) {
     showNotification.value = false
   }, 3000)
 }
+
+function getPaymentMethodLabel(method) {
+  const methods = {
+    'cash': 'Cash',
+    'transfer': 'Transfer',
+    'debit': 'Kartu Debit'
+  }
+  return methods[method] || method
+}
 </script>
 
 <template>
@@ -187,11 +196,13 @@ function showErrorNotification(message) {
     <ExpenseFilters
       :categories="categories"
       :selectedCategory="selectedCategory"
-      @update:selectedCategory="selectedCategory = $event"
+      @update:selectedCategory="selectedCategory = $event.toString()"
       :selectedDateFilter="selectedDateFilter"
       @update:selectedDateFilter="selectedDateFilter = $event"
       :searchQuery="searchQuery"
       @update:searchQuery="searchQuery = $event"
+      :dateFilter="dateFilter"
+      @update:dateFilter="console.log($event);dateFilter = $event"
     />
     
     <!-- Pagination Info -->
@@ -213,87 +224,111 @@ function showErrorNotification(message) {
         <span class="text-sm text-gray-700">per halaman</span>
       </div>
     </div>
-    
-    <!-- Expenses List -->
-    <div class="mt-4 grid grid-cols-1 gap-6">
-      <div v-if="isLoading" class="col-span-full text-center py-12">
-        <svg class="animate-spin h-8 w-8 text-red-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="mt-2 text-gray-600">Loading expenses...</p>
-      </div>
-      
-      <div v-else-if="paginatedExpenses.length === 0" class="col-span-full text-center py-12">
-        <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <p class="text-gray-600">Tidak ada pengeluaran yang ditemukan</p>
-        <PermissionBasedAccess collection="expenses" action="create">
-          <button
-            @click="showAddModal = true"
-            class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Tambah Pengeluaran Pertama
-          </button>
-        </PermissionBasedAccess>
-      </div>
-      
-      <ExpenseCard
-        v-for="expense in paginatedExpenses"
-        :key="expense.id"
-        :expense="expense"
-        :getCategoryName="getCategoryName"
-        :formatCurrency="formatCurrency"
-        @view="viewExpenseDetails"
-        @edit="editExpense"
-        @delete="confirmDelete"
-      />
-    </div>
-    
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-      <nav class="flex items-center gap-2">
-        <!-- Previous button -->
-        <button
-          @click="changePage(currentPage - 1)"
-          :disabled="currentPage === 1"
-          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Sebelumnya
-        </button>
-        
-        <!-- Page numbers -->
-        <template v-for="page in Math.min(totalPages, 7)" :key="page">
-          <button
-            v-if="page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)"
-            @click="changePage(page)"
-            :class="[
-              'px-3 py-2 text-sm font-medium border rounded-md',
-              page === currentPage
-                ? 'text-red-600 bg-red-50 border-red-500'
-                : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
-            ]"
-          >
-            {{ page }}
-          </button>
-          <span v-else-if="page === currentPage - 3 || page === currentPage + 3" class="px-2 py-2 text-gray-500">
-            ...
-          </span>
+
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <DatatablesVue
+        :data="paginatedExpenses"
+        :loading="isLoading"
+        :defaultItemsPerPage="itemsPerPage"
+        @page-change="changePage($event)"
+        @items-per-page-change="changeItemsPerPage(Number($event))"
+      >
+        <template #thead>
+          <tr>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">#</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Pengeluaran</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Tanggal</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Kategori</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Cara Bayar</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Aksi</th>
+          </tr>
         </template>
-        
-        <!-- Next button -->
-        <button
-          @click="changePage(currentPage + 1)"
-          :disabled="currentPage === totalPages"
-          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Selanjutnya
-        </button>
-      </nav>
+
+        <template #tbody="{ data }">
+          <tr v-for="(expense, idx) in data" :key="expense.id" class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ ((currentPage - 1) * itemsPerPage) + idx + 1 }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              <div class="flex gap-2 items-center">
+                <div class="p-2 rounded-lg">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                {{ expense.nama_pengeluaran }}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              <div class="flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-1 12a2 2 0 002 2h6a2 2 0 002-2L15 7" />
+                </svg>
+                {{ formatDateLong(expense.tanggal) }}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ getCategoryName(expense.kategori?.id) }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ getPaymentMethodLabel(expense.metode_pembayaran) }}
+            </td>
+            <td>
+              <div class="flex gap-2">
+                <button 
+                  @click="viewExpenseDetails(expense)"
+                  class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+                <PermissionBasedAccess collection="suppliers" action="update">
+                  <button 
+                    @click="editExpense(expense)"
+                    class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </PermissionBasedAccess>
+                <PermissionBasedAccess collection="suppliers" action="delete">
+                  <button 
+                    @click="confirmDelete(expense)"
+                    class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </PermissionBasedAccess>
+              </div>
+            </td>
+          </tr>
+        </template>
+
+        <template #empty>
+          <div class="col-span-full text-center py-12">
+            <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-gray-600">Tidak ada pengeluaran yang ditemukan</p>
+            <PermissionBasedAccess collection="expenses" action="create">
+              <button
+                @click="showAddModal = true"
+                class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Tambah Pengeluaran Pertama
+              </button>
+            </PermissionBasedAccess>
+          </div>
+        </template>
+      </DatatablesVue>
     </div>
     
     <!-- Modals -->

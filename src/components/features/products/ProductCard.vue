@@ -120,7 +120,7 @@ import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
 import { useProductCategories } from '@/composables/useProductCategories'
 import { useSuppliers } from '@/composables/useSuppliers'
 import { useCookedItems } from '@/composables/useCookedItems'
-import { formatCurrency, formatDateTime } from '@/utils/helpers'
+import { formatCurrency, formatNumber } from '@/utils/helpers'
 
 export default {
   name: 'ProductCard',
@@ -177,19 +177,13 @@ export default {
       return Math.round(((hargaJual - hargaPokok) / hargaJual) * 100)
     }
     
-    function formatNumber(value) {
-      if (!value) return '0'
-      return new Intl.NumberFormat('id-ID').format(value)
-    }
-
     return {
       productTypeStatus,
       getCategoryName,
       getSupplierName,
       getCookedItemName,
       calculateMargin,
-      formatCurrency,
-      formatDateTime,
+      formatCurrency, 
       formatNumber
     }
   }

@@ -98,7 +98,7 @@
 
 <script setup>
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency, formatNumber } from '../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -119,20 +119,6 @@ const props = defineProps({
 })
 
 defineEmits(['view', 'edit', 'delete'])
-
-function formatNumber(value) {
-  if (!value) return '0'
-  return new Intl.NumberFormat('id-ID').format(value)
-}
-
-function formatCurrency(value) {
-  if (!value) return 'Rp 0'
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(value)
-}
 
 function getStockStatusColor(stock) {
   if (stock <= 0) return 'bg-red-500'

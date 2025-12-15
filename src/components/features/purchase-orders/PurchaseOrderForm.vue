@@ -128,7 +128,7 @@ import Select from '../../ui/Select.vue'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useInventory } from '../../../composables/useInventory'
-
+import { formatCurrency } from '../../../utils/helpers'
 const props = defineProps({
   order: {
     type: Object,
@@ -307,15 +307,6 @@ function removeItem(index) {
 const totalAmount = computed(() => {
   return formData.value.items.reduce((sum, item) => sum + (item.total_price || 0), 0)
 })
-
-// Format currency
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount)
-}
 
 // Dalam handleSubmit atau emit save
 function handleSubmit() {

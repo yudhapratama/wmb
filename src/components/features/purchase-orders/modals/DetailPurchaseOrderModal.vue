@@ -30,7 +30,7 @@
             </div>
             <div>
               <span class="text-gray-600">Tanggal Dibuat:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.date_created) }}</span>
+              <span class="font-medium ml-2">{{ formatDateTimeIndonesian(order?.date_created, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}</span>
             </div>
             <div v-if="order?.status !== 'Dibuat'">
               <span class="text-gray-600">Penerima Barang:</span>
@@ -38,11 +38,11 @@
             </div>
             <div v-if="order?.status !== 'Dibuat'">
               <span class="text-gray-600">Tanggal Diterima:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.date_updated) }}</span>
+              <span class="font-medium ml-2">{{ formatDateTimeIndonesian(order?.date_updated, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}</span>
             </div>
             <div v-if="order?.status === 'Selesai'">
               <span class="text-gray-600">Tanggal Pembayaran:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.tanggal_pembayaran) }}</span>
+              <span class="font-medium ml-2">{{ formatDateTimeIndonesian(order?.tanggal_pembayaran, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}</span>
             </div>
             <div v-if="order?.status === 'Selesai'">
               <span class="text-gray-600">Bukti Pembayaran:</span>
@@ -183,7 +183,7 @@ import { computed } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
 import { useFileUpload } from '../../../../composables/useFileUpload'
-
+import { formatCurrency , formatDateTimeIndonesian} from '../../../../utils/helpers'
 // Add useFileUpload to get getFileUrl function
 const { getFileUrl } = useFileUpload()
 
@@ -263,18 +263,5 @@ function calculateShrinkageValue(item) {
   
   const shrinkageRatio = item.total_penyusutan / totalOrdered
   return shrinkageRatio * (item.harga_satuan || 0)
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount || 0)
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('id-ID')
 }
 </script>

@@ -121,7 +121,7 @@
 <script>
 import { computed } from 'vue'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
-import { formatCurrency, formatDateTime } from '@/utils/helpers'
+import { formatCurrency, formatDateTime, formatNumber } from '@/utils/helpers'
 
 export default {
   name: 'SalesSessionCard',
@@ -188,14 +188,6 @@ export default {
       }
     }
 
-    const formatNumber = (value) => {
-      if (value === null || value === undefined) return '0'
-      return parseFloat(value).toLocaleString('id-ID', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-      })
-    }
-
     // Computed properties untuk menghitung data dari sales
     const sessionSales = computed(() => {
       return props.sales.filter(sale => 
@@ -241,11 +233,11 @@ export default {
       calculateDuration,
       calculateActiveDuration,
       formatCurrency,
-      formatDateTime,
-      formatNumber,
       totalItemsSold,
       totalRevenue,
-      totalMargin
+      totalMargin,
+      formatDateTime,
+      formatNumber,
     }
   }
 }

@@ -184,7 +184,7 @@ function showErrorNotification(message) {
       :searchQuery="searchQuery"
       @update:searchQuery="searchQuery = $event"
       :dateFilter="dateFilter"
-      @update:dateFilter="updateDateFilter"
+      @update:dateFilter="updateDateFilter($event)"
     />
     
     <!-- Pagination Info -->

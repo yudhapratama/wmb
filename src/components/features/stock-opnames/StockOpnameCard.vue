@@ -50,7 +50,7 @@
         <CalendarIcon class="w-4 h-4 text-gray-400 mr-2" />
         <span class="text-gray-600">Tanggal Opname:</span>
         <span class="ml-1 text-gray-900">
-          {{ formatDate(opname.tanggal_opname) }}
+          {{ formatDateTimeIndonesian(opname.tanggal_opname, false) || '-' }}
         </span>
       </div>
       
@@ -142,7 +142,7 @@ import {
   TrashIcon
 } from '@heroicons/vue/24/outline'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
-
+import { formatDateTime, formatDateTimeIndonesian } from '@/utils/helpers'
 // Props
 defineProps({
   opname: {
@@ -154,38 +154,6 @@ defineProps({
 // Emits
 defineEmits(['detail', 'edit', 'complete', 'delete', 'manage-items'])
 
-// Methods
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch (error) {
-    return '-'
-  }
-}
-
-function formatDateTime(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (error) {
-    return '-'
-  }
-}
 
 function getStatusBadgeClass(status) {
   const baseClasses = 'px-3 py-1 rounded-full text-xs font-medium'

@@ -41,32 +41,39 @@ export function useExpenses() {
     // Filter by category
     if (selectedCategory.value !== 'all') {
       filtered = filtered.filter(expense => 
-        expense.kategori === selectedCategory.value
+        expense.kategori.id.toString() == selectedCategory.value
       )
     }
     
     // Filter by date
     if (selectedDateFilter.value !== 'all') {
-      const today = new Date()
-      const todayStr = today.toISOString().split('T')[0]
-      
+      const now = new Date()
+
       if (selectedDateFilter.value === 'today') {
+        const todayStr = now.toISOString().split('T')[0]
+
         filtered = filtered.filter(expense => {
-          const expenseDate = new Date(expense.tanggal).toISOString().split('T')[0]
-          return expenseDate === todayStr
+          const expenseDateStr = new Date(expense.tanggal).toISOString().split('T')[0]
+          return expenseDateStr === todayStr
         })
+
       } else if (selectedDateFilter.value === 'week') {
-        const weekAgo = new Date()
+        const weekAgo = new Date(now)
         weekAgo.setDate(weekAgo.getDate() - 7)
-        filtered = filtered.filter(expense => 
-          new Date(expense.tanggal) >= weekAgo
-        )
+
+        filtered = filtered.filter(expense => {
+          const expenseTime = new Date(expense.tanggal).getTime()
+          return expenseTime >= weekAgo.getTime()
+        })
+
       } else if (selectedDateFilter.value === 'month') {
-        const monthAgo = new Date()
+        const monthAgo = new Date(now)
         monthAgo.setMonth(monthAgo.getMonth() - 1)
-        filtered = filtered.filter(expense => 
-          new Date(expense.tanggal) >= monthAgo
-        )
+
+        filtered = filtered.filter(expense => {
+          const expenseTime = new Date(expense.tanggal).getTime()
+          return expenseTime >= monthAgo.getTime()
+        })
       }
     }
     
@@ -156,15 +163,6 @@ export function useExpenses() {
     return category.name
   }
   
-  // Format currency
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
-  
   // Load data from API or IndexedDB
   async function loadData() {
     try {
@@ -178,7 +176,8 @@ export function useExpenses() {
       ])
       
       expenses.value = expensesData
-      categories.value = categoriesData
+      categories.value = categoriesData.map((v) => ({...v, id: v.id.toString()}))
+      
       
       // Try to fetch fresh data from API if online
       try {
@@ -345,6 +344,5 @@ export function useExpenses() {
     updateExpense,
     deleteExpense,
     getCategoryName,
-    formatCurrency
   }
 }

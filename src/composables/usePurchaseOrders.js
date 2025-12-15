@@ -689,6 +689,8 @@ export function usePurchaseOrders() {
            * harga_per_unit_setelah -> newStockPricePerUnit
            * 
           */
+          /**
+           // ! Ini yang menyebabkan double entry di table log_inventaris
           const logInventoryData = {
             item: item.raw_material_id,
             tipe_transaksi: 'PENERIMAAN_PO',
@@ -712,6 +714,7 @@ export function usePurchaseOrders() {
           
           // Tambahkan ke sync queue untuk log_inventaris dengan ID yang benar
           await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })              
+          */
         }
   
         

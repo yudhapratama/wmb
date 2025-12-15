@@ -6,7 +6,7 @@ import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useProductCategories } from '../../../../composables/useProductCategories'
 import { useSuppliers } from '../../../../composables/useSuppliers'
 import { useCookedItems } from '../../../../composables/useCookedItems'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   product: {
     type: Object,
@@ -228,14 +228,6 @@ function onTipeProductChange() {
   } else {
     formData.value.harga_pokok = 0
   }
-}
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(value || 0)
 }
 
 // Tambahkan fungsi handleSubmit yang hilang

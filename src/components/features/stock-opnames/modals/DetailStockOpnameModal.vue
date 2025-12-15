@@ -6,7 +6,7 @@
         <div>
           <h2 class="text-xl font-semibold text-gray-900">Detail Stock Opname #{{ stockOpname?.id }}</h2>
           <p class="text-sm text-gray-600 mt-1">
-            {{ formatDate(stockOpname?.tanggal_opname) }}
+            {{ formatDateTimeIndonesian(stockOpname?.tanggal_opname, false) || '-' }}
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -37,7 +37,7 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Tanggal Opname:</span>
-                <span class="font-medium text-gray-900">{{ formatDate(stockOpname?.tanggal_opname) }}</span>
+                <span class="font-medium text-gray-900">{{ formatDateTimeIndonesian(stockOpname?.tanggal_opname, false) || '-' }}</span>
               </div>
               <!-- <div class="flex justify-between">
                 <span class="text-gray-600">Status:</span>
@@ -218,7 +218,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useFileUpload } from '@/composables/useFileUpload.js'
-
+import { formatDateTime, formatDateTimeIndonesian } from '../../../../utils/helpers'
 // Composables
 const { getFileUrl } = useFileUpload({
   featureName: 'StockOpname'
@@ -239,38 +239,7 @@ defineProps({
 // Emits
 defineEmits(['close', 'edit', 'complete', 'manage-items'])
 
-// Methods
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch (error) {
-    return '-'
-  }
-}
 
-function formatDateTime(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (error) {
-    return '-'
-  }
-}
 
 function getStatusBadgeClass(status) {
   const baseClasses = 'px-3 py-1 rounded-full text-xs font-medium'

@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -63,7 +63,7 @@ const supplierOptions = computed(() => [
   { value: '', label: 'Pilih supplier' },
   ...props.suppliers.map(supplier => ({
     value: supplier.id,
-    label: supplier.nama_supplier
+    label: supplier.nama_pt_toko
   }))
 ])
 
@@ -201,10 +201,6 @@ function calculateItemCost(item) {
   return price * (item.jumlah_dibutuhkan || 0)
 }
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID').format(amount || 0)
-}
-
 function calculateMargin() {
   const hargaJual = formData.value.harga_jual
   const hargaPokok = formData.value.tipe_produk === 'basic' 
@@ -310,21 +306,12 @@ function handleSubmit() {
               Kategori *
             </label>
             <!-- Select Kategori -->
-            <select
+            <Select
               v-model="formData.kategori"
-              class="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              :class="{ 'border-red-500': errors.kategori }"
+              :options="categoryOptions"
+              placeholder="Pilih Kategori"
               required
-            >
-              <option :value="null">Pilih Kategori</option> <!-- ← Ubah dari '' ke null -->
-              <option 
-                v-for="category in categoryOptions" 
-                :key="category.value" 
-                :value="category.value"
-              >
-                {{ category.label }}
-              </option>
-            </select>
+            />
             
             <p v-if="errors.kategori" class="mt-1 text-sm text-red-600">{{ errors.kategori }}</p>
           </div>
@@ -480,7 +467,7 @@ function handleSubmit() {
                   Biaya
                 </label>
                 <div class="px-3 py-3 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-600">
-                  Rp {{ formatCurrency(calculateItemCost(item)) }}
+                 {{ formatCurrency(calculateItemCost(item)) }}
                 </div>
               </div>
               
@@ -499,7 +486,7 @@ function handleSubmit() {
             <div class="bg-blue-50 p-4 rounded-lg">
               <div class="flex justify-between items-center">
                 <span class="font-medium text-gray-700">Total Harga Bahan:</span>
-                <span class="text-lg font-bold text-blue-600">Rp {{ formatCurrency(formData.total_harga_bahan) }}</span>
+                <span class="text-lg font-bold text-blue-600">{{ formatCurrency(formData.total_harga_bahan) }}</span>
               </div>
             </div>
           </div>

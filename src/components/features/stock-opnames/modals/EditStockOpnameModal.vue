@@ -128,7 +128,7 @@
 import { ref, computed, watch } from 'vue'
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import Select from '@/components/ui/Select.vue'
-
+import { formatDateTime } from '../../../../utils/helpers'
 // Props
 const props = defineProps({
   isOpen: {
@@ -196,23 +196,6 @@ function resetForm() {
     tanggal_opname: '',
     status: 'draft',
     catatan_keseluruhan: ''
-  }
-}
-
-function formatDateTime(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (error) {
-    return '-'
   }
 }
 

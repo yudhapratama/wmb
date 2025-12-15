@@ -24,7 +24,7 @@
             </div>
             <div>
               <span class="text-gray-600">Tanggal Dibuat:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.date_created) }}</span>
+              <span class="font-medium ml-2">{{ formatDateTimeIndonesian(order?.date_created, { day: 'numeric', month: 'numeric', year: 'numeric' }) }}</span>
             </div>
             <div>
               <span class="text-gray-600">Penerima PO:</span>
@@ -32,7 +32,7 @@
             </div>
             <div>
               <span class="text-gray-600">Tanggal Diterima:</span>
-              <span class="font-medium ml-2">{{ formatDate(order?.date_updated) }}</span>
+              <span class="font-medium ml-2">{{ formatDateTimeIndonesian(order?.date_updated, { day: 'numeric', month: 'numeric', year: 'numeric' }) }}</span>
             </div>
           </div>
     </div>
@@ -249,7 +249,7 @@ import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
 import { validateFile, createFilePreview } from '../../../../utils/fileUtils'
 import { useFileUpload } from '../../../../composables/useFileUpload'
-
+import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
 const props = defineProps({
   isOpen: Boolean,
   order: Object,
@@ -403,18 +403,5 @@ const handleSubmit = async () => {
   }
   
   emit('submit', submitData)
-}
-
-const formatDate = (date) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('id-ID')
-}
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount || 0)
 }
 </script>

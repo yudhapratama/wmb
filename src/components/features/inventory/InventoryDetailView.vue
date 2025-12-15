@@ -23,19 +23,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:activeTab', 'edit'])
-
-// Format date
-function formatDate(dateString) {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString('id-ID', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 </script>
 
 <template>

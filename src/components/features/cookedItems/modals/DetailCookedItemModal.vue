@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -33,10 +33,6 @@ const modalTitle = computed(() => {
   if (!props.item) return 'Detail Bahan Siap Masak'
   return `Detail Bahan Siap Masak - ${props.item.name}`
 })
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID').format(value)
-}
 
 function getStockStatus() {
   const stock = props.item?.total_stock || 0
@@ -99,7 +95,7 @@ function getRawMaterialUnit(rawMaterialId) {
           <div v-if="item.harga_pokok_rata_rata">
             <label class="block text-sm font-medium text-gray-700 mb-1">Harga Pokok Rata-rata</label>
             <p class="text-lg font-semibold text-green-600">
-              Rp {{ formatCurrency(item.harga_pokok_rata_rata) }}
+             {{ formatCurrency(item.harga_pokok_rata_rata) }}
             </p>
           </div>
         </div>

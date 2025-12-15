@@ -21,11 +21,11 @@
             <div class="flex items-center gap-6 mt-2 text-sm">
               <div class="flex items-center gap-1 text-gray-500">
                 <CalendarIcon class="w-4 h-4" />
-                Order: {{ formatDate(order.date_created) }}
+                Order: {{ formatDateTimeIndonesian(order.date_created, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}
               </div>
               <div class="flex items-center gap-1 text-gray-500">
                 <ArchiveBoxIcon class="w-4 h-4" />
-                Delivery: {{ formatDate(order.tanggal_pembayaran || order.date_created) }}
+                Delivery: {{ formatDateTimeIndonesian(order.tanggal_pembayaran || order.date_created, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}
               </div>
             </div>
             <div class="flex items-center gap-1 mt-1 text-sm text-gray-500">
@@ -122,6 +122,7 @@
 <script setup>
 import { computed } from 'vue'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
+import { formatCurrency, formatDateTimeIndonesian } from '../../../utils/helpers'
 import { 
   PencilIcon, 
   TrashIcon, 
@@ -197,17 +198,4 @@ const statusConfig = computed(() => {
       }
   }
 })
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount || 0)
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('id-ID')
-}
 </script>

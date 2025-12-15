@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
 import { useDashboard } from '../composables/useDashboard'
-
+import { formatCurrency, formatPercentage } from '../utils/helpers'
 // Use dashboard composable
 const {
   isLoading,
@@ -18,8 +18,6 @@ const {
   topExpenses,
   lowStockCookedItems,
   loadDashboardData,
-  formatCurrency,
-  formatPercentage,
   changeDate
 } = useDashboard()
 

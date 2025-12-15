@@ -239,14 +239,6 @@ function getUnitName(unitId) {
   return unit ? (unit.abbreviation || unit.name || 'Unknown Unit') : 'Unknown Unit'
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(value || 0)
-}
-
 // Get raw material name by ID
 function getRawMaterialName(rawMaterialId) {
   const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
@@ -316,7 +308,6 @@ function getRawMaterialName(rawMaterialId) {
         :key="product.id"
         :product="product"
         :getCategoryName="getCategoryName"
-        :formatCurrency="formatCurrency"
         @view="viewProductDetails"
         @edit="editProduct"
         @delete="confirmDelete"
@@ -411,7 +402,6 @@ function getRawMaterialName(rawMaterialId) {
       :getUnitName="getUnitName"
       :cookedItems="cookedItems"
       :units="units"
-      :formatCurrency="formatCurrency"
       v-model:activeTab="activeTab"
       @close="showDetailModal = false"
       @edit="editProduct"

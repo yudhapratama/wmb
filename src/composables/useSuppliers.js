@@ -141,7 +141,7 @@ export function useSuppliers(autoLoad = true) {
       }
       
       // Load from local database
-      suppliers.value = await db.suppliers.toArray()
+      suppliers.value = (await db.suppliers.toArray()).sort((a, b) => a.nama_pt_toko > b.nama_pt_toko)
     } catch (err) {
       console.error('Error loading supplier data:', err)
       error.value = 'Failed to load supplier data'

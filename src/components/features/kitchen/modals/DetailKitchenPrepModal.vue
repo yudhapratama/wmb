@@ -26,11 +26,11 @@
                 <div class="text-sm text-gray-600"> Diproduksi</div>
               </div>
               <div class="text-center">
-                <div class="text-2xl font-bold text-green-600">Rp {{ formatCurrency(prep.hpp_pembuatan) }}</div>
+                <div class="text-2xl font-bold text-green-600">{{ formatCurrency(prep.hpp_pembuatan) }}</div>
                 <div class="text-sm text-gray-600">Total Biaya Produksi</div>
               </div>
               <div class="text-center">
-                <div class="text-2xl font-bold text-purple-600">Rp {{ formatCurrency(hppPerUnit) }}</div>
+                <div class="text-2xl font-bold text-purple-600">{{ formatCurrency(hppPerUnit) }}</div>
                 <div class="text-sm text-gray-600">HPP per Unit</div>
               </div>
             </div>
@@ -58,19 +58,19 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Total Biaya Produksi
                 </label>
-                <p class="text-gray-900 font-medium">Rp {{ formatCurrency(prep.hpp_pembuatan) }}</p>
+                <p class="text-gray-900 font-medium">{{ formatCurrency(prep.hpp_pembuatan) }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   HPP Per Unit
                 </label>
-                <p class="text-gray-900 font-medium">Rp {{ formatCurrency(hppPerUnit) }}</p>
+                <p class="text-gray-900 font-medium">{{ formatCurrency(hppPerUnit) }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Tanggal Produksi
                 </label>
-                <p class="text-gray-900 font-medium">{{ formatDate(prep.date_created) }}</p>
+                <p class="text-gray-900 font-medium">{{ formatDateTimeIndonesian(prep.date_created) }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -101,11 +101,11 @@
                     </div>
                     <div>
                       <span class="text-gray-600">Harga per Unit:</span>
-                      <div class="font-medium text-gray-900">Rp {{ formatCurrency(getRawMaterialPrice(material)) }}</div>
+                      <div class="font-medium text-gray-900">{{ formatCurrency(getRawMaterialPrice(material)) }}</div>
                     </div>
                     <div>
                       <span class="text-gray-600">Total Biaya:</span>
-                      <div class="font-medium text-blue-600">Rp {{ formatCurrency(material.jumlah_diambil * getRawMaterialPrice(material)) }}</div>
+                      <div class="font-medium text-blue-600">{{ formatCurrency(material.jumlah_diambil * getRawMaterialPrice(material)) }}</div>
                     </div>
                   </div>
                 </div>
@@ -130,7 +130,7 @@
 
 <script setup>
 import { computed } from 'vue'
-
+import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
 const props = defineProps({
   prep: {
     type: Object,
@@ -182,24 +182,6 @@ const hppPerUnit = computed(() => {
   return 0
 })
 
-// Methods
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(amount || 0)
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getRawMaterialName(material) {
   // Jika raw_materials_id adalah objek dengan property nama_item

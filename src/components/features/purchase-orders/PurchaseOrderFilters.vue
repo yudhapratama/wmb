@@ -41,14 +41,15 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Filter Berdasarkan</label>
-        <select
-          :value="dateFilter.dateField"
-          @change="updateDateField($event.target.value)"
-          class="w-full px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="date_created">Tanggal Dibuat</option>
-          <option value="date_updated">Tanggal Diperbarui</option>
-        </select>
+        <Select
+          :modelValue="dateFilter.dateField"
+          @update:modelValue="updateDateField($event)"
+          :options="[
+            { value: 'date_created', label: 'Tanggal Dibuat'},
+            { value: 'date_updated', label: 'Tanggal Diperbarui'}
+          ]"
+          placeholder="Semua Filter"
+        />
       </div>
       
       <div>

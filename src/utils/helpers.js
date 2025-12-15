@@ -5,15 +5,17 @@
  * @returns {string} Formatted currency string
  */
 export function formatCurrency(value, showDecimal = false) {
+  if (!value) return 'Rp 0'
   const minimumFractionDigits = showDecimal ? 2 : 0
   const maximumFractionDigits = showDecimal ? 2 : 0
   
-  return new Intl.NumberFormat('id-ID', {
+  const price = new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits,
     maximumFractionDigits
-  }).format(value)
+  }).format(value || 0)
+  return price.replace('Rp', 'Rp ')
 }
 
 /**
@@ -37,6 +39,36 @@ export function formatDate(date, format = 'DD/MM/YYYY') {
     .replace('MM', month)
     .replace('YYYY', year)
 }
+
+/**
+ * Formats a date into a localized long-date string (Indonesian).
+ *
+ * @param {string|Date} dateString
+ *   Date input (ISO string, date string, or Date object)
+ *
+ * @returns {string}
+ *   Localized long date (e.g. "13 Desember 2025")
+ */
+export function formatDateLong(dateString) {
+  if (!dateString) return ''
+
+  const date = new Date(dateString)
+  const isoDate = date.toISOString().split('T')[0]
+  const [year, month, day] = isoDate.split('-')
+
+  const localDate = new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day)
+  )
+
+  return localDate.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
 
 /**
  * Format date to ISO string (YYYY-MM-DD)
@@ -133,38 +165,67 @@ export function formatDateTime(datetime, includeTime = true) {
   
   return `${dateString} ${hours}:${minutes}`
 }
-
 /**
- * Format datetime to Indonesian format with month name
- * @param {Date|string} datetime - The datetime to format
- * @param {boolean} includeTime - Whether to include time (default: true)
- * @returns {string} Formatted datetime string with month name
+ * Flexible Indonesian datetime formatter
+ *
+ * @param {Date|string} datetime
+ *   Date input (ISO string, date string, or Date object)
+ * @param {boolean} includeTime
+ *   Whether to include time (default: true)
+ * @param {Object} options
+ *   Additional formatting options
+ * @param {'long'|'short'|'numeric'} [options.month='long']
+ *   Month format
+ * @param {'numeric'|'2-digit'} [options.year='numeric']
+ *   Year format
+ * @param {'numeric'|'2-digit'} [options.day='numeric']
+ *   Day format
+ * @param {'long'|'short'} [options.weekday]
+ *   Weekday format
+ *
+ * @returns {string}
+ *   Formatted Indonesian datetime string
  */
-export function formatDateTimeIndonesian(datetime, includeTime = true) {
+export function formatDateTimeIndonesian(datetime, includeTime = true, options = {}) {
   if (!datetime) return ''
-  
+
   const d = new Date(datetime)
-  
-  // Check if date is valid
   if (isNaN(d.getTime())) return ''
-  
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ]
-  
-  const day = d.getDate()
-  const month = monthNames[d.getMonth()]
-  const year = d.getFullYear()
-  
-  const dateString = `${day} ${month} ${year}`
-  
+
+  const {
+    month = 'long',
+    year = 'numeric',
+    day = 'numeric',
+    weekday
+  } = options
+
+  const dateOptions = {
+    day,
+    month,
+    year,
+    ...(weekday && { weekday })
+  }
+
+  const dateString = d.toLocaleDateString('id-ID', dateOptions)
+
   if (!includeTime) {
     return dateString
   }
-  
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  
-  return `${dateString} ${hours}:${minutes}`
+
+  const timeString = d.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
+  return `${dateString} ${timeString}`
+}
+
+
+export function formatNumber(value) {
+    if (!value) return '0'
+    return new Intl.NumberFormat('id-ID').format(value)
+}
+
+export function formatPercentage(value) {
+    return `${(value || 0).toFixed(2)}%`
 }

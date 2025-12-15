@@ -41,15 +41,16 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4" v-if="selectedDateFilter === 'custom'">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Filter Berdasarkan</label>
-        <select
-          :value="dateFilter.dateField"
-          @change="updateDateField($event.target.value)"
-          class="w-full px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-        >
-          <option value="tanggal">Tanggal Pengeluaran</option>
-          <option value="date_created">Tanggal Dibuat</option>
-          <option value="date_updated">Tanggal Diperbarui</option>
-        </select>
+        <Select
+          :modelValue="dateFilter.dateField"
+          @update:modelValue="updateDateField($event)"
+          :options="[
+            {value: 'tanggal', label: 'Tanggal Pengeluaran'},
+            {value: 'date_created', label: 'Tanggal Dibuat'},
+            {value: 'date_updated', label: 'Tanggal Diperbarui'},
+          ]"
+          placeholder="Semua Filter"
+        />
       </div>
       
       <div>
@@ -126,7 +127,7 @@ const emit = defineEmits([
 const categoryOptions = computed(() => [
   { value: 'all', label: 'Semua Kategori' },
   ...props.categories.map(category => ({
-    value: category.id,
+    value: category.id.toString(),
     label: category.name
   }))
 ])

@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -109,10 +109,6 @@ function onRawMaterialChange(index, materialId) {
   material.raw_materials_id = materialId
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID').format(value)
-}
-
 function handleSubmit() {
   if (isFormValid.value) {
     emit('save', { ...formData.value })
@@ -178,7 +174,7 @@ function handleSubmit() {
                 Harga Pokok Rata-rata
               </label>
               <div class="px-3 py-3 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
-                Rp {{ formatCurrency(formData.harga_pokok_rata_rata) }}
+               {{ formatCurrency(formData.harga_pokok_rata_rata) }}
               </div>
             </div>
           </div>

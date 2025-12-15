@@ -120,7 +120,7 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span class="text-gray-600">Total Biaya Bahan:</span>
-                  <div class="font-semibold text-blue-900">Rp {{ formatCurrency(totalMaterialCost) }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatCurrency(totalMaterialCost) }}</div>
                 </div>
                 <div>
                   <span class="text-gray-600">Jumlah Dihasilkan:</span>
@@ -128,7 +128,7 @@
                 </div>
                 <div>
                   <span class="text-gray-600">HPP per Unit:</span>
-                  <div class="font-semibold text-blue-900">Rp {{ formatCurrency(hppPerUnit) }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatCurrency(hppPerUnit) }}</div>
                 </div>
               </div>
             </div>
@@ -160,7 +160,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import Select from '../../../ui/Select.vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   prep: {
     type: Object,
@@ -262,14 +262,6 @@ const canSubmit = computed(() => {
            material.jumlah_diambil <= material.available_stock
          )
 })
-
-// Methods
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(amount || 0)
-}
 
 // Methods
 function onCookedItemChange() {

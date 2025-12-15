@@ -1099,6 +1099,30 @@ export const syncService = {
       console.error(`Failed to fetch stock opname ${id} with items:`, error)
       return { success: false, message: error.message }
     }
+  },
+
+  /**
+   * 
+    const logInventoryData = {
+        item: response.data.data.id,
+        tipe_transaksi: 'STOK_AWAL',
+        perubahan_jumlah: 0,
+        stok_sebelum: 0,
+        stok_setelah: 0,
+        harga_sebelum: 0,
+        harga_setelah: 0,
+        harga_per_unit_sebelum: 0,
+        harga_per_unit_setelah: 0,
+        dokumen_sumber: `inventory#${response.data.data.id}`,
+        pengguna: currentUserId, // Gunakan current user ID
+        waktu_log: new Date().toISOString(),
+        sync_status: 'pending',
+        cached_at: new Date().getTime()
+      }
+   */
+  async addLogInventaris(logInventoryData) {
+    const generatedId = await db.log_inventaris.add(logInventoryData)
+    await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })
   }
 }
 

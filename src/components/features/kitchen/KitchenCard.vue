@@ -10,7 +10,7 @@
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {{ formatDate(prep.date_created) }}
+            {{ formatDateTimeIndonesian(prep.date_created, true, {'month': 'short'}) }}
           </span>
           <span class="flex items-center" v-if="prep.dicatat_oleh">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@
 
 <script setup>
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency, formatNumber, formatDateTimeIndonesian } from '../../../utils/helpers'
 // Props
 defineProps({
   prep: {
@@ -120,34 +120,4 @@ defineProps({
 // Emits
 defineEmits(['view', 'edit', 'delete'])
 
-// Utility functions
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-function formatNumber(value) {
-  if (value === null || value === undefined) return '0'
-  return parseFloat(value).toLocaleString('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  })
-}
-
-function formatCurrency(value) {
-  if (value === null || value === undefined) return 'Rp 0'
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(value)
-}
 </script>

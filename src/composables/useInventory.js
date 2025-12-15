@@ -115,8 +115,9 @@ export function useInventory() {
   
   // Update date filter
   function updateDateFilter(newDateFilter) {
-    dateFilter.value = { ...dateFilter.value, ...newDateFilter }
+    dateFilter.value = { ...dateFilter.value, ...newDateFilter };
     resetPagination()
+    loadData();
   }
   
   // Get category name by ID
@@ -174,8 +175,7 @@ export function useInventory() {
           sync_status: 'pending',
           cached_at: new Date().getTime()
         }
-        const generatedId = await db.log_inventaris.add(logInventoryData)
-        await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })
+        syncService.addLogInventaris(logInventoryData);
       } else {
         // Offline: Add to local DB and sync queue
         const idMaterials = await db.raw_materials.add(plainItem)
@@ -195,9 +195,8 @@ export function useInventory() {
           sync_status: 'pending',
           cached_at: new Date().getTime()
         }
-        const generatedId = await db.log_inventaris.add(logInventoryData)
-        id = generatedId
-        await db.addToSyncQueue('log_inventaris', generatedId, 'create', { ...logInventoryData, id: generatedId })
+        id = idMaterials
+        syncService.addLogInventaris(logInventoryData);
       }
       if (syncService.isOnline()) {
         await syncService.processSyncQueue()
@@ -306,7 +305,7 @@ export function useInventory() {
           api.get('/items/suppliers?limit=-1')
         ])
 
-        rawMaterials.value = materialsRes.data.data
+        rawMaterials.value = materialsRes.data.data.sort((a, b) => a.nama_item.localeCompare(b.nama_item))
         categories.value = categoriesRes.data.data
         suppliers.value = suppliersRes.data.data
 

@@ -266,37 +266,6 @@ export function useDashboard() {
     }
   }
   
-  // Format currency helper
-  function formatCurrency(value) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value || 0)
-  }
-  
-  // Format percentage helper
-  function formatPercentage(value) {
-    return `${(value || 0).toFixed(2)}%`
-  }
-  
-  // Format number helper
-  function formatNumber(number) {
-    return new Intl.NumberFormat('id-ID').format(number || 0)
-  }
-  
-  // Format date helper
-  function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-  
   // Change selected date
   function changeDate(newDate) {
     selectedDate.value = newDate
@@ -335,10 +304,6 @@ export function useDashboard() {
     
     // Methods
     loadDashboardData,
-    formatCurrency,
-    formatPercentage,
-    formatNumber,
-    formatDate,
     changeDate,
     handleDateChange
   }

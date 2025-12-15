@@ -276,8 +276,8 @@ export default {
       removeItem,
       updateItemCalculations,
       handleSubmit,
-      formatCurrency,
-      formatDateTime
+      formatCurrency, 
+      formatDateTime,
     }
   }
 }

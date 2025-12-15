@@ -2,7 +2,7 @@
 import { defineProps, defineEmits } from 'vue'
 import PermissionBasedAccess from '../../ui/PermissionBasedAccess.vue'
 import { useFileUpload } from '../../../composables/useFileUpload'
-
+import { formatCurrency, formatDateLong } from '../../../utils/helpers'
 const props = defineProps({
   expense: {
     type: Object,
@@ -12,33 +12,12 @@ const props = defineProps({
     type: Function,
     required: true
   },
-  formatCurrency: {
-    type: Function,
-    required: true
-  }
 })
 
 const emit = defineEmits(['view', 'edit', 'delete'])
 
 // Get the getFileUrl function from useFileUpload composable
 const { getFileUrl } = useFileUpload()
-
-function formatDate(dateString) {
-  // Parse the date and format it consistently with the filter logic
-  const date = new Date(dateString)
-  // Use the same date format as the filter (YYYY-MM-DD) to avoid timezone issues
-  const isoDate = date.toISOString().split('T')[0]
-  const [year, month, day] = isoDate.split('-')
-  
-  // Create a new date from the ISO date to avoid timezone conversion
-  const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-  
-  return localDate.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 function getPaymentMethodLabel(method) {
   const methods = {
@@ -67,7 +46,7 @@ function getPaymentMethodLabel(method) {
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-1 12a2 2 0 002 2h6a2 2 0 002-2L15 7" />
                 </svg>
-                {{ formatDate(expense.tanggal) }}
+                {{ formatDateLong(expense.tanggal) }}
               </div>
               <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
                 {{ getCategoryName(expense.kategori?.id) }}

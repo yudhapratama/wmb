@@ -102,7 +102,7 @@ import { formatDateTime } from '@/utils/helpers'
 import { 
   EyeIcon
 } from '@heroicons/vue/24/outline'
-
+import { formatCurrency } from '../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -150,17 +150,4 @@ const stockStatus = computed(() => {
     }
   }
 })
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount || 0)
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('id-ID')
-}
 </script>

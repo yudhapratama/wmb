@@ -299,6 +299,8 @@ export const useAuthStore = defineStore('auth', {
       // Check interval configurable via env
       const checkIntervalMinutes = parseInt(import.meta.env.VITE_TOKEN_CHECK_INTERVAL_MINUTES) || 1
       this.refreshInterval = setInterval(async () => {
+        console.log('refreshInterval', this.token , this.isTokenOld);
+        
         if (this.token && this.isTokenOld) {
           console.log('Auto-refresh: Token is old, refreshing...')
           await this.refreshToken()

@@ -6,7 +6,7 @@
         <div>
           <h2 class="text-xl font-semibold text-gray-900">Kelola Item Stock Opname #{{ stockOpname?.id }}</h2>
           <p class="text-sm text-gray-600 mt-1">
-            {{ formatDate(stockOpname?.tanggal_opname) }} - Status: {{ stockOpname?.status }}
+            {{ formatDateTimeIndonesian(stockOpname?.tanggal_opname, false) || '-' }} - Status: {{ stockOpname?.status }}
           </p>
         </div>
         <button
@@ -359,6 +359,7 @@ import { syncService } from '@/services/sync.js'
 import { useToast } from '@/composables/useToast.js'
 import { useFileUpload } from '@/composables/useFileUpload.js'
 import { getAllowedFileTypes } from '@/utils/fileUtils.js'
+import { formatDateTimeIndonesian } from '@/utils/helpers'
 
 // Props
 const props = defineProps({
@@ -722,20 +723,6 @@ async function loadRawMaterials() {
   } catch (error) {
     console.error('Error loading raw materials:', error)
     showToast('Gagal memuat daftar bahan baku', 'error')
-  }
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  
-  try {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch (error) {
-    return dateString
   }
 }
 

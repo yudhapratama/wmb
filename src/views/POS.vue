@@ -121,7 +121,7 @@
             </div>
             <div class="product-info">
               <h3 class="product-name" :title="product.nama_produk">{{ product.nama_produk }}</h3>
-              <p class="product-price">Rp {{ formatCurrency(product.harga_jual) }}</p>
+              <p class="product-price">{{ formatCurrency(product.harga_jual) }}</p>
               <div class="product-meta">
                 <span class="product-category">{{ getCategoryName(product.kategori) }}</span>
                 <span class="product-stock" :class="getStockClass(product.stock_quantity)">
@@ -167,7 +167,7 @@
             >
               <div class="item-info">
                 <h4 class="item-name" :title="item.name">{{ item.name }}</h4>
-                <p class="item-price">Rp {{ formatCurrency(item.selling_price) }}</p>
+                <p class="item-price">{{ formatCurrency(item.selling_price) }}</p>
               </div>
               <div class="item-controls">
                 <button
@@ -187,7 +187,7 @@
                 </button>
               </div>
               <div class="item-total">
-                Rp {{ formatCurrency(item.selling_price * item.quantity) }}
+                {{ formatCurrency(item.selling_price * item.quantity) }}
               </div>
               <button
                 @click="removeFromCart(item.id)"
@@ -204,19 +204,19 @@
         <div v-if="!isCartEmpty" class="cart-summary">
           <div class="summary-row">
             <span>Subtotal:</span>
-            <span>Rp {{ formatCurrency(cartSubtotal) }}</span>
+            <span>{{ formatCurrency(cartSubtotal) }}</span>
           </div>
           <div v-if="cartDiscount > 0" class="summary-row discount">
             <span>Diskon:</span>
-            <span>-Rp {{ formatCurrency(cartDiscount) }}</span>
+            <span>-{{ formatCurrency(cartDiscount) }}</span>
           </div>
           <div class="summary-row">
             <span>Pajak ({{ taxRate }}%):</span>
-            <span>Rp {{ formatCurrency(cartTax) }}</span>
+            <span>{{ formatCurrency(cartTax) }}</span>
           </div>
           <div class="summary-row total">
             <span>Total:</span>
-            <span>Rp {{ formatCurrency(cartTotal) }}</span>
+            <span>{{ formatCurrency(cartTotal) }}</span>
           </div>
         </div>
 
@@ -255,10 +255,8 @@
             <input
               v-model.number="amountPaid"
               type="number"
-              :min="cartTotal"
-              step="1000"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              @input="updateAmountPaid"
+              @input="updateAmountPaid($event)"
             />
             <div class="payment-shortcuts">
               <button
@@ -280,7 +278,7 @@
 
           <div v-if="change > 0" class="change-display">
             <span class="change-label">Kembalian:</span>
-            <span class="change-amount">Rp {{ formatCurrency(change) }}</span>
+            <span class="change-amount">{{ formatCurrency(change) }}</span>
           </div>
         </div>
 
@@ -302,7 +300,7 @@
               Memproses...
             </span>
             <span v-else>
-              {{ isCartEmpty ? 'Keranjang Kosong' : `Bayar Rp ${formatCurrency(cartTotal)}` }}
+              {{ isCartEmpty ? 'Keranjang Kosong' : `Bayar ${formatCurrency(cartTotal)}` }}
             </span>
           </button>
         </div>
@@ -319,7 +317,7 @@ import { useProductCategories } from '@/composables/useProductCategories'
 import { useCart } from '@/composables/useCart'
 import { useNotification } from '@/composables/useNotification'
 import { useSales } from '@/composables/useSales' // ✅ TAMBAHKAN IMPORT INI
-
+import { formatCurrency } from '../utils/helpers'
 const router = useRouter()
 const route = useRoute()
 const { showNotification } = useNotification()
@@ -478,6 +476,12 @@ const handleCheckout = async () => {
     return
   }
 
+  // Ensure amount paid is not less than total
+  if (amountPaid.value < cartTotal.value) {
+    showNotification('Silahkan isi jumlah dibayar pas / lebih besar dari harga.', 'warning')
+    return
+  }
+
   // ✅ PERBAIKAN: Validasi metode pembayaran
   if (!selectedPaymentMethod.value) {
     showNotification('Silakan pilih metode pembayaran terlebih dahulu.', 'warning')
@@ -502,7 +506,7 @@ const handleCheckout = async () => {
   
   if (result.success) {
     showNotification(
-      `Transaksi berhasil! Total: Rp ${formatCurrency(result.total)}${result.change > 0 ? `, Kembalian: Rp ${formatCurrency(result.change)}` : ''}`,
+      `Transaksi berhasil! Total: ${formatCurrency(result.total)}${result.change > 0 ? `, Kembalian: ${formatCurrency(result.change)}` : ''}`,
       'success'
     )
   }
@@ -516,11 +520,10 @@ const setQuickAmount = (amount) => {
   amountPaid.value = amount
 }
 
-const updateAmountPaid = () => {
-  // Ensure amount paid is not less than total
-  if (amountPaid.value < cartTotal.value) {
-    amountPaid.value = cartTotal.value
-  }
+const updateAmountPaid = ($event) => {
+  console.log('updateAmountPaid', $event.target.value);
+  
+  amountPaid.value = $event.target.value;
 }
 
 // Helper function untuk placeholder image
@@ -555,10 +558,6 @@ const getProductImageSrc = (product) => {
 // Update handleImageError function
 const handleImageError = (event) => {
   event.target.src = getPlaceholderImage('No Image')
-}
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID').format(amount || 0)
 }
 
 // Watch for cart total changes to update amount paid

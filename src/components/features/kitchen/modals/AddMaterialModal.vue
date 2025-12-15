@@ -57,7 +57,7 @@
               </div>
               <div>
                 <span class="text-gray-600">Harga Pokok:</span>
-                <div class="font-medium">Rp {{ formatCurrency(selectedMaterial.harga_pokok_rata_rata) }}</div>
+                <div class="font-medium">{{ formatCurrency(selectedMaterial.harga_pokok_rata_rata) }}</div>
               </div>
             </div>
           </div>
@@ -96,7 +96,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <span class="text-gray-600">Harga per Unit:</span>
-                <div class="font-semibold text-blue-900">Rp {{ formatCurrency(selectedMaterial.harga_pokok_rata_rata) }}</div>
+                <div class="font-semibold text-blue-900">{{ formatCurrency(selectedMaterial.harga_pokok_rata_rata) }}</div>
               </div>
               <div>
                 <span class="text-gray-600">Jumlah:</span>
@@ -104,7 +104,7 @@
               </div>
               <div>
                 <span class="text-gray-600">Total Biaya:</span>
-                <div class="font-semibold text-blue-900">Rp {{ formatCurrency(totalCost) }}</div>
+                <div class="font-semibold text-blue-900">{{ formatCurrency(totalCost) }}</div>
               </div>
             </div>
           </div>
@@ -134,7 +134,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-
+import { formatCurrency } from '../../../../utils/helpers'
 const props = defineProps({
   rawMaterials: {
     type: Array,
@@ -186,11 +186,6 @@ const canSubmit = computed(() => {
          form.value.jumlah_digunakan > 0 &&
          form.value.jumlah_digunakan <= (selectedMaterial.value?.total_stock || 0)
 })
-
-// Methods
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('id-ID').format(amount || 0)
-}
 
 function getMaterialUnit(materialId) {
   const material = props.rawMaterials.find(m => m.id === materialId)

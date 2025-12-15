@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-
+import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
 const props = defineProps({
   product: {
     type: Object,
@@ -32,10 +32,6 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  formatCurrency: {
-    type: Function,
-    required: false
-  },
   activeTab: {
     type: String,
     default: 'details'
@@ -48,25 +44,6 @@ const modalTitle = computed(() => {
   if (!props.product) return 'Detail Produk'
   return `Detail Produk - ${props.product.nama_produk}`
 })
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(value || 0)
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getProductTypeLabel(type) {
   return type === 'basic' ? 'Basic Product' : 'Recipe-based Product'
@@ -260,11 +237,11 @@ function getItemCost(item) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
           <div v-if="product.date_created">
             <label class="block font-medium mb-1">Dibuat pada</label>
-            <p>{{ formatDate(product.date_created) }}</p>
+            <p>{{ formatDateTimeIndonesian(product.date_created) }}</p>
           </div>
           <div v-if="product.date_updated">
             <label class="block font-medium mb-1">Terakhir diperbarui</label>
-            <p>{{ formatDate(product.date_updated) }}</p>
+            <p>{{ formatDateTimeIndonesian(product.date_updated) }}</p>
           </div>
         </div>
       </div>

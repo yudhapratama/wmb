@@ -338,7 +338,7 @@ export const syncService = {
       item.data = cleanData
       delete item.entity_id
     }
-    console.log('item', item)
+    console.log('item', item, item.dokumen_sumber)
     
     switch (action) {
       case 'create':

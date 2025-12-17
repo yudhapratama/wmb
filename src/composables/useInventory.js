@@ -143,7 +143,7 @@ export function useInventory() {
   
   // Add new item
   async function addItem(item) {
-    const currentUserId = authStore.user?.id || receiptData.penerima_barang // Gunakan current user ID dengan fallback
+    const currentUserId = authStore.user?.id;
     isLoading.value = true
     error.value = null
     
@@ -189,7 +189,7 @@ export function useInventory() {
           harga_setelah: 0,
           harga_per_unit_sebelum: 0,
           harga_per_unit_setelah: 0,
-          dokumen_sumber: `inventory#${response.data.data.id}`,
+          dokumen_sumber: `inventory#${idMaterials}`,
           pengguna: currentUserId, // Gunakan current user ID
           waktu_log: new Date().toISOString(),
           sync_status: 'pending',

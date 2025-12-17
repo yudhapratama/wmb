@@ -251,6 +251,9 @@ export function useStockOpnames() {
       return await loadData()
     }
     
+    /**
+     * ! no need to use this
+     
     isLoading.value = true
     error.value = null
     
@@ -277,6 +280,7 @@ export function useStockOpnames() {
     } finally {
       isLoading.value = false
     }
+    */
   }
   
   // Load stock opnames

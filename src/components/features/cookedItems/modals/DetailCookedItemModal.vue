@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber } from '../../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -139,7 +139,7 @@ function getRawMaterialUnit(rawMaterialId) {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900">
-                    {{ material.jumlah_dibutuhkan }}
+                    {{ formatNumber(material.jumlah_dibutuhkan) }}
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">

@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
+import { formatNumber, handleNumericInput } from '../../../../utils/helpers'
 
 const props = defineProps({
   rawMaterials: {
@@ -170,13 +171,14 @@ function resetForm() {
               Stok Awal
             </label>
             <input
-              id="total_stock"
-              v-model.number="formData.total_stock"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0"
+              :value="formatNumber(formData.total_stock)"
+              type="text"
+              inputmode="numeric"
               class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              @input="handleNumericInput($event, (val) => formData.total_stock = val)"
+              min="0"
+              required
+              placeholder="0"
             />
           </div>
         </div>
@@ -229,13 +231,14 @@ function resetForm() {
                   Jumlah Dibutuhkan *
                 </label>
                 <input
-                  v-model.number="material.jumlah_dibutuhkan"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0"
+                  :value="formatNumber(material.jumlah_dibutuhkan)"
+                  type="text"
+                  inputmode="numeric"
                   class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  @input="handleNumericInput($event, (val) => material.jumlah_dibutuhkan = val)"
+                  min="0"
                   required
+                  placeholder="0"
                 />
               </div>
               

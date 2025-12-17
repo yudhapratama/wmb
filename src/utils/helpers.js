@@ -222,10 +222,38 @@ export function formatDateTimeIndonesian(datetime, includeTime = true, options =
 
 
 export function formatNumber(value) {
-    if (!value) return '0'
-    return new Intl.NumberFormat('id-ID').format(value)
+  if (value === null || value === undefined || value === '') return '0'
+  return new Intl.NumberFormat('id-ID').format(Number(value))
+}
+/**
+ * 
+ * @param {*} value 
+ * @returns 
+ * how to use
+ * const amountPaidFormatted = computed({
+    get: () => formatNumber(amountPaid.value),
+    set: (val) => {
+      amountPaid.value = inputFormatNumber(val)
+    }
+  })
+ */
+export function inputFormatNumber(value) {
+  if (!value) return 0
+  return Number(String(value).replace(/\D/g, ''))
 }
 
+/**
+ * UI HELPER: Coordinates logic with the Vue event system.
+ * Use this in your @input templates.
+ */
+export function handleNumericInput(event, updateCallback) {
+  const rawValue = event.target.value;
+  const cleanValue = inputFormatNumber(rawValue);
+  updateCallback(cleanValue);
+  event.target.value = formatNumber(cleanValue); 
+}
+
+
 export function formatPercentage(value) {
-    return `${(value || 0).toFixed(2)}%`
+  return `${(value || 0).toFixed(2)}%`
 }

@@ -123,7 +123,7 @@
               <h3 class="product-name" :title="product.nama_produk">{{ product.nama_produk }}</h3>
               <p class="product-price">{{ formatCurrency(product.harga_jual) }}</p>
               <div class="product-meta">
-                <span class="product-category">{{ getCategoryName(product.kategori) }}</span>
+                <span class="product-category">{{ getCategoryName(product.kategori.id) }}</span>
                 <span class="product-stock" :class="getStockClass(product.stock_quantity)">
                   {{ product.stock_quantity > 0 ? `Stok: ${product.stock_quantity}` : 'Habis' }}
                 </span>
@@ -253,10 +253,11 @@
               Jumlah Dibayar
             </label>
             <input
-              v-model.number="amountPaid"
-              type="number"
+              :value="formatNumber(amountPaid)"
+              type="text"
+              inputmode="numeric"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              @input="updateAmountPaid($event)"
+              @input="handleNumericInput($event, (val) => amountPaid = val)"
             />
             <div class="payment-shortcuts">
               <button
@@ -317,7 +318,7 @@ import { useProductCategories } from '@/composables/useProductCategories'
 import { useCart } from '@/composables/useCart'
 import { useNotification } from '@/composables/useNotification'
 import { useSales } from '@/composables/useSales' // ✅ TAMBAHKAN IMPORT INI
-import { formatCurrency } from '../utils/helpers'
+import { formatCurrency, formatNumber, handleNumericInput } from '../utils/helpers'
 const router = useRouter()
 const route = useRoute()
 const { showNotification } = useNotification()
@@ -406,7 +407,7 @@ const filteredProducts = computed(() => {
 
   // Filter by category
   if (selectedCategoryId.value && selectedCategoryId.value !== 'all') {
-    filtered = filtered.filter(product => product.kategori === selectedCategoryId.value)
+    filtered = filtered.filter(product => product.kategori.id === selectedCategoryId.value)
   }
 
   return filtered
@@ -431,7 +432,7 @@ const handleAddToCart = (product) => {
     harga_jual: product.harga_jual,
     harga_pokok: product.harga_pokok || 0, // Pastikan HPP tersedia
     stock_quantity: product.stock_quantity,
-    category_id: product.kategori,
+    category_id: product.kategori.id,
     image: product.image
   }
   
@@ -444,7 +445,7 @@ const getProductCountByCategory = (categoryId) => {
   if (!products.value || !Array.isArray(products.value)) {
     return 0
   }
-  return products.value.filter(product => product.kategori === categoryId).length
+  return products.value.filter(product => product.kategori.id === categoryId).length
 }
 
 const getStockClass = (stock) => {
@@ -473,12 +474,6 @@ const handleCheckout = async () => {
   if (!currentSession.value || !currentSession.value.id) {
     showNotification('Tidak ada sesi kasir aktif. Silakan buka sesi kasir terlebih dahulu.', 'error')
     console.error('❌ No active session:', currentSession.value)
-    return
-  }
-
-  // Ensure amount paid is not less than total
-  if (amountPaid.value < cartTotal.value) {
-    showNotification('Silahkan isi jumlah dibayar pas / lebih besar dari harga.', 'warning')
     return
   }
 
@@ -518,12 +513,6 @@ const setExactAmount = () => {
 
 const setQuickAmount = (amount) => {
   amountPaid.value = amount
-}
-
-const updateAmountPaid = ($event) => {
-  console.log('updateAmountPaid', $event.target.value);
-  
-  amountPaid.value = $event.target.value;
 }
 
 // Helper function untuk placeholder image

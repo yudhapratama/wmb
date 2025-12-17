@@ -25,12 +25,14 @@
       <div>
         <label for="total_stock" class="block text-sm font-medium text-gray-700">Jumlah Stok</label>
         <input
+          :value="formatNumber(formData.total_stock)"
+          type="text"
           id="total_stock"
-          v-model.number="formData.total_stock"
-          type="number"
-          min="0"
-          placeholder="10"
+          inputmode="numeric"
           class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed"
+          @input="handleNumericInput($event, (val) => formData.total_stock = val)"
+          placeholder="10"
+          min="0"
           required
           disabled
           readonly
@@ -51,12 +53,14 @@
       <div>
         <label for="minimum_stock_level" class="block text-sm font-medium text-gray-700">Minimum Stok</label>
         <input
+          :value="formatNumber(formData.minimum_stock_level)"
+          type="text"
           id="minimum_stock_level"
-          v-model.number="formData.minimum_stock_level"
-          type="number"
-          min="0"
-          placeholder="5"
+          inputmode="numeric"
           class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          @input="handleNumericInput($event, (val) => formData.minimum_stock_level = val)"
+          placeholder="5"
+          min="0"
           required
         />
       </div>
@@ -64,15 +68,17 @@
       <div>
         <label for="harga_rata_rata" class="block text-sm font-medium text-gray-700">Harga Rata-rata</label>
         <input
+          :value="formatNumber(formData.harga_rata_rata)"
+          type="text"
           id="harga_rata_rata"
-          v-model.number="formData.harga_rata_rata"
-          type="number"
-          min="0"
-          placeholder="25000"
+          inputmode="numeric"
           class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed"
+          @input="handleNumericInput($event, (val) => formData.harga_rata_rata = val)"
+          placeholder="25000"
+          min="0"
           required
           disabled
-          readonly          
+          readonly
         />
       </div>
       
@@ -93,7 +99,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import Select from '../../ui/Select.vue'
-
+import { formatNumber, handleNumericInput } from '../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,

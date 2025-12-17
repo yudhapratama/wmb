@@ -63,11 +63,16 @@
                   />
                 </td>
                 <td class="px-4 py-3">
-                  <input 
-                    v-model.number="item.quantity" 
-                    type="number" 
-                    min="0" 
+                  <input
+                    :value="formatNumber(item.quantity)"
+                    type="text"
+                    id="minimum_stock_level"
+                    inputmode="numeric"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="updateQuantityItem(item, $event.target.value)"
+                    min="0"
+                    :max="item.total_stock"
+                    required
                   />
                 </td>
                 <td class="px-4 py-3">
@@ -79,11 +84,15 @@
                   />
                 </td>
                 <td class="px-4 py-3">
-                  <input 
-                    v-model.number="item.total_price" 
-                    type="number" 
-                    min="0" 
+                  <input
+                    :value="formatNumber(item.total_price)"
+                    type="text"
+                    id="minimum_stock_level"
+                    inputmode="numeric"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="handleNumericInput($event, (val) => item.total_price = val)"
+                    min="0"
+                    required
                   />
                 </td>
                 <td class="px-4 py-3">
@@ -128,7 +137,7 @@ import Select from '../../ui/Select.vue'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useInventory } from '../../../composables/useInventory'
-import { formatCurrency } from '../../../utils/helpers'
+import { formatCurrency, formatNumber, inputFormatNumber, handleNumericInput } from '../../../utils/helpers'
 const props = defineProps({
   order: {
     type: Object,
@@ -179,6 +188,7 @@ function initFormData() {
         raw_material_id: normalizeId(item.raw_material_id ?? item.item),
         item: item.item_name || item.nama_item || item.item || '',
         quantity: item.jumlah_pesan || item.quantity || 0,
+        harga_rata_rata: item.harga_rata_rata,
         unit: item.unit_name || item.unit || 'pcs',
         total_price: item.harga_satuan || item.total_price || 0
       })) || []
@@ -221,6 +231,7 @@ watch(() => props.order, (newOrder) => {
       raw_material_id: normalizeId(item.raw_material_id ?? item.item),
       item: item.item_name || item.nama_item || item.item || '',
       quantity: item.jumlah_pesan || item.quantity || 0,
+      harga_rata_rata: item.harga_rata_rata,
       unit: item.unit_name || item.unit || 'pcs',
       total_price: item.harga_satuan || item.total_price || 0
     })) || []
@@ -263,6 +274,7 @@ function onRawMaterialSelect(index, materialId) {
     item.raw_material_id = normalizeId(materialId)
     item.item = material.nama_item
     item.unit = getUnitName(material.unit) || 'pcs'
+    item.harga_rata_rata = material.harga_rata_rata
   } else {
     console.warn('⚠️ Material not found for ID:', materialId)
   }
@@ -274,6 +286,7 @@ function addItem() {
     raw_material_id: '',
     item: '',
     quantity: 0,
+    harga_rata_rata: 0,
     unit: 'pcs',
     total_price: 0
   })
@@ -293,7 +306,7 @@ watch(() => formData.value.supplier, () => {
   formData.value.items = formData.value.items.map(item => {
     const idNum = typeof item.raw_material_id === 'number' ? item.raw_material_id : parseInt(item.raw_material_id)
     if (!Number.isFinite(idNum) || !allowedIds.has(idNum)) {
-      return { ...item, raw_material_id: '', item: '', unit: 'pcs', total_price: 0 }
+      return { ...item, raw_material_id: '', item: '', unit: 'pcs', harga_rata_rata: 0, total_price: 0 }
     }
     return item
   })
@@ -355,5 +368,11 @@ const rawMaterialOptions = computed(() => {
   options.sort((a, b) => a.label.localeCompare(b.label, 'id', { sensitivity: 'base' }))
   return options
 })
+
+function updateQuantityItem(item, value) {
+  const qty = inputFormatNumber(value)
+  item.quantity = qty
+  item.total_price = qty * item.harga_rata_rata
+}
 
 </script>

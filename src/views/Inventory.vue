@@ -12,13 +12,16 @@ import { useOfflineStatus } from '../composables/useOfflineStatus'
 import { handleImageUpload } from '../utils/imageUtils'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 
-// Add this function to handle shrinkage image upload
+/**
+ * ! unused function
+ * Add this function to handle shrinkage image upload
 async function handleShrinkageImageUpload(event) {
   const imageData = await handleImageUpload(event)
   if (imageData) {
     shrinkageForm.value.image = imageData
   }
 }
+*/
 
 // Get offline status
 const { isOffline } = useOfflineStatus()

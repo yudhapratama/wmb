@@ -4,7 +4,7 @@ import { useFileUpload } from '../../../../composables/useFileUpload'
 import { validateFile, createFilePreview, getAllowedFileTypes } from '../../../../utils/fileUtils'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
-
+import { formatNumber, handleNumericInput, formatDate } from '../../../../utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -21,13 +21,15 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'submit'])
+const today = new Date()
+const todayFormatted = formatDate(today)
 
 const formData = ref({
   nama_pengeluaran: '',
   kategori: '',
   jumlah: 0,
   deskripsi: '',
-  tanggal: new Date().toISOString().split('T')[0],
+  tanggal: todayFormatted,
   metode_pembayaran: 'cash',
   bukti_pembayaran: null
 })
@@ -58,7 +60,7 @@ function resetForm() {
     kategori: '',
     jumlah: 0,
     deskripsi: '',
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: new Date().toISOString().split('T')[0] || todayFormatted,
     metode_pembayaran: 'cash',
     bukti_pembayaran: null
   }
@@ -164,12 +166,14 @@ function removeImage() {
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah *</label>
           <input
-            v-model.number="formData.jumlah"
-            type="number"
-            min="0"
-            step="0.01"
+            :value="formatNumber(formData.jumlah)"
+            type="text"
+            inputmode="numeric"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
             :class="{ 'border-red-500': errors.jumlah }"
+            @input="handleNumericInput($event, (val) => formData.jumlah = val)"
+            min="0"
+            required
             placeholder="150000"
           />
           <p v-if="errors.jumlah" class="text-red-500 text-xs mt-1">{{ errors.jumlah }}</p>

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
-
+import { formatNumber, handleNumericInput } from '../../../../utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -74,18 +74,21 @@ function handleSubmit() {
         <div class="p-4 bg-blue-50 rounded-lg">
           <div class="text-sm text-gray-600 mb-1">Stock yang dapat digunakan saat ini:</div>
           <div class="text-lg font-bold text-blue-600">
-            {{ item.total_stock }} {{ getUnitName(item.unit) }}
+            {{ formatNumber(item.total_stock) }} {{ getUnitName(item.unit) }}
           </div>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Shrinkage *</label>
           <input
-            type="number"
-            v-model="shrinkageForm.quantity"
-            :max="item.stock_quantity"
+            :value="formatNumber(shrinkageForm.quantity)"
+            type="text"
+            inputmode="numeric"
+            :max="item.total_stock"
             placeholder="Masukkan jumlah shrinkage"
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            @input="handleNumericInput($event, (val) => shrinkageForm.quantity = val)"
+            required
           />
         </div>
 
@@ -152,7 +155,8 @@ function handleSubmit() {
         <button
           @click="handleSubmit"
           class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-sm text-white rounded-md hover:bg-red-700"
-          :disabled="isLoading || !shrinkageForm.quantity || !shrinkageForm.reason"
+          :class="{'cursor-not-allowed' : isLoading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock}"
+          :disabled="isLoading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />

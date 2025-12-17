@@ -10,7 +10,7 @@ import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import { useExpenses } from '../composables/useExpenses'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
-import { formatDateLong } from '../utils/helpers'
+import { formatDateLong, formatCurrency } from '../utils/helpers'
 import DatatablesVue from './Datatables.vue'
 // Get offline status
 const { isOffline } = useOfflineStatus()
@@ -238,7 +238,7 @@ function getPaymentMethodLabel(method) {
             <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">#</th>
             <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Pengeluaran</th>
             <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Tanggal</th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Kategori</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Jumlah Biaya</th>
             <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Cara Bayar</th>
             <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Aksi</th>
           </tr>
@@ -268,7 +268,8 @@ function getPaymentMethodLabel(method) {
               </div>
             </td>
             <td class="px-4 py-3 text-sm text-gray-700">
-              {{ getCategoryName(expense.kategori?.id) }}
+              <!-- {{ getCategoryName(expense.kategori?.id) }} -->
+              {{ formatCurrency(expense.jumlah) }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-700">
               {{ getPaymentMethodLabel(expense.metode_pembayaran) }}

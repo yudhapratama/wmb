@@ -568,6 +568,8 @@ export function usePurchaseOrders() {
     
     try {
       // PENTING: Hapus po_items terlebih dahulu
+      /**
+       * No need
       await db.po_items
         .where('purchase_order')  // Pastikan menggunakan 'purchase_order', bukan 'purchase_order_id'
         .equals(id)
@@ -575,14 +577,24 @@ export function usePurchaseOrders() {
       
       // Kemudian hapus purchase order
       await db.purchase_orders.delete(id)
+      */
       
+      const poItems = await db.po_items
+        .filter(item => String(item.purchase_order) === String(id))
+        .toArray()
+
+      for (const item of poItems) {
+        await db.addToSyncQueue(
+          'po_items',
+          item.id,                 // PK of po_items
+          'delete',
+          { id: item.id }          // delete by primary key
+        )
+      }
+      await db.addToSyncQueue('purchase_orders', id, 'delete', { id })
       // If online, sync to server
       if (syncService.isOnline()) {
-        await db.addToSyncQueue('purchase_orders', id, 'delete', { id })
         await syncService.processSyncQueue()
-      } else {
-        // Add to sync queue for later
-        await db.addToSyncQueue('purchase_orders', id, 'delete', { id })
       }
       
       // Reload data

@@ -238,12 +238,6 @@ function getUnitName(unitId) {
   const unit = units.value.find(u => u.id === unitId)
   return unit ? (unit.abbreviation || unit.name || 'Unknown Unit') : 'Unknown Unit'
 }
-
-// Get raw material name by ID
-function getRawMaterialName(rawMaterialId) {
-  const material = rawMaterials.value.find(rm => rm.id === rawMaterialId)
-  return material ? material.nama_item : 'Unknown'
-}
 </script>
 
 <template>

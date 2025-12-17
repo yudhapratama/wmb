@@ -149,6 +149,8 @@ export default {
       paymentMethodStatus,
       getProductName,
       formatCurrency,
+      formatDateTime, 
+      formatNumber,
     }
   }
 }

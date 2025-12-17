@@ -1,33 +1,27 @@
 <template>
-  <AppLayout>
-    <div class="min-h-screen bg-gray-50">
+<AppLayout title="Stock Opnames">
     <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-6">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Stock Opnames</h1>
-            <p class="mt-1 text-sm text-gray-600">
-              Kelola stock opname untuk mencocokkan stok sistem dengan stok fisik
-            </p>
-          </div>
-          
-          <!-- Add Button -->
-          <PermissionBasedAccess collection="stock_opnames" action="create">
-            <button
-              @click="openAddModal"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              <PlusIcon class="w-5 h-5 mr-2" />
-              Tambah Stock Opname
-            </button>
-          </PermissionBasedAccess>
-        </div>
+    <div class="flex justify-between items-center mb-6">
+      <div class="">
+        <h1 class="text-2xl font-bold text-gray-900">Stock Opnames</h1>
+        <p class="mt-1 text-sm text-gray-600">
+          Kelola stock opname untuk mencocokkan stok sistem dengan stok fisik
+        </p>
       </div>
+      <!-- Add Button -->
+      <PermissionBasedAccess collection="stock_opnames" action="create">
+        <button
+          @click="openAddModal"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+          <PlusIcon class="w-5 h-5 mr-2" />
+          Tambah Stock Opname
+        </button>
+      </PermissionBasedAccess>
     </div>
     
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1">
       <!-- Filters -->
       <div class="mb-6">
         <StockOpnameFilters
@@ -87,152 +81,138 @@
           </div>
         </div>
       </div>
-      
+    </div>
 
-      
-      <!-- Loading State -->
-      <div v-if="isLoading" class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span class="ml-3 text-gray-600">Memuat data...</span>
-      </div>
-      
-      <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-        <div class="flex">
-          <ExclamationTriangleIcon class="h-5 w-5 text-red-400" />
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Terjadi Kesalahan</h3>
-            <p class="mt-1 text-sm text-red-700">{{ error }}</p>
-            <button
-              @click="loadStockOpnames"
-              class="mt-2 text-sm text-red-600 hover:text-red-500 font-medium"
-            >
-              Coba lagi
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Stock Opnames List -->
-      <div v-else-if="stockOpnames.length > 0" class="space-y-6">
-        <!-- Stock Opnames Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          <StockOpnameCard
-            v-for="opname in stockOpnames"
-            :key="opname.id"
-            :opname="opname"
-            @detail="openDetailModal"
-            @edit="openEditModal"
-            @complete="handleComplete"
-            @delete="handleDelete"
-            @manage-items="handleManageItems"
-          />
-        </div>
-        
-        <!-- Pagination -->
-        <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
-          <div class="flex flex-1 justify-between sm:hidden">
-            <button
-              @click="updatePage(currentPage - 1)"
-              :disabled="currentPage === 1"
-              class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Sebelumnya
-            </button>
-            <button
-              @click="updatePage(currentPage + 1)"
-              :disabled="currentPage === totalPages"
-              class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Selanjutnya
-            </button>
-          </div>
-          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm text-gray-700">
-                Menampilkan
-                <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span>
-                sampai
-                <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, totalItems) }}</span>
-                dari
-                <span class="font-medium">{{ totalItems }}</span>
-                hasil
-              </p>
-            </div>
-            <div>
-              <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                <!-- Previous button -->
-                <button
-                  @click="updatePage(currentPage - 1)"
-                  :disabled="currentPage === 1"
-                  class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span class="sr-only">Previous</span>
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
-                  </svg>
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <DatatablesVue
+        :data="stockOpnames"
+        :loading="isLoading"
+        :defaultItemsPerPage="defaultItemsPerPage"
+        @page-change="onPageChange"
+        @items-per-page-change="onItemsPerPageChange"
+      >
+        <template #thead>
+          <tr>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">#</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Pencatat</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Jumlah Item</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Catatan</th>
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Tanggal Opname</th>
+            <!-- <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Terakhir diperbarui</th> -->
+            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Aksi</th>
+          </tr>
+        </template>
+
+        <template #tbody="{ data }">
+          <tr v-for="(opname, idx) in data" :key="opname.id" class="hover:bg-gray-50" :class="getStatusBadgeClass(opname.status)">
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ ((currentPage - 1) * defaultItemsPerPage) + idx + 1 }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              <span :class="getStatusBadgeClass(opname.status)">
+                {{ opname.status || 'Draft' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ opname.dicatat_oleh_name || opname.dicatat_oleh?.first_name || 'Admin' }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ opname.items_opname?.length || 0 }} item
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700 leading-relaxed">
+              {{ opname.catatan_keseluruhan }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-700">
+              {{ formatDateTimeIndonesian(opname.tanggal_opname, false) || '-' }}
+            </td>
+            <!-- <td class="px-4 py-3 text-sm text-gray-700">
+              <div v-if="opname.date_updated && opname.date_updated !== opname.date_created" class="flex items-center text-sm">
+                <ClockIcon class="w-4 h-4 text-gray-400 mr-2" />
+                <span class="ml-1 text-gray-900">
+                  {{ formatDateTime(opname.date_updated) }}
+                </span>
+              </div>
+            </td> -->
+            <td>
+              <div class="flex justify-between items-center border-t border-gray-100">
+                <!-- View Details Button -->
+                <button @click="openDetailModal(opname)" class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm">
+                  <EyeIcon class="w-4 h-4" />
+                  Detail
                 </button>
                 
-                <!-- Page numbers -->
-                 <template v-for="page in Math.min(totalPages, 7)">
-                   <button
-                     v-if="page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)"
-                     :key="`page-${page}`"
-                     @click="updatePage(page)"
-                     :class="[
-                       'relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
-                       page === currentPage
-                         ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                         : 'text-gray-900'
-                     ]"
-                   >
-                     {{ page }}
-                   </button>
-                   <span 
-                     v-else-if="page === currentPage - 3 || page === currentPage + 3" 
-                     :key="`ellipsis-${page}`"
-                     class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0"
-                   >
-                     ...
-                   </span>
-                 </template>
-                
-                <!-- Next button -->
+                <!-- Action Buttons (right side) -->
+                <div class="flex space-x-2">
+                  <!-- Manage Items (only for Draft status) -->
+                  <PermissionBasedAccess collection="stock_opnames" action="update">
+                    <button
+                      v-if="!opname.status || opname.status.toLowerCase() === 'draft'"
+                      @click="handleManageItems(opname)"
+                      class="p-2 text-purple-600 hover:bg-purple-50 rounded-md"
+                      title="Kelola Item"
+                    >
+                      <ClipboardDocumentListIcon class="w-4 h-4" />
+                    </button>
+                  </PermissionBasedAccess>
+                  
+                  <!-- Edit (only for Draft status) -->
+                  <PermissionBasedAccess collection="stock_opnames" action="update">
+                    <button v-if="!opname.status || opname.status.toLowerCase() === 'draft'" @click="openEditModal(opname)" class="p-2 text-green-600 hover:bg-green-50 rounded-md" title="Edit">
+                      <PencilIcon class="w-4 h-4" />
+                    </button>
+                  </PermissionBasedAccess>
+                  
+                  <!-- Complete (only for Draft status) -->
+                  <PermissionBasedAccess collection="stock_opnames" action="update">
+                    <button
+                      v-if="!opname.status || opname.status.toLowerCase() === 'draft'"
+                      @click="handleComplete(opname)"
+                      class="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
+                      title="Selesaikan"
+                    >
+                      <CheckIcon class="w-4 h-4" />
+                    </button>
+                  </PermissionBasedAccess>
+                  
+                  <!-- Delete (only for Draft status) -->
+                  <PermissionBasedAccess collection="stock_opnames" action="delete">
+                    <button
+                      v-if="!opname.status || opname.status.toLowerCase() === 'draft'"
+                      @click="handleDelete(opname)"
+                      class="p-2 text-red-600 hover:bg-red-50 rounded-md"
+                      title="Hapus"
+                    >
+                      <TrashIcon class="w-4 h-4" />
+                    </button>
+                  </PermissionBasedAccess>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </template>
+
+        <template #empty>
+          <div class="text-center py-12">
+            <ClipboardDocumentListIcon class="mx-auto h-12 w-12 text-gray-400" />
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada stock opname</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Mulai dengan membuat stock opname pertama Anda.
+            </p>
+            <PermissionBasedAccess collection="stock_opnames" action="create">
+              <div class="mt-6">
                 <button
-                  @click="updatePage(currentPage + 1)"
-                  :disabled="currentPage === totalPages"
-                  class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="openAddModal"
+                  class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  <span class="sr-only">Next</span>
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                  </svg>
+                  <PlusIcon class="w-5 h-5 mr-2" />
+                  Tambah Stock Opname
                 </button>
-              </nav>
-            </div>
+              </div>
+            </PermissionBasedAccess>
           </div>
-        </div>
-      </div>
-      
-      <!-- Empty State -->
-      <div v-else class="text-center py-12">
-        <ClipboardDocumentListIcon class="mx-auto h-12 w-12 text-gray-400" />
-        <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada stock opname</h3>
-        <p class="mt-1 text-sm text-gray-500">
-          Mulai dengan membuat stock opname pertama Anda.
-        </p>
-        <PermissionBasedAccess collection="stock_opnames" action="create">
-          <div class="mt-6">
-            <button
-              @click="openAddModal"
-              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <PlusIcon class="w-5 h-5 mr-2" />
-              Tambah Stock Opname
-            </button>
-          </div>
-        </PermissionBasedAccess>
-      </div>
+        </template>
+      </DatatablesVue>
     </div>
     
     <!-- Modals -->
@@ -289,8 +269,7 @@
       @close="showManageItemsModal = false"
       @refresh="handleItemsRefresh"
     />
-    </div>
-  </AppLayout>
+</AppLayout>
 </template>
 
 <script setup>
@@ -302,7 +281,13 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   CalendarIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  UserIcon,
+  ClockIcon,
+  EyeIcon,
+  PencilIcon,
+  CheckIcon,
+  TrashIcon
 } from '@heroicons/vue/24/outline'
 
 // Components
@@ -315,11 +300,11 @@ import AddStockOpnameModal from '@/components/features/stock-opnames/modals/AddS
 import EditStockOpnameModal from '@/components/features/stock-opnames/modals/EditStockOpnameModal.vue'
 import DetailStockOpnameModal from '@/components/features/stock-opnames/modals/DetailStockOpnameModal.vue'
 import ManageStockOpnameItemsModal from '@/components/features/stock-opnames/modals/ManageStockOpnameItemsModal.vue'
-
+import { formatDateTimeIndonesian, formatDateTime } from '../utils/helpers'
 // Composables
 import { useStockOpnames } from '@/composables/useStockOpnames'
 import { useNotification } from '@/composables/useNotification'
-
+import DatatablesVue from './Datatables.vue'
 // Router
 const router = useRouter()
 
@@ -525,6 +510,33 @@ async function confirmComplete() {
   } finally {
     isSubmitting.value = false
   }
+}
+function getStatusBadgeClass(status) {
+  const baseClasses = 'px-3 py-1 rounded-full text-xs font-medium'
+  
+  // Default to Draft if no status
+  const currentStatus = status || 'Draft'
+  
+  switch (currentStatus.toLowerCase()) {
+    case 'draft':
+      return `${baseClasses} bg-yellow-100 text-yellow-800`
+    case 'selesai':
+    case 'completed':
+      return `${baseClasses} bg-green-100 text-green-800`
+    case 'dibatalkan':
+    case 'cancelled':
+      return `${baseClasses} bg-red-100 text-red-800`
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800`
+  }
+}
+const defaultItemsPerPage = ref(10)
+function onPageChange(page) {
+  currentPage.value = page;
+}
+
+function onItemsPerPageChange(limit) {
+  defaultItemsPerPage.value = limit;
 }
 
 // Lifecycle

@@ -58,7 +58,7 @@
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-gray-600">Dibuat:</span>
-                <span class="font-medium text-gray-900">{{ formatDateTime(stockOpname?.date_created) }}</span>
+                <span class="font-medium text-gray-900">{{ formatDateTime(stockOpname?.tanggal_opname) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Diperbarui:</span>
@@ -66,7 +66,7 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Jumlah Item:</span>
-                <span class="font-medium text-gray-900">{{ stockOpname?.items_opname?.length || 0 }} item</span>
+                <span class="font-medium text-gray-900">{{ formatNumber(stockOpname?.items_opname?.length) || 0 }} item</span>
               </div>
             </div>
           </div>
@@ -131,16 +131,16 @@
                   <div class="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <span class="text-gray-500 block">Stok Sistem</span>
-                      <span class="font-medium text-gray-900">{{ item.stok_sistem || 0 }}</span>
+                      <span class="font-medium text-gray-900">{{ formatNumber(item.stok_sistem) || 0 }}</span>
                     </div>
                     <div>
                       <span class="text-gray-500 block">Stok Fisik</span>
-                      <span class="font-medium text-gray-900">{{ item.stok_fisik || 0 }}</span>
+                      <span class="font-medium text-gray-900">{{ formatNumber(item.stok_fisik) || 0 }}</span>
                     </div>
                     <div>
                       <span class="text-gray-500 block">Selisih</span>
                       <span :class="getSelisihClass(item.selisih)" class="font-medium">
-                        {{ item.selisih > 0 ? '+' : '' }}{{ item.selisih || 0 }}
+                        {{ item.selisih > 0 ? '+' : '' }}{{ formatNumber(item.selisih) || 0 }}
                       </span>
                     </div>
                   </div>
@@ -218,7 +218,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useFileUpload } from '@/composables/useFileUpload.js'
-import { formatDateTime, formatDateTimeIndonesian } from '../../../../utils/helpers'
+import { formatDateTime, formatDateTimeIndonesian, formatNumber } from '../../../../utils/helpers'
 // Composables
 const { getFileUrl } = useFileUpload({
   featureName: 'StockOpname'

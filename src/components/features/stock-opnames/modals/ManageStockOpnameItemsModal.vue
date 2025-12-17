@@ -43,11 +43,13 @@
                 Stok Sistem
               </label>
               <input
-                v-model="newItem.stok_sistem"
-                type="number"
-                step="0.01"
-                readonly
+                :value="formatNumber(newItem.stok_sistem)"
+                type="text"
+                inputmode="numeric"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 focus:outline-none"
+                @input="handleNumericInput($event, (val) => newItem.stok_sistem = val)"
+                min="0"
+                required
                 placeholder="Auto"
               />
             </div>
@@ -58,13 +60,14 @@
                 Stok Fisik <span class="text-red-500">*</span>
               </label>
               <input
-                v-model="newItem.stok_fisik"
-                type="number"
-                step="0.01"
-                required
+                :value="formatNumber(newItem.stok_fisik)"
+                type="text"
+                inputmode="numeric"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                @input="handleNumericInput($event, (val) => newItem.stok_fisik = val);calculateSelisih($event)"
+                min="0"
+                required
                 placeholder="0.00"
-                @input="calculateSelisih"
               />
             </div>
             
@@ -87,15 +90,19 @@
                 Selisih
               </label>
               <input
-                v-model="newItem.selisih"
-                type="number"
-                step="0.01"
-                readonly
+                :value="formatNumber(newItem.selisih)"
+                type="text"
+                inputmode="numeric"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 focus:outline-none"
+                @input="handleNumericInput($event, (val) => newItem.selisih = val)"
+                min="0"
+                required
                 :class="[
                   'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none font-medium',
                   newItem.selisih > 0 ? 'text-green-600' : newItem.selisih < 0 ? 'text-red-600' : 'text-gray-600'
                 ]"
                 placeholder="0.00"
+                readonly
               />
             </div>
             
@@ -163,11 +170,11 @@
         <!-- Items List -->
         <div>
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Daftar Item ({{ items.length }})</h3>
+            <h3 class="text-lg font-medium text-gray-900">Daftar Item ({{ formatNumber(items.length) }})</h3>
             <div class="text-sm text-gray-600">
               Total Selisih: 
               <span :class="totalSelisih > 0 ? 'text-green-600 font-medium' : totalSelisih < 0 ? 'text-red-600 font-medium' : 'text-gray-600'">
-                {{ totalSelisih > 0 ? '+' : '' }}{{ totalSelisih.toFixed(2) }}
+                {{ totalSelisih > 0 ? '+' : '' }}{{ formatNumber(totalSelisih.toFixed(2)) }}
               </span>
             </div>
           </div>
@@ -196,11 +203,14 @@
                   <td class="px-4 py-3 text-center">
                     <input
                       v-if="editingItem?.id === item.id"
-                      v-model="editingItem.stok_fisik"
-                      type="number"
-                      step="0.01"
+                      :value="formatNumber(editingItem.stok_fisik)"
+                      type="text"
+                      inputmode="numeric"
                       class="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      @input="calculateEditSelisih"
+                      @input="handleNumericInput($event, (val) => editingItem.stok_fisik = val);calculateEditSelisih($event)"
+                      min="0"
+                      required
+                      placeholder="Auto"
                     />
                     <span v-else class="text-sm text-gray-900">{{ item.stok_fisik || 0 }}</span>
                   </td>
@@ -359,7 +369,7 @@ import { syncService } from '@/services/sync.js'
 import { useToast } from '@/composables/useToast.js'
 import { useFileUpload } from '@/composables/useFileUpload.js'
 import { getAllowedFileTypes } from '@/utils/fileUtils.js'
-import { formatDateTimeIndonesian } from '@/utils/helpers'
+import { formatDateTimeIndonesian, formatNumber, handleNumericInput } from '@/utils/helpers'
 
 // Props
 const props = defineProps({

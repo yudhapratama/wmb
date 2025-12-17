@@ -41,16 +41,19 @@
                 </label>
                 <div class="flex">
                   <input
-                    v-model.number="form.jumlah_dihasilkan"
-                    type="number"
-                    step="0.01"
+                    :value="formatNumber(form.jumlah_dihasilkan)"
+                    type="text"
+                    inputmode="numeric"
+                    class="flex-1 px-3 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="handleNumericInput($event, (val) => form.jumlah_dihasilkan = val)"
                     min="0"
                     required
-                    class="flex-1 px-3 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0"
-                  >
+                    :disabled="!selectedCookedItemUnit"
+                    :class="{'cursor-not-allowed': !selectedCookedItemUnit}"
+                  />
                   <div class="px-3 py-3 bg-gray-50 border border-l-0 border-gray-300 rounded-r-lg text-sm text-gray-600">
-                    {{ selectedCookedItemUnit }}
+                    {{ selectedCookedItemUnit || 'pcs' }}
                   </div>
                 </div>
               </div>
@@ -109,12 +112,13 @@
                     Jumlah Diambil *
                   </label>
                   <input
-                    v-model.number="material.jumlah_diambil"
-                    type="number"
-                    step="0.01"
+                    :value="formatNumber(material.jumlah_diambil)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    @input="handleNumericInput($event, (val) => material.jumlah_diambil = val)"
                     min="0"
                     required
-                    class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0"
                   />
                 </div>
@@ -152,7 +156,7 @@
                 </div>
                 <div>
                   <span class="text-gray-600">Jumlah Dihasilkan:</span>
-                  <div class="font-semibold text-blue-900">{{ form.jumlah_dihasilkan }} {{ selectedCookedItemUnit }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatNumber(form.jumlah_dihasilkan) }} {{ selectedCookedItemUnit }}</div>
                 </div>
                 <div>
                   <span class="text-gray-600">HPP per Unit:</span>
@@ -194,7 +198,7 @@ import { ref, computed, watch } from 'vue'
 import { useKitchen } from '../../../../composables/useKitchen'
 import AddMaterialModal from './AddMaterialModal.vue'
 import Select from '../../../ui/Select.vue'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
 // Props
 const props = defineProps({
   cookedItems: {

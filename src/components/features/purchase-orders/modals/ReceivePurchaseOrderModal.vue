@@ -49,12 +49,15 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Diterima *</label>
                 <div class="flex">
-                  <input 
-                    v-model.number="item.total_diterima"
-                    type="number" 
-                    step="0.01"
-                    :max="item.jumlah_pesan"
+                  <input
+                    :value="formatNumber(item.total_diterima)"
+                    type="text"
+                    id="minimum_stock_level"
+                    inputmode="numeric"
                     class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    @input="handleNumericInput($event, (val) => item.total_diterima = val)"
+                    min="0"
+                    :max="item.total_stock"
                     placeholder="0"
                     required
                   />
@@ -83,13 +86,15 @@
                 <div>
                   <label class="block text-sm font-medium text-red-700 mb-1">Jumlah Penyusutan *</label>
                   <div class="flex">
-                    <input 
-                      v-model.number="item.total_penyusutan"
-                      type="number" 
-                      step="0.01"
-                      :max="item.total_diterima"
+                    <input
+                      :value="formatNumber(item.total_penyusutan)"
+                      type="text"
+                      id="minimum_stock_level"
+                      inputmode="numeric"
                       class="flex-1 px-3 py-2 border border-red-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      @input="handleNumericInput($event, (val) => item.total_penyusutan = val)"
                       placeholder="0"
+                      min="0"
                       required
                     />
                     <span class="px-3 py-2 bg-red-100 border border-l-0 border-red-300 rounded-r-md text-sm text-red-600">
@@ -147,7 +152,7 @@
             <div class="mt-4 p-3 bg-blue-50 rounded-lg">
               <div class="flex justify-between text-sm">
                 <span class="text-blue-700">Jumlah yang dapat digunakan:</span>
-                <span class="font-medium text-blue-900">{{ calculateUsableQuantity(item) }} {{ item.unit }}</span>
+                <span class="font-medium text-blue-900">{{ formatNumber(calculateUsableQuantity(item)) }} {{ item.unit }}</span>
               </div>
             </div>
           </div>
@@ -187,7 +192,7 @@ import Select from '../../../ui/Select.vue'
 import Modal from '../../../ui/Modal.vue'
 import { useFileUpload } from '../../../../composables/useFileUpload'
 import { validateFile } from '../../../../utils/fileUtils'
-import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
+import { formatCurrency, formatDateTimeIndonesian, formatNumber, handleNumericInput } from '@/utils/helpers'
 const props = defineProps({
   isOpen: Boolean,
   order: Object,

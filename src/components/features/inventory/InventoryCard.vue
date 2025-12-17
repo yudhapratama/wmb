@@ -24,7 +24,7 @@
               <div>
                 <span class="text-gray-500 font-normal">Stock: </span>
                 <span :class="`font-semibold ${stockStatus.color}`">
-                  {{ item.total_stock }} {{ getUnitName(item.unit) }}
+                  {{ formatNumber(item.total_stock) }} {{ getUnitName(item.unit) }}
                 </span>
               </div>
               <div>
@@ -48,7 +48,7 @@
           
           <!-- Replace the existing minimum stock display with this -->
           <div class="text-lg font-bold text-blue-600 mb-3">
-            Min: {{ item.minimum_stock_level }} {{ getUnitName(item.unit) }}
+            Min: {{ formatNumber(item.minimum_stock_level) }} {{ getUnitName(item.unit) }}
           </div>
           <!-- Replace the existing action buttons with these -->
           <div class="flex gap-2">
@@ -78,7 +78,7 @@
                   </svg>
                 </button>
               </PermissionBasedAccess>
-              <!-- <PermissionBasedAccess collection="raw_materials" action="delete">
+              <PermissionBasedAccess collection="raw_materials" action="delete">
                 <button 
                   @click="$emit('shrinkage', item)"
                   class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
@@ -87,7 +87,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                   </svg>
                 </button>
-              </PermissionBasedAccess> -->
+              </PermissionBasedAccess>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ import { formatDateTime } from '@/utils/helpers'
 import { 
   EyeIcon
 } from '@heroicons/vue/24/outline'
-import { formatCurrency } from '../../../utils/helpers'
+import { formatCurrency, formatNumber } from '../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,

@@ -1,4 +1,5 @@
 <script setup>
+import { formatNumber } from '@/utils/helpers';
 const props = defineProps({
   item: {
     type: Object,
@@ -73,7 +74,7 @@ const emit = defineEmits(['update:activeTab', 'edit'])
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500">Reorder Point:</span>
-              <span class="font-medium">{{ item.minimum_stock_level }} {{ getUnitName(item.unit) }}</span>
+              <span class="font-medium">{{ formatNumber(item.minimum_stock_level) }} {{ getUnitName(item.unit) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500">Status:</span>
@@ -90,15 +91,15 @@ const emit = defineEmits(['update:activeTab', 'edit'])
           
           <div class="grid grid-cols-3 gap-2 mt-4">
             <div class="bg-blue-50 p-3 rounded-lg text-center">
-              <div class="text-2xl font-bold text-blue-600">{{ item.total_stock }}</div>
+              <div class="text-2xl font-bold text-blue-600">{{ formatNumber(item.total_stock) }}</div>
               <div class="text-xs text-gray-500">Total Stock</div>
             </div>
             <div class="bg-green-50 p-3 rounded-lg text-center">
-              <div class="text-2xl font-bold text-green-600">4800</div>
+              <div class="text-2xl font-bold text-green-600">{{ formatNumber(4800)}}</div>
               <div class="text-xs text-gray-500">Usage</div>
             </div>
             <div class="bg-red-50 p-3 rounded-lg text-center">
-              <div class="text-2xl font-bold text-red-600">200</div>
+              <div class="text-2xl font-bold text-red-600">{{ formatNumber(200) }}</div>
               <div class="text-xs text-gray-500">Waste</div>
             </div>
           </div>

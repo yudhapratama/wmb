@@ -22,7 +22,7 @@
           <div class="bg-blue-50 p-4 rounded-lg">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="text-center">
-                <div class="text-2xl font-bold text-blue-600">{{ prep.jumlah_dihasilkan }} {{ cookedItemUnit }}</div>
+                <div class="text-2xl font-bold text-blue-600">{{ formatNumber(prep.jumlah_dihasilkan) }} {{ cookedItemUnit }}</div>
                 <div class="text-sm text-gray-600"> Diproduksi</div>
               </div>
               <div class="text-center">
@@ -52,7 +52,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Jumlah Dihasilkan
                 </label>
-                <p class="text-gray-900 font-medium">{{ prep.jumlah_dihasilkan }} {{ cookedItemUnit }}</p>
+                <p class="text-gray-900 font-medium">{{ formatNumber(prep.jumlah_dihasilkan) }} {{ cookedItemUnit }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -97,7 +97,7 @@
                   <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span class="text-gray-600">Jumlah Diambil:</span>
-                      <div class="font-medium text-gray-900">{{ material.jumlah_diambil }} {{ getRawMaterialUnit(material) }}</div>
+                      <div class="font-medium text-gray-900">{{ formatNumber(material.jumlah_diambil) }} {{ getRawMaterialUnit(material) }}</div>
                     </div>
                     <div>
                       <span class="text-gray-600">Harga per Unit:</span>
@@ -130,7 +130,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
+import { formatCurrency, formatDateTimeIndonesian, formatNumber } from '@/utils/helpers'
 const props = defineProps({
   prep: {
     type: Object,

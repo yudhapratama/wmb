@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
+import { formatCurrency, formatDateTimeIndonesian, formatNumber } from '@/utils/helpers'
 const props = defineProps({
   product: {
     type: Object,
@@ -66,15 +66,6 @@ function calculateMarginPercentage() {
   
   const margin = props.product.harga_jual - costPrice
   return ((margin / props.product.harga_jual) * 100).toFixed(1)
-}
-
-function getRawMaterialUnit(rawMaterialId) {
-  const material = props.rawMaterials.find(m => m.id === rawMaterialId)
-  if (material && material.unit) {
-    const unit = props.units.find(u => u.id === material.unit)
-    return unit ? unit.abbreviation || unit.name : 'Unknown'
-  }
-  return 'pcs'
 }
 
 function getCookedItemUnit(cookedItemId) {
@@ -208,7 +199,7 @@ function getItemCost(item) {
                   {{ item.cooked_items_id.name }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900">
-                  {{ item.quantity }}
+                  {{ formatNumber(item.quantity) }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500">
                   {{ getCookedItemUnit(item.cooked_items_id) }}

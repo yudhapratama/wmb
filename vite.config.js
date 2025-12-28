@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import eslint from '@nabla/vite-plugin-eslint'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -93,7 +94,8 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    eslint()
   ],
   resolve: {
     alias: {

@@ -76,7 +76,7 @@
       <div class="bg-purple-50 rounded-lg p-4">
         <div class="text-sm text-purple-600 font-medium mb-1">Bahan Baku</div>
         <div class="text-xl font-bold text-purple-900">
-          {{ prep.bahan_baku?.length || 0 }} item
+          {{ formatNumber(prep.bahan_baku?.length) || 0 }} item
         </div>
       </div>
     </div>
@@ -100,7 +100,7 @@
         </div>
       </div>
       <div v-if="prep.bahan_baku.length > 4" class="text-sm text-gray-500 mt-2">
-        +{{ prep.bahan_baku.length - 4 }} bahan baku lainnya
+        +{{ formatNumber(prep.bahan_baku.length - 4) }} bahan baku lainnya
       </div>
     </div>
   </div>

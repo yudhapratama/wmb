@@ -322,6 +322,7 @@ async function openEditModal(order) {
           raw_material_id: typeof item.item === 'object' ? item.item?.id?.toString() : item.item?.toString() || '',
           item: typeof item.item === 'object' ? item.item?.nama_item : '', // Nama akan diisi dari raw_materials
           quantity: parseInt(item.jumlah_pesan) || 1,
+          harga_rata_rata: item.harga_satuan,
           unit: typeof item.item === 'object' ? item.item?.unit?.abbreviation : 'pcs',
           total_price: parseFloat(item.harga_satuan) || 0
         };
@@ -330,6 +331,7 @@ async function openEditModal(order) {
         raw_material_id: '',
         item: '',
         quantity: 1,
+        harga_rata_rata: 0,
         unit: 'pcs',
         total_price: 0
       }]

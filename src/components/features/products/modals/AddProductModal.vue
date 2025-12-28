@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -337,14 +337,14 @@ function handleSubmit() {
           </label>
           <input
             id="harga_jual"
-            v-model.number="formData.harga_jual"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="0"
+            :value="formatNumber(formData.harga_jual)"
+            type="text"
+            inputmode="numeric"
             class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            :class="{ 'border-red-500': errors.harga_jual }"
+            @input="handleNumericInput($event, (val) => formData.harga_jual = val)"
+            min="0"
             required
+            placeholder="0"
           />
           <p v-if="errors.harga_jual" class="mt-1 text-sm text-red-600">{{ errors.harga_jual }}</p>
         </div>
@@ -356,14 +356,15 @@ function handleSubmit() {
           </label>
           <input
             id="harga_pokok"
-            v-model.number="formData.harga_pokok"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="0"
+            :value="formatNumber(formData.harga_pokok)"
+            type="text"
+            inputmode="numeric"
             class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             :class="{ 'border-red-500': errors.harga_pokok }"
+            @input="handleNumericInput($event, (val) => formData.harga_pokok = val)"
+            min="0"
             required
+            placeholder="0"
           />
           <p v-if="errors.harga_pokok" class="mt-1 text-sm text-red-600">{{ errors.harga_pokok }}</p>
   `        <!-- Konsinyasi -->
@@ -443,13 +444,14 @@ function handleSubmit() {
                   Jumlah Dibutuhkan *
                 </label>
                 <input
-                  v-model.number="item.jumlah_dibutuhkan"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0"
+                  :value="formatNumber(item.jumlah_dibutuhkan)"
+                  type="text"
+                  inputmode="numeric"
                   class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  @input="handleNumericInput($event, (val) => item.jumlah_dibutuhkan = val)"
+                  min="0"
                   required
+                  placeholder="0"
                 />
               </div>
               

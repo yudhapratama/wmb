@@ -6,7 +6,7 @@ import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { useProductCategories } from '../../../../composables/useProductCategories'
 import { useSuppliers } from '../../../../composables/useSuppliers'
 import { useCookedItems } from '../../../../composables/useCookedItems'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
 const props = defineProps({
   product: {
     type: Object,
@@ -341,13 +341,14 @@ onMounted(async () => {
                 </label>
                 <input
                   id="harga_jual"
-                  v-model.number="formData.harga_jual"
-                  type="number"
-                  min="0"
-                  step="100"
-                  placeholder="25000"
+                  :value="formatNumber(formData.harga_jual)"
+                  type="text"
+                  inputmode="numeric"
                   class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  @input="handleNumericInput($event, (val) => formData.harga_jual = val)"
+                  min="0"
                   required
+                  placeholder="25000"
                 />
               </div>
             </div>
@@ -368,13 +369,14 @@ onMounted(async () => {
                   </label>
                   <input
                     id="harga_pokok"
-                    v-model.number="formData.harga_pokok"
-                    type="number"
-                    min="0"
-                    step="100"
-                    placeholder="15000"
+                    :value="formatNumber(formData.harga_pokok)"
+                    type="text"
+                    inputmode="numeric"
                     class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    @input="handleNumericInput($event, (val) => formData.harga_pokok = val)"
+                    min="0"
                     required
+                    placeholder="15000"
                   />
                 </div>
                 

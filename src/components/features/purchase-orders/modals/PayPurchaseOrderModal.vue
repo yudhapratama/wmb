@@ -64,10 +64,10 @@
                     {{ item.nama_item }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ item.jumlah_pesan }} {{ item.unit }}
+                    {{ formatNumber(item.jumlah_pesan) }} {{ item.unit }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ item.total_diterima || item.jumlah_pesan }} {{ item.unit }}
+                    {{ formatNumber(item.total_diterima || item.jumlah_pesan) }} {{ item.unit }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ formatCurrency(calculateItemTotal(item)) }}
@@ -106,7 +106,7 @@
                       {{ item.nama_item }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-red-700">
-                      {{ item.total_penyusutan }} {{ item.unit }}
+                      {{ formatNumber(item.total_penyusutan) }} {{ item.unit }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-red-700">
                       {{ getShrinkageReasonLabel(item.alasan_penyusutan) }}
@@ -163,12 +163,14 @@
             
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Total Pembayaran *</label>
-              <input 
-                v-model.number="paymentData.total_pembayaran"
-                type="number" 
-                step="0.01"
+              <input
+                :value="formatNumber(paymentData.total_pembayaran)"
+                type="text"
+                inputmode="numeric"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 :placeholder="finalTotal.toString()"
+                @input="handleNumericInput($event, (val) => paymentData.total_pembayaran = val)"
+                min="0"
                 required
               />
             </div>
@@ -249,7 +251,7 @@ import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
 import { validateFile, createFilePreview } from '../../../../utils/fileUtils'
 import { useFileUpload } from '../../../../composables/useFileUpload'
-import { formatCurrency, formatDateTimeIndonesian } from '@/utils/helpers'
+import { formatCurrency, formatDateTimeIndonesian, formatNumber, handleNumericInput } from '@/utils/helpers'
 const props = defineProps({
   isOpen: Boolean,
   order: Object,

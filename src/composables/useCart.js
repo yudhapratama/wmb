@@ -104,6 +104,8 @@ export function useCart() {
           quantity: 1
         })
       }
+      console.log('cartItems.value', cartItems.value);
+      
 
       showNotification(`${product.name} ditambahkan ke keranjang`, 'success')
       return true

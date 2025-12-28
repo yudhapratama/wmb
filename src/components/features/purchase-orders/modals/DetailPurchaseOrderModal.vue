@@ -87,7 +87,7 @@
                     {{ item.nama_item }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ item.jumlah_pesan }} {{ item.unit }}
+                    {{ formatNumber(item.jumlah_pesan) }} {{ item.unit }}
                   </td>
                   <td v-if="order?.status !== 'Dibuat'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ item.total_diterima || item.jumlah_pesan }} {{ item.unit }}
@@ -183,7 +183,7 @@ import { computed } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
 import { useFileUpload } from '../../../../composables/useFileUpload'
-import { formatCurrency , formatDateTimeIndonesian} from '../../../../utils/helpers'
+import { formatCurrency , formatDateTimeIndonesian, formatNumber } from '../../../../utils/helpers'
 // Add useFileUpload to get getFileUrl function
 const { getFileUrl } = useFileUpload()
 

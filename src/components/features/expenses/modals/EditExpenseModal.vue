@@ -4,7 +4,7 @@ import { useFileUpload } from '../../../../composables/useFileUpload'
 import { getAllowedFileTypes } from '../../../../utils/fileUtils'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
-
+import { formatNumber, handleNumericInput, formatDate } from '../../../../utils/helpers'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -25,6 +25,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'submit'])
+const today = new Date()
+const todayFormatted = formatDate(today)
 
 const formData = ref({
   id: null, // Add id field
@@ -32,10 +34,11 @@ const formData = ref({
   kategori: '',
   jumlah: 0,
   deskripsi: '',
-  tanggal: '',
+  tanggal: todayFormatted,
   metode_pembayaran: 'cash',
   bukti_pembayaran: null
 })
+console.log('formData', formData.value);
 
 const errors = ref({})
 
@@ -80,10 +83,11 @@ function populateForm(expense) {
     kategori: expense.kategori?.id || expense.kategori || '',
     jumlah: expense.jumlah || 0,
     deskripsi: expense.deskripsi || '',
-    tanggal: expense.tanggal ? expense.tanggal.split('T')[0] : '',
+    tanggal: expense.tanggal ? expense.tanggal.split('T')[0] : todayFormatted,
     metode_pembayaran: expense.metode_pembayaran || 'cash',
     bukti_pembayaran: expense.bukti_pembayaran || null
   }
+  console.log('formData', formData.value);
   
   // Clear previous file selections
   files.value = []
@@ -165,12 +169,14 @@ const handleSubmit = async () => {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah *</label>
             <input
-              v-model.number="formData.jumlah"
-              type="number"
-              min="0"
-              step="0.01"
+              :value="formatNumber(formData.jumlah)"
+              type="text"
+              inputmode="numeric"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               :class="{ 'border-red-500': errors.jumlah }"
+              @input="handleNumericInput($event, (val) => formData.jumlah = val)"
+              min="0"
+              required
               placeholder="150000"
             />
             <p v-if="errors.jumlah" class="text-red-500 text-xs mt-1">{{ errors.jumlah }}</p>

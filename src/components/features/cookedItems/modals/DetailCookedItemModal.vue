@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber } from '../../../../utils/helpers'
 const props = defineProps({
   item: {
     type: Object,
@@ -84,7 +84,7 @@ function getRawMaterialUnit(rawMaterialId) {
             <label class="block text-sm font-medium text-gray-700 mb-1">Stok Tersedia</label>
             <div class="flex items-center space-x-2">
               <span class="text-lg font-semibold text-gray-900">
-                {{ item.total_stock || 0 }} {{ getUnitName(item.unit.id) }}
+                {{ formatNumber(item.total_stock) || 0 }} {{ getUnitName(item.unit.id) }}
               </span>
               <span :class="getStockStatusClass()" class="px-2 py-1 rounded-full text-xs font-medium">
                 {{ getStockStatus() }}
@@ -139,7 +139,7 @@ function getRawMaterialUnit(rawMaterialId) {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900">
-                    {{ material.jumlah_dibutuhkan }}
+                    {{ formatNumber(material.jumlah_dibutuhkan) }}
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">

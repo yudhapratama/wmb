@@ -41,16 +41,19 @@
                 </label>
                 <div class="flex">
                   <input
-                    v-model.number="form.jumlah_dihasilkan"
-                    type="number"
-                    step="0.01"
+                    :value="formatNumber(form.jumlah_dihasilkan)"
+                    type="text"
+                    inputmode="numeric"
+                    class="flex-1 px-3 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="handleNumericInput($event, (val) => form.jumlah_dihasilkan = val)"
                     min="0"
                     required
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0.00"
+                    placeholder="0"
+                    :disabled="!selectedCookedItemUnit"
+                    :class="{'cursor-not-allowed': !selectedCookedItemUnit}"
                   />
                   <span class="px-3 py-2 bg-gray-50 border border-l-0 border-gray-300 rounded-r-lg text-sm text-gray-600">
-                    {{ selectedCookedItemUnit }}
+                    {{ selectedCookedItemUnit || 'pcs' }}
                   </span>
                 </div>
               </div>
@@ -69,7 +72,7 @@
                 <div class="flex justify-between items-start mb-2">
                   <div>
                     <h4 class="font-medium text-gray-900">{{ material.raw_material_name }}</h4>
-                    <p class="text-sm text-gray-600">Stok tersedia: {{ material.available_stock }} {{ material.unit_name }}</p>
+                    <p class="text-sm text-gray-600">Stok tersedia: {{ formatNumber(material.available_stock) }} {{ material.unit_name }}</p>
                   </div>
                   <span class="text-sm text-gray-500">{{ material.unit_name }}</span>
                 </div>
@@ -80,11 +83,14 @@
                       Jumlah Dibutuhkan
                     </label>
                     <input
-                      :value="material.required_quantity"
-                      type="number"
-                      step="0.01"
-                      readonly
+                      :value="formatNumber(material.required_quantity)"
+                      type="text"
+                      inputmode="numeric"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                      @input="handleNumericInput($event, (val) => material.required_quantity = val)"
+                      min="0"
+                      required
+                      readonly
                     />
                   </div>
                   <div>
@@ -92,16 +98,18 @@
                       Jumlah Diambil *
                     </label>
                     <input
-                      v-model.number="material.jumlah_diambil"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      :max="material.available_stock"
-                      required
+                      :value="formatNumber(material.jumlah_diambil)"
+                      type="text"
+                      inputmode="numeric"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       :class="{
                         'border-red-300 focus:ring-red-500 focus:border-red-500': material.jumlah_diambil > material.available_stock
                       }"
+                      @input="handleNumericInput($event, (val) => material.jumlah_diambil = val)"
+                      min="0"
+                      required
+                      placeholder="0"
+                      :max="material.available_stock"
                     />
                   </div>
                 </div>
@@ -124,7 +132,7 @@
                 </div>
                 <div>
                   <span class="text-gray-600">Jumlah Dihasilkan:</span>
-                  <div class="font-semibold text-blue-900">{{ form.jumlah_dihasilkan }} {{ selectedCookedItemUnit }}</div>
+                  <div class="font-semibold text-blue-900">{{ formatNumber(form.jumlah_dihasilkan) }} {{ selectedCookedItemUnit }}</div>
                 </div>
                 <div>
                   <span class="text-gray-600">HPP per Unit:</span>
@@ -160,7 +168,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import Select from '../../../ui/Select.vue'
-import { formatCurrency } from '../../../../utils/helpers'
+import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
 const props = defineProps({
   prep: {
     type: Object,

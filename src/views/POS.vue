@@ -124,9 +124,11 @@
               <p class="product-price">{{ formatCurrency(product.harga_jual) }}</p>
               <div class="product-meta">
                 <span class="product-category">{{ getCategoryName(product.kategori.id) }}</span>
+                <!--
                 <span class="product-stock" :class="getStockClass(product.stock_quantity)">
                   {{ product.stock_quantity > 0 ? `Stok: ${product.stock_quantity}` : 'Habis' }}
-                </span>
+                </span> 
+                -->
               </div>
             </div>
           </div>

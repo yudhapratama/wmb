@@ -40,7 +40,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">Total Stock Opnames</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.total || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">{{ formatNumber(stats.total || 0) }}</p>
             </div>
           </div>
         </div>
@@ -52,7 +52,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">Draft</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.draft || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">{{ formatNumber(stats.draft || 0) }}</p>
             </div>
           </div>
         </div>
@@ -64,7 +64,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">Selesai</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.completed || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">{{ formatNumber(stats.completed || 0) }}</p>
             </div>
           </div>
         </div>
@@ -76,7 +76,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">Bulan Ini</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.thisMonth || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">{{ formatNumber(stats.thisMonth || 0) }}</p>
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@
               {{ opname.dicatat_oleh_name || opname.dicatat_oleh?.first_name || 'Admin' }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-700">
-              {{ opname.items_opname?.length || 0 }} item
+              {{ formatNumber(opname.items_opname?.length || 0) }} item
             </td>
             <td class="px-4 py-3 text-sm text-gray-700 leading-relaxed">
               {{ opname.catatan_keseluruhan }}
@@ -300,7 +300,7 @@ import AddStockOpnameModal from '@/components/features/stock-opnames/modals/AddS
 import EditStockOpnameModal from '@/components/features/stock-opnames/modals/EditStockOpnameModal.vue'
 import DetailStockOpnameModal from '@/components/features/stock-opnames/modals/DetailStockOpnameModal.vue'
 import ManageStockOpnameItemsModal from '@/components/features/stock-opnames/modals/ManageStockOpnameItemsModal.vue'
-import { formatDateTimeIndonesian, formatDateTime } from '../utils/helpers'
+import { formatDateTimeIndonesian, formatDateTime, formatNumber } from '../utils/helpers'
 // Composables
 import { useStockOpnames } from '@/composables/useStockOpnames'
 import { useNotification } from '@/composables/useNotification'

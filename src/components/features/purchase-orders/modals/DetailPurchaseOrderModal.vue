@@ -90,7 +90,7 @@
                     {{ formatNumber(item.jumlah_pesan) }} {{ item.unit }}
                   </td>
                   <td v-if="order?.status !== 'Dibuat'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ item.total_diterima || item.jumlah_pesan }} {{ item.unit }}
+                    {{ formatNumber(item.total_diterima || item.jumlah_pesan) }} {{ item.unit }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ formatCurrency(item.harga_satuan) }}

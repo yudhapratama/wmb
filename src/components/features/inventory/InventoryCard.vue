@@ -51,7 +51,7 @@
             Min: {{ formatNumber(item.minimum_stock_level) }} {{ getUnitName(item.unit) }}
           </div>
           <!-- Replace the existing action buttons with these -->
-          <div class="flex gap-2">
+          <div class="flex gap-2 justify-end">
             <!-- <button 
               @click="$emit('view', item)"
               class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
@@ -78,6 +78,7 @@
                   </svg>
                 </button>
               </PermissionBasedAccess>
+              <!--
               <PermissionBasedAccess collection="raw_materials" action="delete">
                 <button 
                   @click="$emit('shrinkage', item)"
@@ -87,7 +88,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                   </svg>
                 </button>
-              </PermissionBasedAccess>
+              </PermissionBasedAccess> 
+              -->
             </div>
           </div>
         </div>

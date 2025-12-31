@@ -204,30 +204,10 @@ function getPaymentMethodLabel(method) {
       :dateFilter="dateFilter"
       @update:dateFilter="console.log($event);dateFilter = $event"
     />
-    
-    <!-- Pagination Info -->
-    <div class="mt-6 flex justify-between items-center">
-      <div class="text-sm text-gray-700">
-        Menampilkan {{ paginationInfo.start }} - {{ paginationInfo.end }} dari {{ paginationInfo.total }} pengeluaran
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-700">Tampilkan:</label>
-        <select
-          :value="itemsPerPage"
-          @change="changeItemsPerPage(Number($event.target.value))"
-          class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-w-[70px]"
-        >
-          <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-        <span class="text-sm text-gray-700">per halaman</span>
-      </div>
-    </div>
 
     <div class="mt-6 grid grid-cols-1 gap-6">
       <DatatablesVue
-        :data="paginatedExpenses"
+        :data="filteredExpenses"
         :loading="isLoading"
         :defaultItemsPerPage="itemsPerPage"
         @page-change="changePage($event)"

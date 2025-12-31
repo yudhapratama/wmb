@@ -199,7 +199,7 @@
                     <div class="text-sm font-medium text-gray-900">{{ item.nama_bahan.nama_item }}</div>
                     <div class="text-xs text-gray-500">ID: {{ item.nama_bahan.id }}</div>
                   </td>
-                  <td class="px-4 py-3 text-center text-sm text-gray-900">{{ item.stok_sistem || 0 }}</td>
+                  <td class="px-4 py-3 text-center text-sm text-gray-900">{{ formatNumber(item.stok_sistem || 0) }}</td>
                   <td class="px-4 py-3 text-center">
                     <input
                       v-if="editingItem?.id === item.id"
@@ -212,7 +212,7 @@
                       required
                       placeholder="Auto"
                     />
-                    <span v-else class="text-sm text-gray-900">{{ item.stok_fisik || 0 }}</span>
+                    <span v-else class="text-sm text-gray-900">{{ formatNumber(item.stok_fisik || 0) }}</span>
                   </td>
                   <td class="px-4 py-3 text-center">
                     <span :class="[
@@ -220,7 +220,7 @@
                       (editingItem?.id === item.id ? editingItem.selisih : item.selisih) > 0 ? 'text-green-600' : 
                       (editingItem?.id === item.id ? editingItem.selisih : item.selisih) < 0 ? 'text-red-600' : 'text-gray-600'
                     ]">
-                      {{ (editingItem?.id === item.id ? editingItem.selisih : item.selisih) > 0 ? '+' : '' }}{{ (editingItem?.id === item.id ? editingItem.selisih : item.selisih) || 0 }}
+                      {{ (editingItem?.id === item.id ? editingItem.selisih : item.selisih) > 0 ? '+' : '' }}{{ formatNumber(editingItem?.id === item.id ? editingItem.selisih : item.selisih) || 0 }}
                     </span>
                   </td>
                   <td class="px-4 py-3">

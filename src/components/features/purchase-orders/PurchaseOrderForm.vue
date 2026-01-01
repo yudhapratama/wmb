@@ -85,7 +85,7 @@
                 </td>
                 <td class="px-4 py-3">
                   <input
-                    :value="formatNumber(item.total_price)"
+                    :value="formatNumber(item.total_price, true)"
                     type="text"
                     id="minimum_stock_level"
                     inputmode="numeric"
@@ -189,6 +189,7 @@ function initFormData() {
         item: item.item_name || item.nama_item || item.item || '',
         quantity: item.jumlah_pesan || item.quantity || 0,
         harga_rata_rata: item.harga_rata_rata,
+        total_stock: item.total_stock,
         unit: item.unit_name || item.unit || 'pcs',
         total_price: item.harga_satuan || item.total_price || 0
       })) || []
@@ -232,6 +233,7 @@ watch(() => props.order, (newOrder) => {
       item: item.item_name || item.nama_item || item.item || '',
       quantity: item.jumlah_pesan || item.quantity || 0,
       harga_rata_rata: item.harga_rata_rata,
+      total_stock: item.total_stock,
       unit: item.unit_name || item.unit || 'pcs',
       total_price: item.harga_satuan || item.total_price || 0
     })) || []
@@ -275,6 +277,7 @@ function onRawMaterialSelect(index, materialId) {
     item.item = material.nama_item
     item.unit = getUnitName(material.unit) || 'pcs'
     item.harga_rata_rata = material.harga_rata_rata
+    item.total_stock = material.total_stock
   } else {
     console.warn('⚠️ Material not found for ID:', materialId)
   }
@@ -287,6 +290,7 @@ function addItem() {
     item: '',
     quantity: 0,
     harga_rata_rata: 0,
+    total_stock: 0,
     unit: 'pcs',
     total_price: 0
   })
@@ -306,7 +310,7 @@ watch(() => formData.value.supplier, () => {
   formData.value.items = formData.value.items.map(item => {
     const idNum = typeof item.raw_material_id === 'number' ? item.raw_material_id : parseInt(item.raw_material_id)
     if (!Number.isFinite(idNum) || !allowedIds.has(idNum)) {
-      return { ...item, raw_material_id: '', item: '', unit: 'pcs', harga_rata_rata: 0, total_price: 0 }
+      return { ...item, raw_material_id: '', item: '', unit: 'pcs', harga_rata_rata: 0, total_price: 0, total_stock: 0 }
     }
     return item
   })
@@ -372,7 +376,9 @@ const rawMaterialOptions = computed(() => {
 function updateQuantityItem(item, value) {
   const qty = inputFormatNumber(value)
   item.quantity = qty
-  item.total_price = qty * item.harga_rata_rata
+  console.log('harga rata', (item.harga_rata_rata / item.total_stock), item.harga_rata_rata,item.total_stock);
+  
+  item.total_price = qty * (item.harga_rata_rata / item.total_stock)
 }
 
 </script>

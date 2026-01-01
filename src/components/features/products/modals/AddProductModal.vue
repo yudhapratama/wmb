@@ -4,6 +4,8 @@ import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
+import { useFileUpload } from '../../../../composables/useFileUpload'
+import { getAllowedFileTypes } from '../../../../utils/fileUtils'
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -45,7 +47,8 @@ const formData = ref({
   total_harga_bahan: 0,
   konsinyasi: false,
   supplier_konsinyasi: null, // ← Ubah dari '' ke null
-  recipe_items: [] // Ubah struktur untuk menggunakan cooked_items_id
+  recipe_items: [], // Ubah struktur untuk menggunakan cooked_items_id
+  image: null
 })
 
 const errors = ref({})
@@ -159,11 +162,34 @@ function resetForm() {
     total_harga_bahan: 0,
     konsinyasi: false,
     supplier_konsinyasi: '',
-    recipe_items: []
+    recipe_items: [],
+    image: null,
   }
   errors.value = {}
 }
-
+const handleImageChange = async (event) => {
+  await handleFileSelect(event)
+}
+// Use enhanced file upload composable
+const { 
+  files, 
+  previews, 
+  errors: fileErrors, 
+  isUploading, 
+  uploadFiles, 
+  handleFileSelect, 
+  removeFile,
+  clearFiles // Add clearFiles
+} = useFileUpload({
+  multiple: false,
+  autoUpload: false,
+  featureName: 'Expenses',
+  dataId: null
+})
+function removeImage() {
+  removeFile(0)
+  formData.value.bukti_pembayaran = null
+}
 function addRecipeItem() {
   formData.value.recipe_items.push({
     cooked_items_id: '',
@@ -211,7 +237,7 @@ function calculateMargin() {
   return Math.round(((hargaJual - hargaPokok) / hargaJual) * 100)
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!isFormValid.value) return
   
   // Validate form
@@ -253,6 +279,22 @@ function handleSubmit() {
   if (Object.keys(errors.value).length > 0) {
     return
   }
+
+  /** 
+   * handle image upload
+   */
+  let image = null
+    
+  // Upload file first if selected
+  if (files.value.length > 0) {
+    // We need a temporary ID for folder structure, use timestamp
+    const tempId = Date.now().toString()
+    const uploadedIds = await uploadFiles(tempId)
+    image = uploadedIds[0] || null
+  }
+  /** 
+   * end handle image upload
+   */
   
   // Prepare data untuk submit dengan proper null handling
   const submitData = {
@@ -265,7 +307,8 @@ function handleSubmit() {
     // Pastikan numeric fields adalah number
     harga_jual: parseFloat(formData.value.harga_jual) || 0,
     harga_pokok: parseFloat(formData.value.harga_pokok) || 0,
-    total_harga_bahan: parseFloat(formData.value.total_harga_bahan) || 0
+    total_harga_bahan: parseFloat(formData.value.total_harga_bahan) || 0,
+    image
   }
   
   emit('submit', submitData)
@@ -328,6 +371,45 @@ function handleSubmit() {
             placeholder="Pilih tipe produk"
             required
           />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Produk</label>
+          <div class="flex items-start gap-4 flex-col">
+            <button
+              type="button"
+              @click="$refs.fileInput.click()"
+              :disabled="previews.length"
+              class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Ambil Foto
+            </button>
+            <input
+              ref="fileInput"
+              type="file"
+              :accept="getAllowedFileTypes()"
+              @change="handleImageChange"
+              class="hidden"
+            />
+            <img
+              v-if="previews && previews[0]"
+              :src="previews[0].preview || previews[0]"
+              alt="Payment proof preview"
+              class="w-40 h-40 object-cover rounded border"
+            />
+            <button
+              v-if="previews && previews[0]"
+              type="button"
+              @click="removeImage"
+              class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+            >
+              Hapus
+            </button>
+          </div>
         </div>
 
         <!-- Harga Jual -->

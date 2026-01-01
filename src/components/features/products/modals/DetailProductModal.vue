@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import PermissionBasedAccess from '../../../ui/PermissionBasedAccess.vue'
 import { formatCurrency, formatDateTimeIndonesian, formatNumber } from '@/utils/helpers'
+import { useFileUpload } from '../../../../composables/useFileUpload'
 const props = defineProps({
   product: {
     type: Object,
@@ -39,6 +40,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'edit'])
+const { getFileUrl } = useFileUpload()
 
 const modalTitle = computed(() => {
   if (!props.product) return 'Detail Produk'
@@ -128,6 +130,21 @@ function getItemCost(item) {
             <span :class="getProductTypeClass(product.tipe_produk)" class="px-3 py-1 rounded-full text-sm font-medium">
               {{ getProductTypeLabel(product.tipe_produk) }}
             </span>
+          </div>
+
+          <!-- Payment Proof -->
+          <div v-if="product.image">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Gambar Produk</label>
+            <div class="bg-gray-50 rounded-lg pt-4 pb-4">
+              <img 
+                :src="getFileUrl(product.image)" 
+                alt="Bukti pembayaran" 
+                class="max-w-full h-auto max-h-64 object-contain rounded border cursor-pointer"
+                @click="$event.target.requestFullscreen()"
+                @error="$event.target.style.display = 'none'"
+              />
+              <p class="text-xs text-gray-500 mt-2">Klik gambar untuk melihat ukuran penuh</p>
+            </div>
           </div>
           
           <div v-if="product.konsinyasi">
@@ -246,6 +263,7 @@ function getItemCost(item) {
         >
           Tutup
         </button>
+        <!-- 
         <PermissionBasedAccess collection="products" action="update">
           <button
             @click="$emit('edit', product)"
@@ -256,7 +274,8 @@ function getItemCost(item) {
             </svg>
             Edit Produk
           </button>
-        </PermissionBasedAccess>
+        </PermissionBasedAccess> 
+        -->
       </div>
     </template>
   </Modal>

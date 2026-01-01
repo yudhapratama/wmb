@@ -41,7 +41,7 @@
           <div class="text-lg font-bold text-blue-600 mb-3">
             {{ formatCurrency(calculatedTotal) }}
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 justify-end">
             <!-- Status: Dibuat - Tombol: Terima, Detail, Edit, Hapus -->
             <template v-if="order.status === 'Dibuat'">
               <PermissionBasedAccess collection="purchase_orders" action="update">
@@ -56,10 +56,12 @@
               
               <button 
                 @click="$emit('detail', order)" 
-                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
+                class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
               >
-                <EyeIcon class="w-4 h-4" />
-                <!-- Detail -->
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               </button>
               
               <PermissionBasedAccess collection="purchase_orders" action="update">
@@ -67,7 +69,9 @@
                   @click="$emit('edit', order)" 
                   class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
                 >
-                  <PencilIcon class="w-4 h-4" />
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                 </button>
               </PermissionBasedAccess>
               
@@ -95,10 +99,12 @@
               
               <button 
                 @click="$emit('detail', order)" 
-                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
+                class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
               >
-                <EyeIcon class="w-4 h-4" />
-                <!-- Detail -->
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               </button>
             </template>
             
@@ -106,10 +112,12 @@
             <template v-else-if="order.status === 'Selesai'">
               <button 
                 @click="$emit('detail', order)" 
-                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-1 text-sm"
+                class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
               >
-                <EyeIcon class="w-4 h-4" />
-                <!-- Detail -->
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               </button>
             </template>
           </div>

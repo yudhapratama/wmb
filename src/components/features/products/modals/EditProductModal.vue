@@ -7,6 +7,8 @@ import { useProductCategories } from '../../../../composables/useProductCategori
 import { useSuppliers } from '../../../../composables/useSuppliers'
 import { useCookedItems } from '../../../../composables/useCookedItems'
 import { formatCurrency, formatNumber, handleNumericInput } from '../../../../utils/helpers'
+import { useFileUpload } from '../../../../composables/useFileUpload'
+import { getAllowedFileTypes } from '../../../../utils/fileUtils'
 const props = defineProps({
   product: {
     type: Object,
@@ -37,7 +39,8 @@ const formData = ref({
   total_harga_bahan: 0,
   konsinyasi: false,
   supplier_konsinyasi: '',
-  recipe_items: []
+  recipe_items: [],
+  image: null
 })
 
 // Tambahkan watcher untuk cookedItems
@@ -81,7 +84,8 @@ watch(() => props.product, (newProduct) => {
           quantity: item.quantity || 0,
           unit: cookedItem?.unit || item.unit || 'pcs'
         }
-      }) : []
+      }) : [],
+      image: newProduct.image || null
     }
     
     // Update unit untuk setiap recipe item setelah cookedItems dimuat
@@ -106,7 +110,8 @@ watch(() => props.product, (newProduct) => {
       total_harga_bahan: 0,
       konsinyasi: false,
       supplier_konsinyasi: '',
-      recipe_items: []
+      recipe_items: [],
+      image: null
     }
   }
 }, { immediate: true, deep: true })
@@ -141,6 +146,31 @@ const cookedItemOptions = computed(() =>
 // Tambahkan computed property yang hilang
 const isRecipeBased = computed(() => {
   return formData.value.tipe_produk === 'recipe'
+})
+const handleImageChange = async (event) => {
+  await handleFileSelect(event)
+}
+
+function removeImage() {
+  removeFile(0)
+  formData.value.image = null
+}
+// Use enhanced file upload composable
+const { 
+  files, 
+  previews, 
+  errors: fileErrors, 
+  isUploading, 
+  uploadFiles, 
+  handleFileSelect, 
+  removeFile,
+  clearFiles,
+  getFileUrl // Extract getFileUrl from useFileUpload
+} = useFileUpload({
+  multiple: false,
+  autoUpload: false,
+  featureName: 'Expenses',
+  dataId: null
 })
 
 const calculatedTotalHargaBahan = computed(() => {
@@ -231,9 +261,17 @@ function onTipeProductChange() {
 }
 
 // Tambahkan fungsi handleSubmit yang hilang
-function handleSubmit() {
+async function handleSubmit() {
   if (!isFormValid.value) {
     return
+  }
+
+  let image = formData.value.image
+    
+  // Upload new file if selected
+  if (files.value.length > 0) {
+    const uploadedIds = await uploadFiles(props.product.id)
+    image = uploadedIds[0] || image
   }
   
   // Siapkan data untuk dikirim - buat plain object untuk menghindari DataCloneError
@@ -253,7 +291,8 @@ function handleSubmit() {
       cooked_items_id: item.cooked_items_id,
       quantity: item.quantity,
       unit: typeof item.unit === 'object' ? item.unit.id : item.unit
-    }))
+    })),
+    image
   }
   
   // Emit save event dengan data produk
@@ -333,6 +372,53 @@ onMounted(async () => {
                 <p class="text-xs text-gray-500 mt-1">
                   {{ isRecipeBased ? 'Produk dengan resep bahan baku' : 'Produk dengan harga pokok tetap' }}
                 </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Produk</label>
+                <div class="flex items-start gap-4 flex-col">
+                  <button
+                    type="button"
+                    @click="$refs.fileInput.click()"
+                    :disabled="formData.image || previews.length"
+                    class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Ambil Foto
+                  </button>
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    :accept="getAllowedFileTypes()"
+                    @change="handleImageChange"
+                    class="hidden"
+                  />
+                  <!-- Show new uploaded image preview -->
+                  <img
+                    v-if="previews && previews[0]"
+                    :src="previews[0].preview"
+                    alt="Payment proof preview"
+                    class="w-40 h-40 object-cover rounded border"
+                  />
+                  <!-- Show existing image if no new upload -->
+                  <img
+                    v-else-if="formData.image && !previews.length"
+                    :src="getFileUrl(formData.image)"
+                    alt="Payment proof preview"
+                    class="w-40 h-40 object-cover rounded border"
+                  />
+                  <button
+                    v-if="(previews && previews[0]) || formData.image"
+                    type="button"
+                    @click="removeImage"
+                    class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                  >
+                    Hapus
+                  </button>
+                </div>
               </div>
               
               <div>

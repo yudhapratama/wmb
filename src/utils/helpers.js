@@ -221,9 +221,14 @@ export function formatDateTimeIndonesian(datetime, includeTime = true, options =
 }
 
 
-export function formatNumber(value) {
+export function formatNumber(value, rounded = false) {
   if (value === null || value === undefined || value === '') return '0'
-  return new Intl.NumberFormat('id-ID').format(Number(value))
+  let num = Number(value)
+  if (isNaN(num)) return '0'
+  if (rounded) {
+    num = Math.round(num)
+  }
+  return new Intl.NumberFormat('id-ID').format(num)
 }
 /**
  * 

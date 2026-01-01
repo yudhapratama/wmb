@@ -537,6 +537,7 @@ function onPageChange(page) {
 
 function onItemsPerPageChange(limit) {
   defaultItemsPerPage.value = limit;
+  currentPage.value = 1;
 }
 
 // Lifecycle

@@ -25,7 +25,7 @@ const emit = defineEmits(['save', 'close'])
 // Composables
 const { categories: productCategories, loadData: loadCategoriesData } = useProductCategories()
 const { suppliers, loadData: loadSuppliersData } = useSuppliers()
-const { cookedItems, units, loadData: loadCookedItemsData } = useCookedItems()
+const { cookedItems, loadData: loadCookedItemsData } = useCookedItems()
 
 // Form data
 const formData = ref({
@@ -147,20 +147,25 @@ const cookedItemOptions = computed(() =>
 const isRecipeBased = computed(() => {
   return formData.value.tipe_produk === 'recipe'
 })
+// File input ref
+const fileInput = ref(null)
+
 const handleImageChange = async (event) => {
   await handleFileSelect(event)
 }
 
 function removeImage() {
   removeFile(0)
+  clearFiles();
   formData.value.image = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
 }
 // Use enhanced file upload composable
 const { 
   files, 
   previews, 
-  errors: fileErrors, 
-  isUploading, 
   uploadFiles, 
   handleFileSelect, 
   removeFile,
@@ -222,28 +227,6 @@ function onCookedItemChange(index) {
     // Force reactivity update
     formData.value.recipe_items[index] = { ...item }
   }
-}
-
-function getCookedItemName(cookedItemId) {
-  // Jika cookedItemId sudah berupa objek
-  if (typeof cookedItemId === 'object' && cookedItemId?.name) {
-    return cookedItemId.name
-  }
-  
-  // Jika cookedItemId masih berupa ID
-  const item = cookedItems.value.find(c => c.id === cookedItemId)
-  return item ? item.name : 'Bahan tidak ditemukan'
-}
-
-function getCookedItemUnit(cookedItemId) {
-  // Jika cookedItemId sudah berupa objek
-  if (typeof cookedItemId === 'object' && cookedItemId?.unit) {
-    return cookedItemId.unit || 'pcs'
-  }
-  
-  // Jika cookedItemId masih berupa ID
-  const item = cookedItems.value.find(c => c.id === cookedItemId)
-  return item ? (item.unit || 'pcs') : 'pcs'
 }
 
 // Tambahkan fungsi yang hilang setelah fungsi onCookedItemChange
@@ -325,119 +308,117 @@ onMounted(async () => {
       <div v-if="product && formData">
         <form @submit.prevent="handleSubmit" class="space-y-6">
           <!-- Basic Product Information -->
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Dasar Produk</h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="nama_produk" class="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Produk *
-                </label>
-                <input
-                  id="nama_produk"
-                  v-model="formData.nama_produk"
-                  type="text"
-                  placeholder="Contoh: Nasi Goreng Spesial"
-                  class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label for="kategori" class="block text-sm font-medium text-gray-700 mb-2">
-                  Kategori *
-                </label>
-                <Select
-                  v-model="formData.kategori"
-                  :options="categoryOptions"
-                  placeholder="Pilih Kategori"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label for="tipe_produk" class="block text-sm font-medium text-gray-700 mb-2">
-                  Tipe Produk *
-                </label>
-                <select
-                  id="tipe_produk"
-                  v-model="formData.tipe_produk"
-                  @change="onTipeProductChange"
-                  class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="basic">Basic Product</option>
-                  <option value="recipe">Recipe-based Product</option>
-                </select>
-                <p class="text-xs text-gray-500 mt-1">
-                  {{ isRecipeBased ? 'Produk dengan resep bahan baku' : 'Produk dengan harga pokok tetap' }}
-                </p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Produk</label>
-                <div class="flex items-start gap-4 flex-col">
-                  <button
-                    type="button"
-                    @click="$refs.fileInput.click()"
-                    :disabled="formData.image || previews.length"
-                    class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Ambil Foto
-                  </button>
-                  <input
-                    ref="fileInput"
-                    type="file"
-                    :accept="getAllowedFileTypes()"
-                    @change="handleImageChange"
-                    class="hidden"
-                  />
-                  <!-- Show new uploaded image preview -->
-                  <img
-                    v-if="previews && previews[0]"
-                    :src="previews[0].preview"
-                    alt="Payment proof preview"
-                    class="w-40 h-40 object-cover rounded border"
-                  />
-                  <!-- Show existing image if no new upload -->
-                  <img
-                    v-else-if="formData.image && !previews.length"
-                    :src="getFileUrl(formData.image)"
-                    alt="Payment proof preview"
-                    class="w-40 h-40 object-cover rounded border"
-                  />
-                  <button
-                    v-if="(previews && previews[0]) || formData.image"
-                    type="button"
-                    @click="removeImage"
-                    class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label for="harga_jual" class="block text-sm font-medium text-gray-700 mb-2">
-                  Harga Jual *
-                </label>
-                <input
-                  id="harga_jual"
-                  :value="formatNumber(formData.harga_jual)"
-                  type="text"
-                  inputmode="numeric"
-                  class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  @input="handleNumericInput($event, (val) => formData.harga_jual = val)"
-                  min="0"
-                  required
-                  placeholder="25000"
-                />
-              </div>
+          
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Dasar Produk</h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="nama_produk" class="block text-sm font-medium text-gray-700 mb-2">
+                Nama Produk *
+              </label>
+              <input
+                id="nama_produk"
+                v-model="formData.nama_produk"
+                type="text"
+                placeholder="Contoh: Nasi Goreng Spesial"
+                class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
             </div>
+            
+            <div>
+              <label for="kategori" class="block text-sm font-medium text-gray-700 mb-2">
+                Kategori *
+              </label>
+              <Select
+                v-model="formData.kategori"
+                :options="categoryOptions"
+                placeholder="Pilih Kategori"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label for="tipe_produk" class="block text-sm font-medium text-gray-700 mb-2">
+              Tipe Produk *
+            </label>
+            <select
+              id="tipe_produk"
+              v-model="formData.tipe_produk"
+              @change="onTipeProductChange"
+              class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="basic">Basic Product</option>
+              <option value="recipe">Recipe-based Product</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ isRecipeBased ? 'Produk dengan resep bahan baku' : 'Produk dengan harga pokok tetap' }}
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Produk</label>
+            <div class="flex items-start gap-4 flex-col">
+              <button
+                type="button"
+                @click="fileInput.click()"
+                :disabled="formData.image || previews.length"
+                class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Ambil Foto
+              </button>
+              <input
+                ref="fileInput"
+                type="file"
+                :accept="getAllowedFileTypes()"
+                @change="handleImageChange"
+                class="hidden"
+              />
+              <!-- Show new uploaded image preview -->
+              <img
+                v-if="previews && previews[0]"
+                :src="previews[0].preview"
+                alt="Payment proof preview"
+                class="w-40 h-40 object-cover rounded border"
+              />
+              <!-- Show existing image if no new upload -->
+              <img
+                v-else-if="formData.image && !previews.length"
+                :src="getFileUrl(formData.image)"
+                alt="Payment proof preview"
+                class="w-40 h-40 object-cover rounded border"
+              />
+              <button
+                v-if="(previews && previews[0]) || formData.image"
+                type="button"
+                @click="removeImage"
+                class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <label for="harga_jual" class="block text-sm font-medium text-gray-700 mb-2">
+              Harga Jual *
+            </label>
+            <input
+              id="harga_jual"
+              :value="formatNumber(formData.harga_jual)"
+              type="text"
+              inputmode="numeric"
+              class="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              @input="handleNumericInput($event, (val) => formData.harga_jual = val)"
+              min="0"
+              required
+              placeholder="25000"
+            />
           </div>
 
           <!-- Cost Information -->

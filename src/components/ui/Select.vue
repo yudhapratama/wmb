@@ -26,7 +26,7 @@
             :style="dropdownStyle"
             class="fixed z-[9999] overflow-hidden rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
           >
-            <div v-if="props.searchable" class="px-3 py-2 border-b bg-white">
+            <div v-if="props.searchable" class="searchable-input px-3 border-b bg-white" :class="{'py-2': extraClass }">
               <input
                 v-model="searchQuery"
                 type="text"
@@ -114,6 +114,7 @@ const isDropdownOpen = ref(false)
 const dropdownStyle = ref({})
 const dropdownScrollMaxHeight = ref('240px')
 const searchQuery = ref('')
+const extraClass = ref(false);
 
 const selectedValue = computed({
   get: () => props.modelValue,
@@ -192,6 +193,8 @@ function calculateDropdownPosition() {
 }
 
 function toggleDropdown() {
+  extraClass.value = false;
+  setTimeout(() => extraClass.value = true, 50)
   if (isDropdownOpen.value) {
     closeDropdown()
   } else {

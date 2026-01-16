@@ -185,7 +185,29 @@ router.beforeEach(async (to, from, next) => {
       
       if (!hasPermissions) {
         console.warn(`User lacks permissions for route ${to.path}. Required collections:`, requiredCollections)
-        next({ name: 'dashboard' })
+        console.warn(`User role: ${userRole}`)
+        console.warn(`User permissions:`, authStore.permissions)
+        
+        // Redirect to appropriate page based on user role
+        let redirectRoute = 'dashboard'
+        
+        // Use includes() to handle role names like 'cashier', 'cashierrole', 'Cashier Role', etc
+        if (userRole.includes('cashier')) {
+          redirectRoute = 'Sales'  // Try Sales instead of POS as it has fewer required collections
+        } else if (userRole.includes('kitchen')) {
+          redirectRoute = 'Kitchen'
+        } else if (userRole.includes('warehouse')) {
+          redirectRoute = 'inventory'
+        }
+        
+        // Prevent redirect loop
+        if (to.name === redirectRoute) {
+          console.error(`User ${userRole} lacks permissions for ${to.path} and default route`)
+          alert(`Your account (${userRole}) doesn't have the required permissions. Please contact your administrator to grant access to: ${requiredCollections.join(', ')}`)
+          next({ name: 'login' })
+        } else {
+          next({ name: redirectRoute })
+        }
         return
       }
     }
@@ -200,8 +222,28 @@ router.beforeEach(async (to, from, next) => {
       })
       
       if (!hasAccess) {
-        // Redirect to dashboard if user doesn't have required role
-        next({ name: 'dashboard' })
+        // Redirect to appropriate page based on user role
+        let redirectRoute = 'dashboard'
+        
+        console.warn(`User ${userRole} doesn't have access to ${to.path}. Allowed roles:`, allowedRoles)
+        
+        // Use includes() to handle role names like 'cashier', 'cashierrole', 'Cashier Role', etc
+        if (userRole.includes('cashier')) {
+          redirectRoute = 'Sales'  // Try Sales instead of POS
+        } else if (userRole.includes('kitchen')) {
+          redirectRoute = 'Kitchen'
+        } else if (userRole.includes('warehouse')) {
+          redirectRoute = 'inventory'
+        }
+        
+        // Prevent redirect loop - if already trying to go to redirect target, show error
+        if (to.name === redirectRoute) {
+          console.error(`User ${userRole} lacks access to ${to.path} and default route`)
+          alert(`Your account (${userRole}) doesn't have access to any pages. Please contact your administrator.`)
+          next({ name: 'login' })
+        } else {
+          next({ name: redirectRoute })
+        }
       } else {
         next()
       }

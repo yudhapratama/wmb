@@ -70,14 +70,6 @@ const supplierOptions = computed(() => [
   }))
 ])
 
-// Di bagian computed options (sekitar baris 65), hapus rawMaterialOptions:
-// const rawMaterialOptions = computed(() => 
-//   props.rawMaterials.map(material => ({
-//     value: material.id,
-//     label: material.nama_item
-//   }))
-// )
-
 const unitOptions = computed(() => 
   props.units.map(unit => ({
     value: unit.id,
@@ -167,28 +159,35 @@ function resetForm() {
   }
   errors.value = {}
 }
+// File input ref
+const fileInput = ref(null)
+
 const handleImageChange = async (event) => {
   await handleFileSelect(event)
 }
+
 // Use enhanced file upload composable
 const { 
   files, 
   previews, 
-  errors: fileErrors, 
-  isUploading, 
   uploadFiles, 
   handleFileSelect, 
   removeFile,
-  clearFiles // Add clearFiles
+  clearFiles
 } = useFileUpload({
   multiple: false,
   autoUpload: false,
   featureName: 'Expenses',
   dataId: null
 })
+
 function removeImage() {
   removeFile(0)
-  formData.value.bukti_pembayaran = null
+  clearFiles()
+  formData.value.image = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
 }
 function addRecipeItem() {
   formData.value.recipe_items.push({
@@ -378,7 +377,7 @@ async function handleSubmit() {
           <div class="flex items-start gap-4 flex-col">
             <button
               type="button"
-              @click="$refs.fileInput.click()"
+              @click="fileInput.click()"
               :disabled="previews.length"
               class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >

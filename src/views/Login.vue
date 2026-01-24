@@ -25,8 +25,25 @@ async function handleLogin() {
     const result = await authStore.login(email.value, password.value)
     
     if (result.success) {
-      // Redirect to the original requested page or dashboard
-      const redirectPath = route.query.redirect || '/dashboard'
+      // Redirect based on user role
+      let redirectPath = route.query.redirect
+      
+      if (!redirectPath) {
+        // Determine default page based on role
+        const userRole = authStore.role?.name?.toLowerCase().replace(/\s+/g, '') || ''
+        
+        // Check if role contains 'cashier' (handles 'cashier', 'cashierrole', etc)
+        if (userRole.includes('cashier')) {
+          redirectPath = '/pos'
+        } else if (userRole.includes('kitchen')) {
+          redirectPath = '/kitchen'
+        } else if (userRole.includes('warehouse')) {
+          redirectPath = '/inventory'
+        } else {
+          redirectPath = '/dashboard'
+        }
+      }
+      
       router.push(redirectPath)
     } else {
       errorMessage.value = result.message

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white shadow rounded-lg border border-gray-200 p-6">
+  <div class="bg-white shadow rounded-lg border border-gray-200 p-3 sm:p-6">
     <!-- Baris pertama: Pencarian, Status, Supplier -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
       <div class="md:col-span-1">
@@ -54,19 +54,19 @@
       
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Rentang Tanggal</label>
-        <div class="flex gap-2">
+        <div class="flex flex-col sm:flex-row gap-2">
           <input
             type="date"
             :value="dateFilter.startDate"
             @input="updateDateRange('startDate', $event.target.value)"
-            class="flex-1 px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full sm:flex-1 px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Pilih tanggal mulai..."
           />
           <input
             type="date"
             :value="dateFilter.endDate"
             @input="updateDateRange('endDate', $event.target.value)"
-            class="flex-1 px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full sm:flex-1 px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Pilih tanggal akhir..."
           />
         </div>

@@ -48,12 +48,12 @@
     <!-- Mode Normal Sales -->
     <div v-else class="sales-page">
       <!-- Header -->
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Penjualan</h1>
           <p class="text-gray-600">Kelola transaksi penjualan dan sesi kasir</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3 w-full sm:w-auto sm:justify-end">
           <!-- Session Status -->
           <div v-if="isSessionActive" class="bg-green-50 border border-green-200 rounded-lg px-4 py-2">
             <div class="flex items-center text-green-800">

@@ -1,16 +1,16 @@
 <template>
   <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-    <div class="p-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
+    <div class="p-3 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div class="flex items-start gap-4 min-w-0">
           <div :class="`p-2 rounded-lg ${stockStatus.bg}`">
             <svg class="w-5 h-5" :class="stockStatus.color" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4" />
             </svg>
           </div>
-          <div>
-            <h3 class="font-semibold text-lg text-gray-900">{{ item.nama_item }}</h3>
-            <div class="flex items-center gap-4 mt-1 text-sm">
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg text-gray-900 break-words">{{ item.nama_item }}</h3>
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-sm">
               <span class="px-2 py-1 rounded-full text-xs font-medium border border-gray-200">{{ getCategoryName(item.kategori) }}</span>
               <span :class="`px-2 py-1 rounded-full text-xs font-medium ${stockStatus.badgeColor}`">{{ stockStatus.label }}</span>
               <div class="flex items-center gap-1 text-gray-500" v-if="item.supplier_utama">
@@ -20,7 +20,7 @@
                 {{ getSupplierName(item.supplier_utama) }}
               </div>
             </div>
-            <div class="flex items-center gap-6 mt-2 text-sm">
+            <div class="flex flex-wrap items-center gap-3 sm:gap-6 mt-2 text-sm">
               <div>
                 <span class="text-gray-500 font-normal">Stock: </span>
                 <span :class="`font-semibold ${stockStatus.color}`">
@@ -44,14 +44,14 @@
             </div>
           </div>
         </div>
-        <div class="text-right">
+        <div class="text-left sm:text-right">
           
           <!-- Replace the existing minimum stock display with this -->
           <div class="text-lg font-bold text-blue-600 mb-3">
             Min: {{ formatNumber(item.minimum_stock_level) }} {{ getUnitName(item.unit) }}
           </div>
           <!-- Replace the existing action buttons with these -->
-          <div class="flex gap-2 justify-end">
+          <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
             <!-- <button 
               @click="$emit('view', item)"
               class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"

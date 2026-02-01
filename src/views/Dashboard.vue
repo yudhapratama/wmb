@@ -39,21 +39,21 @@ onMounted(() => {
 <template>
   <AppLayout>
     <!-- Date Filter -->
-    <div class="mb-6 bg-white rounded-lg shadow p-4">
-      <div class="flex items-center justify-between">
+    <div class="mb-6 bg-white rounded-lg shadow p-3 sm:p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 class="text-lg font-semibold text-gray-900">Dashboard</h2>
-        <div class="flex items-center space-x-2">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           <label for="date-filter" class="text-sm font-medium text-gray-700">Tanggal:</label>
           <input 
             id="date-filter"
             type="date" 
             :value="selectedDate" 
             @change="handleDateChange"
-            class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 sm:py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
           <button 
             @click="loadDashboardData" 
-            class="px-3 py-1 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            class="w-full sm:w-auto px-4 py-2 sm:py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Refresh
           </button>
@@ -81,7 +81,7 @@ onMounted(() => {
       <!-- Main Stats Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Total Revenue -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Total Pendapatan</h3>
             <span class="p-2 bg-green-100 rounded-full">
@@ -94,7 +94,7 @@ onMounted(() => {
         </div>
         
         <!-- Total Margin -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Total Margin</h3>
             <span class="p-2 bg-emerald-100 rounded-full">
@@ -107,7 +107,7 @@ onMounted(() => {
         </div>
         
         <!-- Total Expenses -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Total Pengeluaran</h3>
             <span class="p-2 bg-red-100 rounded-full">
@@ -120,7 +120,7 @@ onMounted(() => {
         </div>
         
         <!-- Net Profit -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Keuntungan Bersih</h3>
             <span class="p-2 bg-blue-100 rounded-full">
@@ -136,7 +136,7 @@ onMounted(() => {
       <!-- Purchase Orders & Shrinkage -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <!-- Paid Purchases -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Belanja Terbayar</h3>
             <span class="p-2 bg-green-100 rounded-full">
@@ -149,7 +149,7 @@ onMounted(() => {
         </div>
         
         <!-- Unpaid Purchases -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Belanja Belum Bayar</h3>
             <span class="p-2 bg-orange-100 rounded-full">
@@ -162,7 +162,7 @@ onMounted(() => {
         </div>
         
         <!-- Shrinkage Rate -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-500">Tingkat Penyusutan</h3>
             <span class="p-2 bg-yellow-100 rounded-full">
@@ -178,7 +178,7 @@ onMounted(() => {
       <!-- Quick Overview -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <!-- Active POs -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center">
             <div class="p-3 bg-indigo-100 rounded-full mr-4">
               <svg class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,7 +193,7 @@ onMounted(() => {
         </div>
         
         <!-- Low Stock Items -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center">
             <div class="p-3 bg-red-100 rounded-full mr-4">
               <svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -208,7 +208,7 @@ onMounted(() => {
         </div>
         
         <!-- Active Suppliers -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <div class="flex items-center">
             <div class="p-3 bg-green-100 rounded-full mr-4">
               <svg class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -226,7 +226,7 @@ onMounted(() => {
       <!-- Top Products, Expenses, and Low Stock -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Top 5 Best Selling Products -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Top 5 Produk Terlaris</h3>
           <div class="space-y-3">
             <div v-if="topProducts.length === 0" class="text-center text-gray-500 py-4">
@@ -245,46 +245,46 @@ onMounted(() => {
         </div>
         
         <!-- Top 3 Expenses -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Top 3 Pengeluaran</h3>
           <div class="space-y-3">
             <div v-if="topExpenses.length === 0" class="text-center text-gray-500 py-4">
               Tidak ada data pengeluaran
             </div>
-            <div v-else v-for="(expense, index) in topExpenses" :key="expense.category_id" class="flex justify-between items-center py-2 border-b border-gray-100">
-              <div class="flex items-center">
+            <div v-else v-for="(expense, index) in topExpenses" :key="expense.category_id" class="flex justify-between items-start gap-3 py-2 border-b border-gray-100">
+              <div class="flex items-start min-w-0">
                 <span class="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-800 text-xs font-medium rounded-full mr-3">
                   {{ index + 1 }}
                 </span>
-                <div>
-                  <p class="font-medium">{{ expense.name }}</p>
-                </div>
+                <div class="min-w-0">
+                  <p class="font-medium truncate">{{ expense.name }}</p>
+                </div> 
               </div>
-              <p class="font-semibold">{{ formatCurrency(expense.amount) }}</p>
+              <p class="font-semibold whitespace-nowrap">{{ formatCurrency(expense.amount) }}</p>
             </div>
           </div>
         </div>
         
         <!-- Top 5 Low Stock Cooked Items -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Stok Bahan Setengah Jadi Menipis</h3>
           <div class="space-y-3">
             <div v-if="lowStockCookedItems.length === 0" class="text-center text-gray-500 py-4">
               Semua stok aman
             </div>
-            <div v-else v-for="(item, index) in lowStockCookedItems" :key="item.id" class="flex justify-between items-center py-2 border-b border-gray-100">
-              <div class="flex items-center">
+            <div v-else v-for="(item, index) in lowStockCookedItems" :key="item.id" class="flex justify-between items-start gap-3 py-2 border-b border-gray-100">
+              <div class="flex items-start min-w-0">
                 <span class="inline-flex items-center justify-center w-6 h-6 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full mr-3">
                   {{ index + 1 }}
                 </span>
-                <div>
-                  <p class="font-medium">{{ item.name }}</p>
-                  <p class="text-sm text-gray-500">{{ item.unit_name }}</p>
+                <div class="min-w-0">
+                  <p class="font-medium truncate">{{ item.name }}</p>
+                  <p class="text-sm text-gray-500 truncate">{{ item.unit_name }}</p>
                 </div>
               </div>
-              <div class="text-right">
-                <p class="font-semibold text-red-600">{{ item.current_stock }}</p>
-                <p class="text-sm text-gray-500">Min: {{ item.minimum_stock }}</p>
+              <div class="text-right flex-shrink-0">
+                <p class="font-semibold text-red-600 whitespace-nowrap">{{ item.current_stock }}</p>
+                <p class="text-sm text-gray-500 whitespace-nowrap">Min: {{ item.minimum_stock }}</p>
               </div>
             </div>
           </div>

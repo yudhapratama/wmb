@@ -1,7 +1,7 @@
 <template>
-<div class="bg-white shadow rounded-lg border border-gray-200 p-6">
+<div class="bg-white shadow rounded-lg border border-gray-200 p-3 sm:p-6">
   <!-- Pagination Info -->
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
     <div class="text-sm text-gray-700">
       Menampilkan {{ paginationInfo.start }} - {{ paginationInfo.end }} dari {{ paginationInfo.total }} data
     </div>
@@ -46,11 +46,11 @@
 
   <!-- Pagination -->
   <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-    <nav class="flex items-center space-x-2">
+    <nav class="flex flex-wrap items-center justify-center gap-2">
       <button
         @click="changePage(currentPage - 1)"
         :disabled="currentPage === 1"
-        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-2 sm:px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Previous
       </button>
@@ -60,7 +60,7 @@
         :key="page"
         @click="changePage(page)"
         :class="[
-          'px-3 py-2 text-sm font-medium border rounded-md',
+          'px-2 sm:px-3 py-2 text-sm font-medium border rounded-md',
           page === currentPage
             ? 'text-blue-600 bg-blue-50 border-blue-500'
             : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
@@ -72,7 +72,7 @@
       <button
         @click="changePage(currentPage + 1)"
         :disabled="currentPage === totalPages"
-        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-2 sm:px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Next
       </button>

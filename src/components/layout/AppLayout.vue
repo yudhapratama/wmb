@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import OfflineIndicator from '../ui/OfflineIndicator.vue'
@@ -7,6 +7,9 @@ import db from '../../services/db'
 
 const authStore = useAuthStore()
 const router = useRouter()
+
+const desktopMediaQuery = typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)') : null
+const isDesktop = ref(desktopMediaQuery ? desktopMediaQuery.matches : true)
 
 // Get user role - perbaiki untuk menangani berbagai format nama role
 const userRole = computed(() => {
@@ -31,18 +34,41 @@ const getSavedSidebarState = () => {
   return savedState !== null ? savedState === 'true' : true // Default ke true jika tidak ada
 }
 
-// Change default to use saved state from localStorage
-const isSidebarOpen = ref(getSavedSidebarState())
+const isSidebarOpen = ref(isDesktop.value ? getSavedSidebarState() : false)
+
+const setSidebarStateForViewport = () => {
+  if (!desktopMediaQuery) return
+  isDesktop.value = desktopMediaQuery.matches
+  if (isDesktop.value) {
+    isSidebarOpen.value = getSavedSidebarState()
+  } else {
+    isSidebarOpen.value = false
+  }
+}
 
 function toggleSidebar() {
   isSidebarOpen.value = !isSidebarOpen.value
-  // Simpan state sidebar ke localStorage
-  localStorage.setItem('sidebar-state', isSidebarOpen.value)
+  if (isDesktop.value) {
+    localStorage.setItem('sidebar-state', isSidebarOpen.value)
+  }
+}
+
+function closeSidebar() {
+  isSidebarOpen.value = false
+}
+
+function handleNavClick() {
+  if (!isDesktop.value) {
+    closeSidebar()
+  }
 }
 
 // Add keyboard shortcut to toggle sidebar
+let handleKeyDown
+let handleMediaChange
+
 onMounted(() => {
-  const handleKeyDown = (event) => {
+  handleKeyDown = (event) => {
     if (event.key === 'b' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
       toggleSidebar()
@@ -50,7 +76,32 @@ onMounted(() => {
   }
   
   window.addEventListener('keydown', handleKeyDown)
+
+  if (desktopMediaQuery) {
+    handleMediaChange = () => setSidebarStateForViewport()
+    desktopMediaQuery.addEventListener('change', handleMediaChange)
+  }
 })
+
+onBeforeUnmount(() => {
+  if (handleKeyDown) {
+    window.removeEventListener('keydown', handleKeyDown)
+  }
+
+  if (desktopMediaQuery && handleMediaChange) {
+    desktopMediaQuery.removeEventListener('change', handleMediaChange)
+  }
+
+  document.body.style.overflow = ''
+})
+
+watch([isSidebarOpen, isDesktop], ([open, desktop]) => {
+  if (open && !desktop) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}, { immediate: true })
 
 function logout() {
   authStore.logout()
@@ -226,6 +277,11 @@ const navItems = computed(() => {
 <!-- Template tidak berubah -->
 <template>
   <div class="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div
+      v-if="isSidebarOpen && !isDesktop"
+      class="fixed inset-0 bg-black/40 z-10"
+      @click="closeSidebar"
+    ></div>
     <!-- Sidebar with improved transition -->
     <aside 
       class="fixed inset-y-0 left-0 bg-sidebar shadow-sm max-h-screen w-64 z-20 transform transition-all duration-300 ease-in-out border-r border-sidebar-border"
@@ -233,7 +289,7 @@ const navItems = computed(() => {
     >
       <div class="flex flex-col h-full">
         <!-- Logo -->
-        <div class="border-b border-sidebar-border p-4">
+        <div class="border-b border-sidebar-border p-3 sm:p-4">
           <div class="flex items-center gap-3">
             <div class="p-2 bg-blue-600 rounded-lg">
               <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -257,6 +313,7 @@ const navItems = computed(() => {
                 :to="item.path" 
                 class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-sidebar-accent text-sidebar-foreground w-full"
                 :class="{ 'bg-blue-100 text-blue-700 font-medium': $route.path.startsWith(item.path) }"
+                @click="handleNavClick"
               >
                 <svg v-if="item.icon === 'chart-pie'" class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
@@ -321,11 +378,11 @@ const navItems = computed(() => {
       :class="{ 'pl-0': !isSidebarOpen, 'lg:pl-64': isSidebarOpen }"
     >
       <!-- Header -->
-      <header class="sticky top-0 border-b bg-white/80 backdrop-blur-sm p-4 flex items-center shadow-sm z-10">
+      <header class="sticky top-0 border-b bg-white/80 backdrop-blur-sm p-3 sm:p-4 flex flex-wrap items-center gap-3 shadow-sm z-10">
         <!-- Add sidebar toggle button for all screen sizes -->
         <button 
           @click="toggleSidebar" 
-          class="mr-3 p-2 hover:bg-gray-100 rounded-lg" 
+          class="p-2 hover:bg-gray-100 rounded-lg" 
           title="Toggle Sidebar (Ctrl+B)"
         >
           <svg class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -333,13 +390,13 @@ const navItems = computed(() => {
           </svg>
         </button>
         
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
           <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900">{{ $route.name }}</h2>
-            <p class="text-sm text-gray-500">
+          <div class="min-w-0">
+            <h2 class="text-base sm:text-xl font-semibold text-gray-900 truncate">{{ $route.name }}</h2>
+            <p class="hidden sm:block text-sm text-gray-500 truncate">
               {{ $route.path.includes('inventory') ? 'Track and manage your restaurant inventory' :
                  $route.path.includes('kitchen') ? 'Prepare ingredients from inventory for cooking' :
                  $route.path.includes('products') ? 'Manage your menu items and recipes' :
@@ -350,7 +407,7 @@ const navItems = computed(() => {
           </div>
         </div>
         
-        <div class="ml-auto flex items-center gap-3">
+        <div class="ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <button 
             @click="clearCache" 
             class="p-2 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"
@@ -367,7 +424,7 @@ const navItems = computed(() => {
       </header>
       
       <!-- Page content -->
-      <div class="flex-1 p-6 overflow-auto">
+      <div class="flex-1 p-3 sm:p-6 overflow-auto">
         <slot></slot>
       </div>
     </main>

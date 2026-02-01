@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white shadow rounded-lg border border-gray-200 p-6">
+  <div class="bg-white shadow rounded-lg border border-gray-200 p-3 sm:p-6">
     <!-- Baris pertama: Pencarian & Status -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       <!-- Search Input -->

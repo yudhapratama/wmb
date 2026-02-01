@@ -1,24 +1,24 @@
 <template>
   <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-    <div class="p-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
+    <div class="p-3 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div class="flex items-start gap-4 min-w-0">
           <div :class="statusConfig.bg" class="p-2 rounded-lg">
             <component :is="statusConfig.icon" class="w-5 h-5" :class="statusConfig.color" />
           </div>
-          <div>
+          <div class="min-w-0">
             <h3 class="font-semibold text-lg text-gray-900">Nomor PO: #{{ order.id }}</h3>
-            <div class="flex items-center gap-4 mt-1 text-sm">
-              <div class="flex items-center gap-1">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-sm">
+              <div class="flex items-center gap-1 min-w-0">
                 <BuildingOfficeIcon class="w-4 h-4" /> 
-                {{ order.supplier?.nama_pt_toko }}
+                <span class="truncate">{{ order.supplier?.nama_pt_toko }}</span>
               </div>
               <span :class="statusConfig.badgeColor" class="px-2 py-1 rounded-full text-xs font-medium">
                 {{ statusConfig.label }}
               </span>
-              <span class="text-gray-500">oleh {{ order.pembuat_po?.first_name }}</span>
+              <span class="text-gray-500 whitespace-nowrap">oleh {{ order.pembuat_po?.first_name }}</span>
             </div>
-            <div class="flex items-center gap-6 mt-2 text-sm">
+            <div class="flex flex-wrap items-center gap-3 sm:gap-6 mt-2 text-sm">
               <div class="flex items-center gap-1 text-gray-500">
                 <CalendarIcon class="w-4 h-4" />
                 Order: {{ formatDateTimeIndonesian(order.date_created, false, {day: 'numeric', month: 'numeric', year: 'numeric' }) }}
@@ -32,22 +32,22 @@
               <HashtagIcon class="w-4 h-4" />
               {{ order.items?.length || 0 }} items
             </div>
-            <p v-if="order.catatan_pembelian" class="text-xs text-gray-500 mt-1 truncate max-w-md">
+            <p v-if="order.catatan_pembelian" class="text-xs text-gray-500 mt-1 truncate sm:max-w-md">
               Note: {{ order.catatan_pembelian }}
             </p>
           </div>
         </div>
-        <div class="text-right">
+        <div class="text-left sm:text-right w-full sm:w-auto">
           <div class="text-lg font-bold text-blue-600 mb-3">
             {{ formatCurrency(calculatedTotal) }}
           </div>
-          <div class="flex gap-2 justify-end">
+          <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
             <!-- Status: Dibuat - Tombol: Terima, Detail, Edit, Hapus -->
             <template v-if="order.status === 'Dibuat'">
               <PermissionBasedAccess collection="purchase_orders" action="update">
                 <button 
                   @click="$emit('receive', order)" 
-                  class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                  class="w-full sm:w-auto px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center gap-1 text-sm"
                 >
                   <CheckIcon class="w-4 h-4" />
                   Terima
@@ -90,7 +90,7 @@
               <PermissionBasedAccess collection="purchase_orders" action="update">
                 <button 
                   @click="$emit('pay', order)" 
-                  class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                  class="w-full sm:w-auto px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center gap-1 text-sm"
                 >
                   <CreditCardIcon class="w-4 h-4" />
                   Bayar dan Selesaikan

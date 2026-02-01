@@ -591,15 +591,15 @@ onMounted(async () => {
 }
 
 .pos-main {
-  @apply flex h-[calc(100vh-80px)];
+  @apply flex flex-col lg:flex-row lg:h-[calc(100vh-80px)] min-h-0;
 }
 
 .pos-products-panel {
-  @apply flex-1 p-4 overflow-hidden;
+  @apply flex-1 p-3 sm:p-4 flex flex-col lg:overflow-hidden;
 }
 
 .pos-cart-panel {
-  @apply w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto;
+  @apply w-full bg-white border-t border-gray-200 p-3 sm:p-4 flex flex-col lg:w-96 lg:border-t-0 lg:border-l lg:overflow-y-auto;
 }
 
 /* Header Styles */
@@ -608,11 +608,11 @@ onMounted(async () => {
 }
 
 .header-content {
-  @apply flex items-center justify-between;
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3;
 }
 
 .header-info {
-  @apply flex items-center gap-6;
+  @apply flex flex-wrap items-center gap-3 sm:gap-6;
 }
 
 .info-card {
@@ -654,7 +654,7 @@ onMounted(async () => {
 
 /* Products Grid */
 .products-grid-container {
-  @apply flex-1 overflow-y-auto;
+  @apply flex-1 overflow-y-visible lg:overflow-y-auto;
 }
 
 .product-card-horizontal {
@@ -719,7 +719,7 @@ onMounted(async () => {
 }
 
 .cart-items {
-  @apply flex-1 overflow-y-auto mb-4;
+  @apply flex-1 overflow-y-visible lg:overflow-y-auto mb-4;
 }
 
 .empty-cart {
@@ -731,11 +731,11 @@ onMounted(async () => {
 }
 
 .cart-item {
-  @apply flex items-center p-3 bg-gray-50 rounded-lg;
+  @apply flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg;
 }
 
 .item-info {
-  @apply flex-1 min-w-0 mr-3;
+  @apply flex-1 min-w-0;
 }
 
 .item-name {
@@ -747,7 +747,7 @@ onMounted(async () => {
 }
 
 .item-controls {
-  @apply flex items-center gap-2 mr-3;
+  @apply flex items-center gap-2;
 }
 
 .quantity-btn {
@@ -759,7 +759,7 @@ onMounted(async () => {
 }
 
 .item-total {
-  @apply text-sm font-semibold text-gray-900 mr-2;
+  @apply text-sm font-semibold text-gray-900;
 }
 
 .remove-btn {

@@ -1,17 +1,19 @@
 <template>
   <AppLayout title="Purchase Orders Management">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-      <PermissionBasedAccess collection="purchase_orders" action="create">
-        <button
-          @click="showAddModal = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-        >
-          <PlusIcon class="w-5 h-5" />
-          Tambah Purchase Order
-        </button>
-      </PermissionBasedAccess>
+      <div class="w-full sm:w-auto flex justify-center sm:justify-end">
+        <PermissionBasedAccess collection="purchase_orders" action="create">
+          <button
+            @click="showAddModal = true"
+            class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center gap-2"
+          >
+            <PlusIcon class="w-5 h-5" />
+            Tambah Purchase Order
+          </button>
+        </PermissionBasedAccess>
+      </div>
     </div>
     
     <!-- Filters -->

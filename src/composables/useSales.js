@@ -39,10 +39,8 @@ export function useSales() {
   // Payment methods from schema
   const paymentMethods = [
     { value: 'Cash', label: 'Cash' },
-    { value: 'BRI', label: 'BRI' },
-    { value: 'BNI', label: 'BNI' },
-    { value: 'OVO', label: 'OVO' },
-    { value: 'QR', label: 'QR' }
+    { value: 'QR', label: 'QR' },
+    { value: 'Debit', label: 'Debit' }
   ]
 
   // Computed properties

@@ -14,7 +14,7 @@ export function useCart() {
   // Cart State
   const cartItems = ref([])
   const isProcessing = ref(false)
-  const selectedPaymentMethod = ref('cash')
+  const selectedPaymentMethod = ref('Cash')
   const amountPaid = ref(0)
   const taxRate = ref(10) // 10% tax
   const discountAmount = ref(0)
@@ -22,13 +22,9 @@ export function useCart() {
 
   // Payment Methods
   const paymentMethods = [
-    { value: 'cash', label: 'Tunai' },
-    { value: 'card', label: 'Kartu Debit/Kredit' },
-    { value: 'transfer', label: 'Transfer Bank' },
-    { value: 'qris', label: 'QRIS' },
-    { value: 'ovo', label: 'OVO' },
-    { value: 'gopay', label: 'GoPay' },
-    { value: 'dana', label: 'DANA' }
+    { value: 'Cash', label: 'Tunai' },
+    { value: 'Debit', label: 'Debit' },
+    { value: 'QR', label: 'QRIS' }
   ]
 
   // Computed Properties
@@ -179,7 +175,7 @@ export function useCart() {
       amountPaid.value = 0
       discountAmount.value = 0
       discountPercentage.value = 0
-      selectedPaymentMethod.value = 'cash'
+      selectedPaymentMethod.value = 'Cash'
       showNotification('Keranjang dikosongkan', 'info')
       return true
     } catch (error) {

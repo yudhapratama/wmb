@@ -55,26 +55,82 @@ export function useDashboard() {
   
   // 3. Total pembayaran belanja yang dilakukan (PO dengan status completed/dibayar)
   const totalPaidPurchases = computed(() => {
-    const paidPOs = purchaseOrders.value.filter(po => 
-      po.status === 'Dibayar' || po.status === 'Completed'
-    )
-    
+    const normalizeDate = (value) => {
+      if (!value) return ''
+      try {
+        return new Date(value).toISOString().split('T')[0]
+      } catch {
+        return ''
+      }
+    }
+
+    const paidStatuses = new Set(['Dibayar', 'Completed', 'Selesai'])
+    const paidPOs = purchaseOrders.value.filter(po => {
+      if (!paidStatuses.has(po.status)) return false
+      const paymentDate = normalizeDate(po.tanggal_pembayaran)
+      return paymentDate ? paymentDate === selectedDate.value : false
+    })
+
     return paidPOs.reduce((total, po) => {
-      return total + (parseFloat(po.total_pembayaran) || 0)
+      const explicitTotal = parseFloat(po.total_pembayaran) || 0
+      if (explicitTotal > 0) return total + explicitTotal
+
+      const items = poItems.value.filter(item => item.purchase_order === po.id)
+      const computedTotal = items.reduce((sum, item) => {
+        const lineTotal = parseFloat(item.harga_satuan) || 0
+        const orderedQty = parseFloat(item.jumlah_pesan) || 0
+        const shrinkageQty = parseFloat(item.total_penyusutan) || 0
+
+        if (lineTotal <= 0) return sum
+
+        if (orderedQty > 0 && shrinkageQty > 0) {
+          const shrinkageRatio = shrinkageQty / orderedQty
+          const shrinkageValue = shrinkageRatio * lineTotal
+          return sum + (lineTotal - shrinkageValue)
+        }
+
+        return sum + lineTotal
+      }, 0)
+
+      return total + computedTotal
     }, 0)
   })
   
   // 4. Total belanja yang belum dibayar (PO dengan status diterima)
   const totalUnpaidPurchases = computed(() => {
-    const receivedPOs = purchaseOrders.value.filter(po => po.status === 'Diterima')
+    const normalizeDate = (value) => {
+      if (!value) return ''
+      try {
+        return new Date(value).toISOString().split('T')[0]
+      } catch {
+        return ''
+      }
+    }
+
+    const unpaidStatuses = new Set(['Dibuat', 'Diterima'])
+    const unpaidPOs = purchaseOrders.value.filter(po => {
+      if (!unpaidStatuses.has(po.status)) return false
+      const createdDate = normalizeDate(po.date_created)
+      return createdDate ? createdDate === selectedDate.value : false
+    })
     
     let totalUnpaid = 0
-    receivedPOs.forEach(po => {
+    unpaidPOs.forEach(po => {
       const items = poItems.value.filter(item => item.purchase_order === po.id)
       const poTotal = items.reduce((sum, item) => {
-        const quantity = parseFloat(item.total_diterima) || parseFloat(item.jumlah_pesan) || 0
-        const price = parseFloat(item.harga_satuan) || 0
-        return sum + (quantity * price)
+        const lineTotal = parseFloat(item.harga_satuan) || 0
+        const orderedQty = parseFloat(item.jumlah_pesan) || 0
+        const shrinkageQty = parseFloat(item.total_penyusutan) || 0
+
+        if (lineTotal <= 0) return sum
+
+        if (orderedQty > 0 && shrinkageQty > 0) {
+          const shrinkageRatio = shrinkageQty / orderedQty
+          const shrinkageValue = shrinkageRatio * lineTotal
+          return sum + (lineTotal - shrinkageValue)
+        }
+
+        return sum + lineTotal
       }, 0)
       totalUnpaid += poTotal
     })
@@ -142,8 +198,29 @@ export function useDashboard() {
   
   // 7. Total expenses (hari ini)
   const totalExpenses = computed(() => {
+    const toDateOnly = (value) => {
+      if (!value) return ''
+      if (typeof value === 'string') {
+        if (value.includes('T')) {
+          const date = new Date(value)
+          if (isNaN(date.getTime())) return ''
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
+        return value.slice(0, 10)
+      }
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     const todayExpenses = expenses.value.filter(expense => {
-      const expenseDate = new Date(expense.tanggal).toISOString().split('T')[0]
+      const expenseDate = toDateOnly(expense.tanggal)
       return expenseDate === selectedDate.value
     })
     
@@ -154,8 +231,29 @@ export function useDashboard() {
   
   // 8. Top 3 expenses (hari ini)
   const topExpenses = computed(() => {
+    const toDateOnly = (value) => {
+      if (!value) return ''
+      if (typeof value === 'string') {
+        if (value.includes('T')) {
+          const date = new Date(value)
+          if (isNaN(date.getTime())) return ''
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
+        return value.slice(0, 10)
+      }
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     const todayExpenses = expenses.value.filter(expense => {
-      const expenseDate = new Date(expense.tanggal).toISOString().split('T')[0]
+      const expenseDate = toDateOnly(expense.tanggal)
       return expenseDate === selectedDate.value
     })
     
@@ -194,9 +292,8 @@ export function useDashboard() {
 
   // Active POs count (placeholder)
   const activePOs = computed(() => {
-    // This would need to be calculated from purchase orders data
-    // For now, returning 0 as placeholder
-    return 0
+    const closedStatuses = new Set(['Selesai', 'Completed', 'Dibayar', 'Dibatalkan'])
+    return purchaseOrders.value.filter(po => !closedStatuses.has(po.status)).length
   })
 
   // Low stock items count

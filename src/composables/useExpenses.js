@@ -28,6 +28,27 @@ export function useExpenses() {
   // Filtered expenses
   const filteredExpenses = computed(() => {
     let filtered = [...expenses.value]
+
+    const toDateOnly = (value) => {
+      if (!value) return ''
+      if (typeof value === 'string') {
+        if (value.includes('T')) {
+          const date = new Date(value)
+          if (isNaN(date.getTime())) return ''
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
+        return value.slice(0, 10)
+      }
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
     
     // Filter by search query
     if (searchQuery.value) {
@@ -50,10 +71,10 @@ export function useExpenses() {
       const now = new Date()
 
       if (selectedDateFilter.value === 'today') {
-        const todayStr = now.toISOString().split('T')[0]
+        const todayStr = toDateOnly(now)
 
         filtered = filtered.filter(expense => {
-          const expenseDateStr = new Date(expense.tanggal).toISOString().split('T')[0]
+          const expenseDateStr = toDateOnly(expense.tanggal)
           return expenseDateStr === todayStr
         })
 
@@ -80,8 +101,7 @@ export function useExpenses() {
     // Filter by date range
     if (dateFilter.value.startDate || dateFilter.value.endDate) {
       filtered = filtered.filter(expense => {
-        // Use ISO date format to avoid timezone issues
-        const expenseDate = new Date(expense[dateFilter.value.dateField]).toISOString().split('T')[0]
+        const expenseDate = toDateOnly(expense[dateFilter.value.dateField])
         const startDate = dateFilter.value.startDate
         const endDate = dateFilter.value.endDate
         

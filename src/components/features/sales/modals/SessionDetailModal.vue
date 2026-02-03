@@ -114,7 +114,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
-                <tr v-for="item in transactionItems" :key="`${item.sales_id}-${item.product_id}`" class="hover:bg-gray-50">
+                <tr v-for="item in paginatedTransactionItems" :key="`${item.sales_id}-${item.product_id}`" class="hover:bg-gray-50">
                   <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ item.product_name }}</td>
                   <td class="px-4 py-3 text-sm text-gray-900">{{ item.jumlah }}</td>
                   <td class="px-4 py-3 text-sm text-gray-900">{{ formatCurrency(item.harga_jual_saat_transaksi) }}</td>
@@ -125,6 +125,51 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div v-if="tableTotalPages > 1" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="text-sm text-gray-700">
+              Menampilkan {{ tablePaginationInfo.start }} - {{ tablePaginationInfo.end }} dari {{ tablePaginationInfo.total }} item
+            </div>
+            <div class="flex items-center gap-2">
+              <select
+                v-model="tableItemsPerPage"
+                class="border border-gray-300 rounded px-3 py-1 text-sm"
+              >
+                <option v-for="option in tableItemsPerPageOptions" :key="option" :value="option">
+                  {{ option }} per halaman
+                </option>
+              </select>
+              <div class="flex items-center space-x-1">
+                <button
+                  @click="changeTablePage(tablePage - 1)"
+                  :disabled="tablePage === 1"
+                  class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Sebelumnya
+                </button>
+                <button
+                  v-for="page in Math.min(tableTotalPages, 5)"
+                  :key="page"
+                  @click="changeTablePage(page)"
+                  :class="[
+                    'px-3 py-1 border text-sm rounded',
+                    tablePage === page
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 hover:bg-gray-50'
+                  ]"
+                >
+                  {{ page }}
+                </button>
+                <button
+                  @click="changeTablePage(tablePage + 1)"
+                  :disabled="tablePage === tableTotalPages"
+                  class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -165,6 +210,10 @@ export default {
     
     const transactionItems = ref([])
     const sessionSales = ref([])
+
+    const tablePage = ref(1)
+    const tableItemsPerPage = ref(10)
+    const tableItemsPerPageOptions = [10, 25, 50, 100]
     
     // Fetch data when session changes
     watch(() => props.session, async (newSession) => {
@@ -221,6 +270,33 @@ export default {
         console.error('Error loading session data:', error)
       }
     }
+
+    const tableTotalPages = computed(() => {
+      return Math.max(1, Math.ceil(transactionItems.value.length / tableItemsPerPage.value))
+    })
+
+    const paginatedTransactionItems = computed(() => {
+      const start = (tablePage.value - 1) * tableItemsPerPage.value
+      const end = start + tableItemsPerPage.value
+      return transactionItems.value.slice(start, end)
+    })
+
+    const tablePaginationInfo = computed(() => {
+      const total = transactionItems.value.length
+      if (total === 0) return { start: 0, end: 0, total: 0 }
+      const start = (tablePage.value - 1) * tableItemsPerPage.value + 1
+      const end = Math.min(start + tableItemsPerPage.value - 1, total)
+      return { start, end, total }
+    })
+
+    const changeTablePage = (page) => {
+      if (page < 1 || page > tableTotalPages.value) return
+      tablePage.value = page
+    }
+
+    watch([() => transactionItems.value.length, tableItemsPerPage], () => {
+      tablePage.value = 1
+    })
 
     const paymentSummary = computed(() => {
       const breakdown = {
@@ -281,6 +357,13 @@ export default {
     
     return {
       transactionItems,
+      paginatedTransactionItems,
+      tablePage,
+      tableItemsPerPage,
+      tableItemsPerPageOptions,
+      tableTotalPages,
+      tablePaginationInfo,
+      changeTablePage,
       summary,
       paymentSummary,
       formatCurrency,

@@ -127,20 +127,20 @@
             </table>
           </div>
 
-          <div v-if="tableTotalPages > 1" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div v-if="tableTotalPages > 1" class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="text-sm text-gray-700">
               Menampilkan {{ tablePaginationInfo.start }} - {{ tablePaginationInfo.end }} dari {{ tablePaginationInfo.total }} item
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
               <select
                 v-model="tableItemsPerPage"
-                class="border border-gray-300 rounded px-3 py-1 text-sm"
+                class="border border-gray-300 rounded px-3 py-1 text-sm w-full sm:w-auto"
               >
                 <option v-for="option in tableItemsPerPageOptions" :key="option" :value="option">
-                  {{ option }} per halaman
+                  {{ option }}
                 </option>
               </select>
-              <div class="flex items-center space-x-1">
+              <div class="flex items-center gap-1 flex-wrap">
                 <button
                   @click="changeTablePage(tablePage - 1)"
                   :disabled="tablePage === 1"

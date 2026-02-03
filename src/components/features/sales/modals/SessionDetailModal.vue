@@ -55,6 +55,46 @@
               </div>
             </div>
           </div>
+
+          <div class="bg-green-50 p-4 rounded-lg mt-4">
+            <h4 class="text-md font-semibold text-gray-900 mb-3">Rincian Pembayaran</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div v-for="method in paymentSummary" :key="method.key" class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">{{ method.label }}</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(method.amount) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 p-4 rounded-lg mt-4">
+            <h4 class="text-md font-semibold text-gray-900 mb-3">Rekap Kasir</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Modal Awal</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.modal_awal) || 0) }}</div>
+              </div>
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Modal Akhir</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.modal_akhir) || 0) }}</div>
+              </div>
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Jumlah Tunai di Kasir</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.jumlah_tunai) || 0) }}</div>
+              </div>
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Jumlah Belanja</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.belanja_besok) || 0) }}</div>
+              </div>
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Jumlah Setoran</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.setoran) || 0) }}</div>
+              </div>
+              <div class="bg-white p-4 rounded-lg border">
+                <div class="text-sm text-gray-600 font-medium">Sisa Receh</div>
+                <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(parseFloat(session?.sisa_receh) || 0) }}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Transaction Table -->
@@ -104,6 +144,7 @@ import { computed, ref, watch } from 'vue'
 import { formatCurrency, formatDateTime } from '@/utils/helpers'
 import { useSales } from '@/composables/useSales'
 import { useProducts } from '@/composables/useProducts'
+import { SALES_PAYMENT_METHODS, normalizeSalesPaymentMethod } from '@/utils/salesPayments'
 
 export default {
   name: 'SessionDetailModal',
@@ -123,6 +164,7 @@ export default {
     const { products, categories, loadData: loadProductData } = useProducts()
     
     const transactionItems = ref([])
+    const sessionSales = ref([])
     
     // Fetch data when session changes
     watch(() => props.session, async (newSession) => {
@@ -144,11 +186,12 @@ export default {
         await loadProductData()     // Gunakan loadData dari useProducts (alias sebagai loadProductData)
         
         // Filter sales for this session
-        const sessionSales = sales.value.filter(sale => sale.sesi_penjualan?.id === sessionId)
+        const filteredSessionSales = sales.value.filter(sale => sale.sesi_penjualan?.id === sessionId)
+        sessionSales.value = filteredSessionSales
         
         // Get all sales items from the sales data (sudah termasuk dalam response loadSales)
         const allSalesItems = []
-        sessionSales.forEach(sale => {
+        filteredSessionSales.forEach(sale => {
           if (sale.items && Array.isArray(sale.items)) {
             sale.items.forEach(item => {
               allSalesItems.push({
@@ -162,7 +205,7 @@ export default {
         
         // Enrich with product and sales data
         transactionItems.value = allSalesItems.map(item => {
-          const sale = sessionSales.find(s => s.id === item.sales_id)
+          const sale = filteredSessionSales.find(s => s.id === item.sales_id)
           const product = products.value.find(p => p.id === item.product_id) || item.product_id
           const category = categories.value.find(c => c.id === product?.kategori?.id || product?.kategori)
           
@@ -178,6 +221,34 @@ export default {
         console.error('Error loading session data:', error)
       }
     }
+
+    const paymentSummary = computed(() => {
+      const breakdown = {
+        Cash: 0,
+        Debit: 0,
+        QR: 0
+      }
+
+      sessionSales.value.forEach((sale) => {
+        const key = normalizeSalesPaymentMethod(sale.mekanisme_pembayaran)
+        const fromTotal = parseFloat(sale.total)
+        const saleTotal = Number.isFinite(fromTotal) && fromTotal > 0
+          ? fromTotal
+          : (Array.isArray(sale.items) ? sale.items.reduce((sum, item) => {
+            const qty = parseFloat(item.jumlah) || 0
+            const price = parseFloat(item.harga_jual_saat_transaksi) || 0
+            return sum + (qty * price)
+          }, 0) : 0)
+
+        breakdown[key] = (breakdown[key] || 0) + saleTotal
+      })
+
+      return SALES_PAYMENT_METHODS.map(({ key, label }) => ({
+        key,
+        label,
+        amount: breakdown[key] || 0
+      }))
+    })
     
     // Summary calculations
     const summary = computed(() => {
@@ -211,6 +282,7 @@ export default {
     return {
       transactionItems,
       summary,
+      paymentSummary,
       formatCurrency,
       formatDateTime
     }

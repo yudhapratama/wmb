@@ -51,10 +51,10 @@
       <!-- Payment Methods Breakdown -->
       <div class="bg-green-50 p-4 rounded-lg">
         <h4 class="text-sm font-medium text-gray-900 mb-3">Rincian Pembayaran</h4>
-        <div class="space-y-2 text-sm">
-          <div v-for="(amount, method) in paymentBreakdown" :key="method" class="flex justify-between">
-            <span class="text-gray-600">{{ method }}:</span>
-            <span class="font-medium">{{ formatCurrency(amount) }}</span>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div v-for="method in paymentSummary" :key="method.key" class="bg-white p-4 rounded-lg border">
+            <div class="text-sm text-gray-600 font-medium">{{ method.label }}</div>
+            <div class="text-xl font-bold text-gray-900 mt-1">{{ formatCurrency(method.amount) }}</div>
           </div>
         </div>
       </div>
@@ -64,7 +64,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Uang Tunai di Kasir</label>
           <input
-            v-model.number="formData.cash_count"
+            v-model.number="formData.jumlah_tunai"
             type="number"
             step="0.01"
             min="0"
@@ -88,6 +88,42 @@
             required
           />
           <p class="text-xs text-gray-500 mt-1">Modal yang tersisa setelah penutupan sesi</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Uang Belanja Besok</label>
+          <input
+            v-model.number="formData.belanja_besok"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Masukkan jumlah uang belanja besok..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Setoran</label>
+          <input
+            v-model.number="formData.setoran"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Masukkan jumlah setoran..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Sisa Receh</label>
+          <input
+            v-model.number="formData.sisa_receh"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Masukkan jumlah sisa receh..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         <div>
@@ -153,6 +189,7 @@
 import { ref, computed, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import { formatCurrency, formatDateTime } from '@/utils/helpers'
+import { SALES_PAYMENT_METHODS, normalizeSalesPaymentMethod } from '@/utils/salesPayments'
 
 export default {
   name: 'CloseSessionModal',
@@ -176,8 +213,11 @@ export default {
   emits: ['close', 'save'],
   setup(props, { emit }) {
     const formData = ref({
-      cash_count: 0,
+      jumlah_tunai: 0,
       modal_akhir: 0,
+      belanja_besok: 0,
+      setoran: 0,
+      sisa_receh: 0,
       notes: ''
     })
     
@@ -187,9 +227,16 @@ export default {
         return 0
       }
       return props.sales.reduce((sum, sale) => {
-        // Mengakses dibayarkan langsung dari sale object
-        const dibayarkan = parseFloat(sale.dibayarkan) || 0
-        return sum + dibayarkan
+        const total = parseFloat(sale.total)
+        if (Number.isFinite(total) && total > 0) return sum + total
+
+        if (!sale.items || !Array.isArray(sale.items)) return sum
+        const fromItems = sale.items.reduce((itemSum, item) => {
+          const qty = parseFloat(item.jumlah) || 0
+          const price = parseFloat(item.harga_jual_saat_transaksi) || 0
+          return itemSum + (qty * price)
+        }, 0)
+        return sum + fromItems
       }, 0)
     })
     
@@ -220,47 +267,62 @@ export default {
       return ((totalMargin.value / totalSales.value) * 100).toFixed(1)
     })
     
-    // Payment methods breakdown - Perbaikan untuk mengakses mekanisme_pembayaran
+    // Payment methods breakdown
     const paymentBreakdown = computed(() => {
-      const breakdown = {}
+      const breakdown = { Cash: 0, Debit: 0, QR: 0 }
       if (!props.sales || !Array.isArray(props.sales)) {
         return breakdown
       }
       
       props.sales.forEach(sale => {
-        // Mengakses mekanisme_pembayaran langsung dari sale object
-        const method = sale.mekanisme_pembayaran || 'cash'
-        const dibayarkan = parseFloat(sale.dibayarkan) || 0
-        breakdown[method] = (breakdown[method] || 0) + dibayarkan
+        const methodKey = normalizeSalesPaymentMethod(sale.mekanisme_pembayaran)
+        const fromTotal = parseFloat(sale.total)
+        const saleTotal = Number.isFinite(fromTotal) && fromTotal > 0
+          ? fromTotal
+          : (sale.items && Array.isArray(sale.items) ? sale.items.reduce((sum, item) => {
+            const qty = parseFloat(item.jumlah) || 0
+            const price = parseFloat(item.harga_jual_saat_transaksi) || 0
+            return sum + (qty * price)
+          }, 0) : 0)
+
+        breakdown[methodKey] = (breakdown[methodKey] || 0) + saleTotal
       })
       return breakdown
+    })
+
+    const paymentSummary = computed(() => {
+      return SALES_PAYMENT_METHODS.map(({ key, label }) => ({
+        key,
+        label,
+        amount: paymentBreakdown.value[key] || 0
+      }))
     })
     
     // Expected cash calculation
     const expectedCash = computed(() => {
       const modalAwal = parseFloat(props.session?.modal_awal) || 0
-      const cashSales = paymentBreakdown.value['cash'] || 0
+      const cashSales = paymentBreakdown.value.Cash || 0
       return modalAwal + cashSales
     })
     
     // Cash difference - Updated calculation using (cash_count - modal_awal)
     const cashDifference = computed(() => {
-      const cashCount = parseFloat(formData.value.cash_count) || 0
+      const cashCount = parseFloat(formData.value.jumlah_tunai) || 0
       const modalAwal = parseFloat(props.session?.modal_awal) || 0
       const actualCashSales = cashCount - modalAwal // Pembayaran cash = jumlah uang tunai di kasir - modal awal
-      const expectedCashSales = paymentBreakdown.value['cash'] || 0
+      const expectedCashSales = paymentBreakdown.value.Cash || 0
       return actualCashSales - expectedCashSales
     })
     
     const expectedTotal = computed(() => {
       const modalAwal = parseFloat(props.session?.modal_awal) || 0
-      const cashSales = paymentBreakdown.value['cash'] || 0
+      const cashSales = paymentBreakdown.value.Cash || 0
       return modalAwal + cashSales
     })
     
     const actualTotal = computed(() => {
       const modalAkhir = parseFloat(formData.value.modal_akhir) || 0
-      const cashCount = parseFloat(formData.value.cash_count) || 0
+      const cashCount = parseFloat(formData.value.jumlah_tunai) || 0
       const modalAwal = parseFloat(props.session?.modal_awal) || 0
       const actualCashSales = cashCount - modalAwal // Menggunakan (cash_count - modal_awal) sebagai cash sales
       return modalAkhir + actualCashSales
@@ -271,7 +333,7 @@ export default {
     })
     
     const canSubmit = computed(() => {
-      return formData.value.cash_count >= 0 && formData.value.modal_akhir >= 0
+      return formData.value.jumlah_tunai >= 0 && formData.value.modal_akhir >= 0
     })
     
     const handleSubmit = () => {
@@ -279,14 +341,16 @@ export default {
       
       const submitData = {
         waktu_tutup: new Date().toISOString(),
-        cash_count: formData.value.cash_count,
+        jumlah_tunai: formData.value.jumlah_tunai,
         modal_akhir: formData.value.modal_akhir,
         modal_selisih: modalSelisih.value,
-        cash_difference: cashDifference.value,
+        selisih_tunai: cashDifference.value,
+        belanja_besok: formData.value.belanja_besok,
+        setoran: formData.value.setoran,
+        sisa_receh: formData.value.sisa_receh,
         total_sales: totalSales.value,
         total_hpp: totalHPP.value,
         total_margin: totalMargin.value,
-        payment_breakdown: paymentBreakdown.value,
         notes: formData.value.notes
       }
       
@@ -297,21 +361,21 @@ export default {
     watch(() => props.isOpen, (newIsOpen) => {
       if (!newIsOpen) {
         formData.value = {
-          cash_count: 0,
+          jumlah_tunai: 0,
           modal_akhir: 0,
+          belanja_besok: 0,
+          setoran: 0,
+          sisa_receh: 0,
           notes: ''
         }
       } else {
         // Set initial values
-        formData.value.cash_count = expectedCash.value
+        formData.value.jumlah_tunai = expectedCash.value
         formData.value.modal_akhir = parseFloat(props.session?.modal_awal) || 0
-        
-        // Existing debug logging
-        console.log('CloseSessionModal opened with data:')
-        console.log('Session:', props.session)
-        console.log('Sales:', props.sales)
-        console.log('Total Sales:', totalSales.value)
-        console.log('Payment Breakdown:', paymentBreakdown.value)
+        formData.value.belanja_besok = parseFloat(props.session?.belanja_besok) || 0
+        formData.value.setoran = parseFloat(props.session?.setoran) || 0
+        formData.value.sisa_receh = parseFloat(props.session?.sisa_receh) || 0
+        formData.value.notes = props.session?.notes || ''
       }
     })
     
@@ -322,6 +386,7 @@ export default {
       totalMargin,
       marginPercentage,
       paymentBreakdown,
+      paymentSummary,
       expectedCash,
       expectedTotal,
       actualTotal,

@@ -12,6 +12,7 @@ const {
   totalMargin,
   totalPaidPurchases,
   totalUnpaidPurchases,
+  activePOs,
   shrinkageRate,
   topProducts,
   totalExpenses,
@@ -23,7 +24,6 @@ const {
 
 // Computed values
 const netProfit = computed(() => totalRevenue.value - totalExpenses.value)
-const activePOs = computed(() => totalUnpaidPurchases.value > 0 ? 1 : 0)
 const lowStockItemsCount = computed(() => lowStockCookedItems.value.length)
 
 // Handle date change

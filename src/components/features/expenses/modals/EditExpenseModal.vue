@@ -26,7 +26,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 const today = new Date()
-const todayFormatted = formatDate(today)
+const todayFormatted = formatDate(today, 'YYYY-MM-DD')
 
 const formData = ref({
   id: null, // Add id field
@@ -38,7 +38,6 @@ const formData = ref({
   metode_pembayaran: 'cash',
   bukti_pembayaran: null
 })
-console.log('formData', formData.value);
 
 const errors = ref({})
 
@@ -83,11 +82,10 @@ function populateForm(expense) {
     kategori: expense.kategori?.id || expense.kategori || '',
     jumlah: expense.jumlah || 0,
     deskripsi: expense.deskripsi || '',
-    tanggal: expense.tanggal ? expense.tanggal.split('T')[0] : todayFormatted,
+    tanggal: expense.tanggal ? formatDate(expense.tanggal, 'YYYY-MM-DD') : todayFormatted,
     metode_pembayaran: expense.metode_pembayaran || 'cash',
     bukti_pembayaran: expense.bukti_pembayaran || null
   }
-  console.log('formData', formData.value);
   
   // Clear previous file selections
   files.value = []

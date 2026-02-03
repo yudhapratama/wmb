@@ -52,9 +52,21 @@ export function formatDate(date, format = 'DD/MM/YYYY') {
 export function formatDateLong(dateString) {
   if (!dateString) return ''
 
-  const date = new Date(dateString)
-  const isoDate = date.toISOString().split('T')[0]
-  const [year, month, day] = isoDate.split('-')
+  const raw = typeof dateString === 'string' ? dateString : ''
+  if (raw && raw.includes('T')) {
+    const date = new Date(raw)
+    if (isNaN(date.getTime())) return ''
+    return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
+
+  const datePart = raw ? raw.slice(0, 10) : ''
+  const [year, month, day] = datePart ? datePart.split('-') : []
+
+  if (!year || !month || !day) {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
 
   const localDate = new Date(
     parseInt(year),

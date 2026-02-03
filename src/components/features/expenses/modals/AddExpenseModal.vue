@@ -22,7 +22,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 const today = new Date()
-const todayFormatted = formatDate(today)
+const todayFormatted = formatDate(today, 'YYYY-MM-DD')
 
 const formData = ref({
   nama_pengeluaran: '',
@@ -60,7 +60,7 @@ function resetForm() {
     kategori: '',
     jumlah: 0,
     deskripsi: '',
-    tanggal: new Date().toISOString().split('T')[0] || todayFormatted,
+    tanggal: formatDate(new Date(), 'YYYY-MM-DD'),
     metode_pembayaran: 'cash',
     bukti_pembayaran: null
   }

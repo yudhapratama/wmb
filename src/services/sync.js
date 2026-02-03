@@ -194,6 +194,21 @@ export const syncService = {
   async handleExpenseFileUpload(expenseData, entity, action, entityId = null) {
     // Remove problematic fields
     const cleanData = { ...expenseData }
+
+    const toDateOnly = (value) => {
+      if (!value) return value
+      if (typeof value === 'string') return value.slice(0, 10)
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return value
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    if ('tanggal' in cleanData) {
+      cleanData.tanggal = toDateOnly(cleanData.tanggal)
+    }
     
     // Remove IndexedDB-specific fields
     delete cleanData.id

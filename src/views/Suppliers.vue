@@ -1,10 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import AppLayout from '../components/layout/AppLayout.vue'
-import SupplierCard from '../components/features/suppliers/SupplierCard.vue'
 import SupplierDetailModal from '../components/features/suppliers/modals/SupplierDetailModal.vue'
 import AddSupplierModal from '../components/features/suppliers/modals/AddSupplierModal.vue'
 import EditSupplierModal from '../components/features/suppliers/modals/EditSupplierModal.vue'
+import SupplierMaterialModal from '../components/features/suppliers/modals/SupplierMaterialModal.vue'
 import SuppliersFilters from '../components/features/suppliers/SuppliersFilters.vue'
 import PermissionBasedAccess from '../components/ui/PermissionBasedAccess.vue'
 import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
@@ -47,6 +47,7 @@ const filteredSuppliers = computed(() => {
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
+const showMaterialModal = ref(false)
 const isConfirmDeleteOpen = ref(false)
 const currentSupplier = ref(null)
 const supplierToDelete = ref(null)
@@ -72,6 +73,13 @@ function editSupplier(supplier) {
   currentSupplier.value = { ...supplier }
   showDetailModal.value = false
   showEditModal.value = true
+}
+
+// Assign materials to supplier
+function assignMaterials(supplier) {
+  currentSupplier.value = { ...supplier }
+  showDetailModal.value = false
+  showMaterialModal.value = true
 }
 
 // Confirm delete supplier
@@ -114,6 +122,13 @@ async function handleUpdateSupplier(updatedSupplier) {
   } else {
     showErrorNotification(`Failed to update supplier: ${result.error || 'Unknown error'}`)
   }
+}
+
+// Handle material assignment update
+async function handleMaterialAssignmentSaved(updatedSupplier) {
+  // Refresh the suppliers data to show updated assignments
+  await loadData()
+  showSuccessNotification('Material assignments updated successfully')
 }
 
 function showSuccessNotification(message) {
@@ -271,6 +286,7 @@ function onItemsPerPageChange(limit) {
                 <button 
                   @click="viewSupplierDetails(supplier)"
                   class="p-2.5 border border-gray-300 rounded-md text-blue-600 hover:bg-blue-50"
+                  title="View Details"
                 >
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -279,8 +295,20 @@ function onItemsPerPageChange(limit) {
                 </button>
                 <PermissionBasedAccess collection="suppliers" action="update">
                   <button 
+                    @click="assignMaterials(supplier)"
+                    class="p-2.5 border border-gray-300 rounded-md text-purple-600 hover:bg-purple-50"
+                    title="Assign Raw Materials"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                  </button>
+                </PermissionBasedAccess>
+                <PermissionBasedAccess collection="suppliers" action="update">
+                  <button 
                     @click="editSupplier(supplier)"
                     class="p-2.5 border border-gray-300 rounded-md text-yellow-600 hover:bg-yellow-50"
+                    title="Edit Supplier"
                   >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -291,6 +319,7 @@ function onItemsPerPageChange(limit) {
                   <button 
                     @click="handleDeleteSupplier(supplier)"
                     class="p-2.5 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
+                    title="Delete Supplier"
                   >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -345,6 +374,14 @@ function onItemsPerPageChange(limit) {
       :supplier="currentSupplier"
       @close="showDetailModal = false"
       @edit="editSupplier"
+      @assignMaterials="assignMaterials"
+    />
+    
+    <SupplierMaterialModal
+      :isOpen="showMaterialModal"
+      :supplier="currentSupplier"
+      @close="showMaterialModal = false"
+      @saved="handleMaterialAssignmentSaved"
     />
     
     <!-- Delete Confirmation Modal -->

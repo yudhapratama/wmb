@@ -219,8 +219,8 @@ const filteredAvailableMaterials = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     available = available.filter(material =>
-      material.nama_item.toLowerCase().includes(query) ||
-      (material.kategori && material.kategori.toLowerCase().includes(query))
+      (material.nama_item && typeof material.nama_item === 'string' && material.nama_item.toLowerCase().includes(query)) ||
+      (material.kategori && typeof material.kategori === 'string' && material.kategori.toLowerCase().includes(query))
     )
   }
   

@@ -57,7 +57,7 @@
                   <Select
                     v-model="item.raw_material_id"
                     :options="rawMaterialOptions"
-                    placeholder="Pilih Raw Material"
+                    :placeholder="getPlaceholderText()"
                     searchable
                     @update:modelValue="onRawMaterialSelect(index, $event)"
                   />
@@ -107,6 +107,19 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- No Materials Message -->
+        <div v-if="formData.supplier && rawMaterialOptions.length === 0" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-yellow-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-yellow-800">Tidak ada bahan baku tersedia</p>
+              <p class="text-sm text-yellow-700">Supplier yang dipilih belum memiliki bahan baku yang ditugaskan. Silakan assign bahan baku ke supplier terlebih dahulu di halaman Suppliers.</p>
+            </div>
+          </div>
         </div>
         
         <!-- Total Section -->
@@ -298,19 +311,31 @@ function addItem() {
 
 // Reset item selections if supplier change invalidates current raw materials
 watch(() => formData.value.supplier, () => {
-  // Jangan reset saat sedang update dari parent (edit mode init)
+  // Don't reset during parent updates (edit mode init)
   if (isUpdatingFromParent.value) return
-  // Jangan reset jika data bahan baku belum selesai dimuat
+  // Don't reset if raw materials data is still loading
   if (materialsLoading.value) return
+  
   const options = rawMaterialOptions.value
-  // Jika opsi belum tersedia, jangan lakukan apa-apa
+  // If options are not available yet, don't do anything
   if (!options || options.length === 0) return
 
   const allowedIds = new Set(options.map(opt => Number(opt.value)))
+  
+  // Reset items that are no longer valid for the selected supplier
   formData.value.items = formData.value.items.map(item => {
     const idNum = typeof item.raw_material_id === 'number' ? item.raw_material_id : parseInt(item.raw_material_id)
     if (!Number.isFinite(idNum) || !allowedIds.has(idNum)) {
-      return { ...item, raw_material_id: '', item: '', unit: 'pcs', harga_rata_rata: 0, total_price: 0, total_stock: 0 }
+      // Clear the item if it's not assigned to the selected supplier
+      return { 
+        ...item, 
+        raw_material_id: '', 
+        item: '', 
+        unit: 'pcs', 
+        harga_rata_rata: 0, 
+        total_price: 0, 
+        total_stock: 0 
+      }
     }
     return item
   })
@@ -358,17 +383,51 @@ const supplierOptions = computed(() =>
 // Filter raw materials by selected supplier when available
 const rawMaterialOptions = computed(() => {
   const supplierId = parseInt(formData.value.supplier)
-  const filtered = rawMaterials.value.filter(rm => {
-    if (!supplierId || Number.isNaN(supplierId)) return true
-    const supplierByRelation = typeof rm.supplier_id === 'object' ? rm.supplier_id?.id : rm.supplier_id
-    const supplierByPrimary = rm.supplier_utama
-    return supplierByRelation === supplierId || supplierByPrimary === supplierId
-  })
+  
+  if (!supplierId || Number.isNaN(supplierId)) {
+    // If no supplier selected, show all materials
+    const options = rawMaterials.value.map(rm => ({
+      value: rm.id,
+      label: `${rm.nama_item} - ${getCategoryName(rm.kategori)}`
+    }))
+    // Sort alphabetically by label (item name + category)
+    options.sort((a, b) => a.label.localeCompare(b.label, 'id', { sensitivity: 'base' }))
+    return options
+  }
+  
+  // Find the selected supplier
+  const selectedSupplier = props.suppliers.find(s => s.id === supplierId)
+  
+  if (!selectedSupplier || !selectedSupplier.assignee_raw_materials) {
+    // If supplier has no assigned materials, show empty list
+    return []
+  }
+  
+  let assignedMaterialIds = []
+  
+  try {
+    // Handle different data formats for assignee_raw_materials
+    if (typeof selectedSupplier.assignee_raw_materials === 'string') {
+      assignedMaterialIds = JSON.parse(selectedSupplier.assignee_raw_materials)
+    } else if (Array.isArray(selectedSupplier.assignee_raw_materials)) {
+      assignedMaterialIds = selectedSupplier.assignee_raw_materials
+    }
+  } catch (error) {
+    console.error('Error parsing assigned materials for supplier:', supplierId, error)
+    return []
+  }
+  
+  // Filter raw materials to only show those assigned to the selected supplier
+  const filtered = rawMaterials.value.filter(rm => 
+    assignedMaterialIds.includes(rm.id)
+  )
+  
   const options = filtered.map(rm => ({
     value: rm.id,
     label: `${rm.nama_item} - ${getCategoryName(rm.kategori)}`
   }))
-  // Urutkan secara abjad berdasarkan label (nama item + kategori)
+  
+  // Sort alphabetically by label (item name + category)
   options.sort((a, b) => a.label.localeCompare(b.label, 'id', { sensitivity: 'base' }))
   return options
 })
@@ -379,6 +438,21 @@ function updateQuantityItem(item, value) {
   console.log('harga rata', (item.harga_rata_rata / item.total_stock), item.harga_rata_rata,item.total_stock);
   
   item.total_price = qty * (item.harga_rata_rata / item.total_stock)
+}
+
+// Get placeholder text based on supplier selection and material availability
+function getPlaceholderText() {
+  const supplierId = parseInt(formData.value.supplier)
+  
+  if (!supplierId || Number.isNaN(supplierId)) {
+    return "Pilih supplier terlebih dahulu"
+  }
+  
+  if (rawMaterialOptions.value.length === 0) {
+    return "Tidak ada bahan baku untuk supplier ini"
+  }
+  
+  return "Pilih Raw Material"
 }
 
 </script>

@@ -564,9 +564,32 @@ export const syncService = {
             query.params.fields = '*'
         }
       }
+
+      if (!query.params.sort) {
+        if (entity === 'sales' || entity === 'sales_items' || entity === 'expenses' || entity === 'sales_sessions') {
+          query.params.sort = ['-date_created']
+        }
+      }
       
-      const response = await api.get(`/items/${entity}`, { params: query.params })
-      let items = response.data.data
+      const shouldPaginate = query.params.limit == null && query.params.page == null
+      const limit = query.params.limit ?? 500
+
+      let items = []
+      if (!shouldPaginate || limit === -1) {
+        const response = await api.get(`/items/${entity}`, { params: { ...query.params, limit } })
+        items = response.data.data || []
+      } else {
+        let page = 1
+        const allItems = []
+        while (true) {
+          const response = await api.get(`/items/${entity}`, { params: { ...query.params, limit, page } })
+          const batch = response.data.data || []
+          allItems.push(...batch)
+          if (batch.length < limit) break
+          page += 1
+        }
+        items = allItems
+      }
 
       // Add cache timestamp to each item
       const timestamp = new Date().getTime();

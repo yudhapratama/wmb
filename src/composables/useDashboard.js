@@ -314,8 +314,8 @@ export function useDashboard() {
       // Sync data if online
       if (syncService.isOnline()) {
         await Promise.all([
-          syncService.pullData('sales'),
-          syncService.pullData('sales_items'),
+          syncService.pullData('sales', { clearExisting: true }),
+          syncService.pullData('sales_items', { clearExisting: true }),
           syncService.pullData('purchase_orders'),
           syncService.pullData('po_items'),
           syncService.pullData('expenses'),

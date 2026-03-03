@@ -11,12 +11,12 @@
             <div class="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-sm">
               <div class="flex items-center gap-1 min-w-0">
                 <BuildingOfficeIcon class="w-4 h-4" /> 
-                <span class="truncate">{{ order.supplier?.nama_pt_toko }}</span>
+                <span class="truncate">{{ order.supplier_name || order.supplier?.nama_pt_toko || '-' }}</span>
               </div>
               <span :class="statusConfig.badgeColor" class="px-2 py-1 rounded-full text-xs font-medium">
                 {{ statusConfig.label }}
               </span>
-              <span class="text-gray-500 whitespace-nowrap">oleh {{ order.pembuat_po?.first_name }}</span>
+              <span class="text-gray-500 whitespace-nowrap">oleh {{ order.pembuat_po_name || order.pembuat_po?.first_name || '-' }}</span>
             </div>
             <div class="flex flex-wrap items-center gap-3 sm:gap-6 mt-2 text-sm">
               <div class="flex items-center gap-1 text-gray-500">

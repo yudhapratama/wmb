@@ -188,7 +188,28 @@ export function usePurchaseOrders() {
         .reverse() // This makes it descending order
         .toArray()
       // console.log("ini data setelah call api -> simpan di local -> lalu panggil lagi localOrders:", localOrders);
-      purchaseOrders.value = localOrders
+      const orderIds = localOrders.map((order) => order.id).filter((id) => id != null)
+      const orderIdSet = new Set(orderIds.map((id) => String(id)))
+
+      const allPoItems = await db.po_items.toArray()
+      const itemsByOrderId = allPoItems.reduce((acc, item) => {
+        const rawOrderId = item?.purchase_order ?? item?.purchase_order_id
+        const orderId = rawOrderId != null ? String(rawOrderId) : null
+        if (!orderId || !orderIdSet.has(orderId)) return acc
+        if (!acc[orderId]) acc[orderId] = []
+        acc[orderId].push(item)
+        return acc
+      }, {})
+
+      purchaseOrders.value = localOrders.map((order) => {
+        const hasEmbeddedItems = Array.isArray(order.items) && order.items.length > 0
+        if (hasEmbeddedItems) return order
+        const orderId = String(order.id)
+        return {
+          ...order,
+          items: itemsByOrderId[orderId] || []
+        }
+      })
       
       return { success: true }
     } catch (err) {

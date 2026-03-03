@@ -229,26 +229,35 @@
         <button
           @click="handleSubmit"
           class="flex-1 flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-sm font-medium text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isLoading || !isFormValid"
+          :disabled="isLoading || isUploading || !isFormValid"
         >
-          <svg v-if="!isLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg v-if="!isLoading && !isUploading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
           </svg>
           <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ isLoading ? 'Memproses...' : 'Proses Pembayaran' }}
+          {{ isLoading || isUploading ? 'Memproses...' : 'Proses Pembayaran' }}
         </button>
       </div>
     </template>
   </Modal>
+
+  <ConfirmationModal 
+    v-if="showZeroConfirm"
+    title="Konfirmasi Pembayaran Rp 0"
+    message="Total pembayaran adalah Rp 0. Apakah Anda yakin ingin menyelesaikan pesanan ini?"
+    @confirm="executePayment"
+    @cancel="showZeroConfirm = false"
+  />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import Modal from '../../../ui/Modal.vue'
+import ConfirmationModal from '../../../ui/ConfirmationModal.vue'
 import { validateFile, createFilePreview } from '../../../../utils/fileUtils'
 import { useFileUpload } from '../../../../composables/useFileUpload'
 import { formatCurrency, formatDateTimeIndonesian, formatNumber, handleNumericInput } from '@/utils/helpers'
@@ -285,10 +294,13 @@ const {
   dataId: null
 })
 
+const showZeroConfirm = ref(false)
+
 // Reset form when modal opens
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen && props.order) {
     paymentData.value.total_pembayaran = finalTotal.value
+    showZeroConfirm.value = false
   }
 })
 
@@ -320,8 +332,9 @@ const finalTotal = computed(() => {
 })
 
 const isFormValid = computed(() => {
+  const total = parseFloat(paymentData.value.total_pembayaran)
   return paymentData.value.tanggal_pembayaran && 
-         paymentData.value.total_pembayaran > 0
+         !isNaN(total) && total >= 0
 })
 
 // Methods
@@ -385,7 +398,18 @@ const handleFileUpload = async (event) => {
   }
 }
 
-const handleSubmit = async () => {
+const handleSubmit = () => {
+  const total = parseFloat(paymentData.value.total_pembayaran)
+  if (total === 0) {
+    showZeroConfirm.value = true
+  } else {
+    executePayment()
+  }
+}
+
+const executePayment = async () => {
+  showZeroConfirm.value = false
+  
   const submitData = {
     orderId: props.order.id,
     ...paymentData.value,

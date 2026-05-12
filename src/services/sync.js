@@ -560,6 +560,12 @@ export const syncService = {
                                  'total_pembayaran', 'tanggal_pembayaran', 'pembuat_po.first_name', 
                                  'date_created', 'date_updated', 'id']
             break
+          case 'waste':
+            query.params.fields = '*,item_terbuang.*,dicatat_oleh.*'
+            break
+          case 'kitchen_prep':
+            query.params.fields = '*,bahan_hasil_olahan.*,dicatat_oleh.*,bahan_baku.raw_materials_id.*'
+            break
           default:
             query.params.fields = '*'
         }
@@ -632,6 +638,8 @@ export const syncService = {
       await this.pullData('expense_categories', { clearExisting: true })
       await this.pullData('products', { clearExisting: true })
       await this.pullData('recipe_items', { clearExisting: true })
+      await this.pullData('kitchen_prep', { clearExisting: true })
+      await this.pullData('waste', { clearExisting: true })
   
       // Clear purchase orders dan po_items sebelum pull data baru
       await db.purchase_orders.clear()

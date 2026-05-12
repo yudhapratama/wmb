@@ -1,8 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import Modal from '../../../ui/Modal.vue'
 import Select from '../../../ui/Select.vue'
 import { formatNumber, handleNumericInput } from '../../../../utils/helpers'
+import { useFileUpload } from '../../../../composables/useFileUpload'
+
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -31,6 +33,19 @@ const shrinkageForm = ref({
   image: ''
 })
 
+const { 
+  files, 
+  previews, 
+  handleFileSelect, 
+  uploadFiles, 
+  clearFiles,
+  isUploading: isFileUploading 
+} = useFileUpload({
+  featureName: 'Waste',
+  multiple: false,
+  autoUpload: false
+})
+
 const reasonOptions = [
   { value: 'expired', label: 'Kadaluarsa' },
   { value: 'damaged', label: 'Rusak' },
@@ -47,23 +62,36 @@ function resetForm() {
     notes: '',
     image: ''
   }
+  clearFiles()
 }
 
+watch(() => props.isOpen, (newVal) => {
+  if (newVal) resetForm()
+})
+
 // Handle image upload
-function handleShrinkageImageUpload(event) {
-  const file = event.target.files?.[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      shrinkageForm.value.image = e.target.result;
-    };
-    reader.readAsDataURL(file);
+async function onFileChange(event) {
+  await handleFileSelect(event)
+  if (previews.value.length > 0) {
+    shrinkageForm.value.image = previews.value[0].preview
   }
 }
 
 // Submit form
-function handleSubmit() {
-  emit('submit', shrinkageForm.value)
+async function handleSubmit() {
+  let buktiId = null
+  
+  if (files.value.length > 0) {
+    const uploadedIds = await uploadFiles(props.item?.id || 'general')
+    if (uploadedIds && uploadedIds.length > 0) {
+      buktiId = uploadedIds[0]
+    }
+  }
+
+  emit('submit', {
+    ...shrinkageForm.value,
+    bukti: buktiId
+  })
 }
 </script>
 
@@ -119,18 +147,23 @@ function handleSubmit() {
               type="button"
               @click="$refs.shrinkageFileInput.click()"
               class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              :disabled="isFileUploading"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg v-if="!isFileUploading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Ambil Foto
+              <svg v-else class="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isFileUploading ? 'Uploading...' : 'Ambil Foto' }}
             </button>
             <input
               ref="shrinkageFileInput"
               type="file"
               accept="image/*"
-              @change="handleShrinkageImageUpload"
+              @change="onFileChange"
               class="hidden"
             />
             <img
@@ -155,13 +188,17 @@ function handleSubmit() {
         <button
           @click="handleSubmit"
           class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-sm text-white rounded-md hover:bg-red-700"
-          :class="{'cursor-not-allowed' : isLoading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock}"
-          :disabled="isLoading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock"
+          :class="{'cursor-not-allowed' : isLoading || isFileUploading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock}"
+          :disabled="isLoading || isFileUploading || !shrinkageForm.quantity || !shrinkageForm.reason || shrinkageForm.quantity > item.total_stock"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg v-if="!isLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
           </svg>
-          Catat Shrinkage
+          <svg v-else class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isLoading ? 'Memproses...' : 'Catat Shrinkage' }}
         </button>
       </div>
     </template>

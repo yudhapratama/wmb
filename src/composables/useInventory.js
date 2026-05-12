@@ -383,6 +383,96 @@ export function useInventory() {
     const supplier = suppliers.value.find(s => s.id === supplierId)
     return supplier ? supplier.nama_pt_toko : 'Unknown'
   }
+
+  // Add waste record
+  async function addWaste(wasteData) {
+    const currentUserId = authStore.user?.id;
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      const plainWaste = JSON.parse(JSON.stringify(wasteData))
+      
+      // Prepare waste data matching Directus schema
+      const directusWaste = {
+        item_terbuang: plainWaste.item_id,
+        jumlah: plainWaste.quantity,
+        alasan: plainWaste.reason,
+        catatan: plainWaste.notes || '',
+        bukti: plainWaste.bukti || null,
+        dicatat_oleh: currentUserId,
+        jenis: plainWaste.jenis || 'Shrinkage',
+        tanggal: new Date().toISOString().split('T')[0]
+      }
+
+      let wasteId = plainWaste.item_id // fallback
+
+      if (syncService.isOnline()) {
+        // Online: Directly add to server
+        const response = await api.post('/items/waste', directusWaste)
+        wasteId = response.data?.data?.id || wasteId
+      } else {
+        // Offline: Add to local DB and sync queue
+        const id = await db.waste.add({
+          ...directusWaste,
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
+        })
+        await db.addToSyncQueue('waste', id, 'create', directusWaste)
+        wasteId = id
+      }
+
+      // Also update raw material stock
+      const material = rawMaterials.value.find(m => m.id === plainWaste.item_id)
+      if (material) {
+        const stokSebelum = parseFloat(material.total_stock) || 0
+        const hargaSebelum = parseFloat(material.harga_rata_rata) || 0
+        const hargaPerUnitSebelum = stokSebelum > 0 ? hargaSebelum / stokSebelum : 0
+        
+        const stokSetelah = Math.max(0, stokSebelum - parseFloat(plainWaste.quantity))
+        const hargaSetelah = stokSetelah * hargaPerUnitSebelum
+
+        const updatedMaterial = {
+          ...material,
+          total_stock: stokSetelah,
+          harga_rata_rata: hargaSetelah
+        }
+        await updateItem(updatedMaterial)
+        
+        // Log to inventory log
+        const logInventoryData = {
+          item: plainWaste.item_id,
+          tipe_transaksi: 'WASTE',
+          perubahan_jumlah: -parseFloat(plainWaste.quantity),
+          stok_sebelum: stokSebelum,
+          stok_setelah: stokSetelah,
+          harga_sebelum: hargaSebelum,
+          harga_setelah: hargaSetelah,
+          harga_per_unit_sebelum: hargaPerUnitSebelum,
+          harga_per_unit_setelah: hargaPerUnitSebelum, // Harga per unit tidak berubah saat waste
+          dokumen_sumber: `waste#${wasteId}`,
+          pengguna: currentUserId,
+          waktu_log: new Date().toISOString(),
+          sync_status: 'pending',
+          cached_at: new Date().getTime()
+        }
+        await syncService.addLogInventaris(logInventoryData);
+      }
+
+      if (syncService.isOnline()) {
+        await syncService.processSyncQueue()
+      }
+      
+      await loadData()
+      return { success: true }
+    } catch (err) {
+      console.error('Error adding waste:', err)
+      error.value = `Failed to add waste record: ${err.message}`
+      return { success: false, error: err.message }
+    } finally {
+      isLoading.value = false
+    }
+  }
   
   return {
     // State
@@ -413,6 +503,7 @@ export function useInventory() {
     getSupplierName,
     getUnitName,
     addItem,
+    addWaste,
     updateItem,
     deleteItem,
     getStockStatus,

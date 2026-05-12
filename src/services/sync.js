@@ -566,6 +566,9 @@ export const syncService = {
           case 'kitchen_prep':
             query.params.fields = '*,bahan_hasil_olahan.*,dicatat_oleh.*,bahan_baku.raw_materials_id.*'
             break
+          case 'log_inventaris':
+            query.params.fields = '*,item.*'
+            break
           default:
             query.params.fields = '*'
         }
@@ -638,9 +641,6 @@ export const syncService = {
       await this.pullData('expense_categories', { clearExisting: true })
       await this.pullData('products', { clearExisting: true })
       await this.pullData('recipe_items', { clearExisting: true })
-      await this.pullData('kitchen_prep', { clearExisting: true })
-      await this.pullData('waste', { clearExisting: true })
-      await this.pullData('log_inventaris', { clearExisting: true })
   
       // Clear purchase orders dan po_items sebelum pull data baru
       await db.purchase_orders.clear()
@@ -649,9 +649,10 @@ export const syncService = {
       // Pull purchase orders dengan denormalisasi
       await this.pullPurchaseOrdersWithDenormalization()
       
-      // Clear log_inventory dan waste untuk data fresh
-      await db.log_inventaris.clear()
-      await db.waste.clear()
+      // Pull log_inventaris, waste, dan kitchen_prep terakhir agar tidak terhapus
+      await this.pullData('kitchen_prep', { clearExisting: true })
+      await this.pullData('waste', { clearExisting: true })
+      await this.pullData('log_inventaris', { clearExisting: true })
   
       // Process any pending sync items
       const syncResult = await this.processSyncQueue()

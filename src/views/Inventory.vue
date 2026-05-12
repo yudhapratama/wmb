@@ -7,6 +7,7 @@ import ShrinkageModal from '../components/features/inventory/modals/ShrinkageMod
 import AddItemModal from '../components/features/inventory/modals/AddItemModal.vue'
 import EditItemModal from '../components/features/inventory/modals/EditItemModal.vue'
 import DetailModal from '../components/features/inventory/modals/DetailModal.vue'
+import ConfirmationModal from '../components/ui/ConfirmationModal.vue'
 import { useInventory } from '../composables/useInventory'
 import { useOfflineStatus } from '../composables/useOfflineStatus'
 import { handleImageUpload } from '../utils/imageUtils'
@@ -43,6 +44,7 @@ const {
   getUnitName,
   addItem,
   updateItem,
+  addWaste,
   deleteItem,
   getStockStatus,
   // Pagination
@@ -64,7 +66,9 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
 const showShrinkageModal = ref(false)
+const isConfirmDeleteOpen = ref(false)
 const currentItem = ref(null)
+const itemToDelete = ref(null)
 const activeTab = ref('details')
 
 // Notification state
@@ -101,6 +105,26 @@ function recordShrinkage(item) {
   showShrinkageModal.value = true
 }
 
+// Confirm delete item
+function confirmDelete(item) {
+  itemToDelete.value = item
+  isConfirmDeleteOpen.value = true
+}
+
+// Execute delete
+async function executeDelete() {
+  if (itemToDelete.value) {
+    const result = await deleteItem(itemToDelete.value.id)
+    if (result.success) {
+      showSuccessNotification('Item deleted successfully')
+    } else {
+      showErrorNotification(`Failed to delete item: ${result.error || 'Unknown error'}`)
+    }
+    isConfirmDeleteOpen.value = false
+    itemToDelete.value = null
+  }
+}
+
 // Handle add item
 async function handleAddItem(newItem) {
   const result = await addItem(newItem)
@@ -123,22 +147,28 @@ async function handleUpdateItem(updatedItem) {
   }
 }
 
-// Handle shrinkage record
-async function handleShrinkageSubmit(shrinkageData) {
-  if (currentItem.value) {
-    // Update the stock quantity
-    const updatedItem = {
-      ...currentItem.value,
-      stock_quantity: Math.max(0, currentItem.value.stock_quantity - shrinkageData.quantity)
-    }
+// Handle shrinkage submit
+async function handleShrinkageSubmit(formData) {
+  try {
+    const result = await addWaste({
+      item_id: currentItem.value.id,
+      quantity: formData.quantity,
+      reason: formData.reason,
+      notes: formData.notes,
+      bukti: formData.bukti,
+      jenis: 'Shrinkage'
+    })
     
-    const result = await updateItem(updatedItem)
     if (result.success) {
       showShrinkageModal.value = false
       showSuccessNotification('Shrinkage recorded successfully')
+      await loadData()
     } else {
       showErrorNotification(`Failed to record shrinkage: ${result.error || 'Unknown error'}`)
     }
+  } catch (err) {
+    console.error('Error recording shrinkage:', err)
+    showErrorNotification('An error occurred while recording shrinkage')
   }
 }
 
@@ -249,6 +279,7 @@ function showErrorNotification(message) {
         :getSupplierName="getSupplierName"
         @view="viewItemDetails"
         @edit="editItem"
+        @delete="confirmDelete"
         @shrinkage="recordShrinkage"
       />
     </div>
@@ -336,6 +367,14 @@ function showErrorNotification(message) {
       :isLoading="isLoading"
       @close="showShrinkageModal = false"
       @submit="handleShrinkageSubmit"
+    />
+    
+    <ConfirmationModal
+      v-if="isConfirmDeleteOpen"
+      title="Konfirmasi Hapus Item"
+      :message="`Apakah Anda yakin ingin menghapus item ${itemToDelete?.nama_item}? Tindakan ini tidak dapat dibatalkan.`"
+      @confirm="executeDelete"
+      @cancel="isConfirmDeleteOpen = false"
     />
     
     <!-- Notification -->

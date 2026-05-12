@@ -1,7 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { formatNumber } from '@/utils/helpers'
 import { useSuppliers } from '@/composables/useSuppliers'
+import db from '@/services/db'
 
 const props = defineProps({
   item: {
@@ -30,6 +31,60 @@ const emit = defineEmits(['update:activeTab', 'edit'])
 
 // Get suppliers data
 const { suppliers } = useSuppliers()
+
+// Metrics state
+const metrics = ref({
+  usage: 0,
+  waste: 0,
+  inventoryRate: 0
+})
+
+// Calculate dynamic metrics
+async function calculateMetrics() {
+  if (!props.item?.id) return
+
+  try {
+    // 1. Calculate Waste
+    // We use the new field name item_terbuang
+    const wasteRecords = await db.waste.where('item_terbuang').equals(props.item.id).toArray()
+    const totalWaste = wasteRecords.reduce((sum, record) => sum + (parseFloat(record.jumlah) || 0), 0)
+
+    // 2. Calculate Usage (from kitchen prep)
+    const preps = await db.kitchen_prep.toArray()
+    let totalUsage = 0
+    
+    preps.forEach(prep => {
+      // In IndexedDB, we store the full prep object which includes the bahan_baku array
+      if (prep.bahan_baku && Array.isArray(prep.bahan_baku)) {
+        prep.bahan_baku.forEach(ingredient => {
+          // Check if ingredient is the current item
+          // Sometimes it's an object { raw_materials_id: { id: ... } } due to Directus populate
+          const ingredientId = ingredient.raw_materials_id?.id || ingredient.raw_materials_id
+          if (ingredientId === props.item.id) {
+            totalUsage += (parseFloat(ingredient.jumlah_diambil) || 0)
+          }
+        })
+      }
+    })
+
+    // 3. Calculate Inventory Rate
+    // Rate = Usage / (Current Stock + Usage + Waste)
+    const currentStock = parseFloat(props.item.total_stock) || 0
+    const totalInput = currentStock + totalUsage + totalWaste
+    const rate = totalInput > 0 ? (totalUsage / totalInput) * 100 : 0
+
+    metrics.value = {
+      usage: totalUsage,
+      waste: totalWaste,
+      inventoryRate: rate.toFixed(1)
+    }
+  } catch (err) {
+    console.error('Error calculating metrics:', err)
+  }
+}
+
+onMounted(calculateMetrics)
+watch(() => props.item?.id, calculateMetrics)
 
 // Compute assigned suppliers for this item
 const assignedSuppliers = computed(() => {
@@ -132,11 +187,11 @@ const assignedSuppliers = computed(() => {
               <div class="text-xs text-gray-500">Total Stock</div>
             </div>
             <div class="bg-green-50 p-3 rounded-lg text-center">
-              <div class="text-2xl font-bold text-green-600">{{ formatNumber(4800)}}</div>
+              <div class="text-2xl font-bold text-green-600">{{ formatNumber(metrics.usage) }}</div>
               <div class="text-xs text-gray-500">Usage</div>
             </div>
             <div class="bg-red-50 p-3 rounded-lg text-center">
-              <div class="text-2xl font-bold text-red-600">{{ formatNumber(200) }}</div>
+              <div class="text-2xl font-bold text-red-600">{{ formatNumber(metrics.waste) }}</div>
               <div class="text-xs text-gray-500">Waste</div>
             </div>
           </div>
@@ -144,7 +199,7 @@ const assignedSuppliers = computed(() => {
           <div class="mt-4">
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Inventory Rate:</span>
-              <span class="font-medium">8.9%</span>
+              <span class="font-medium">{{ metrics.inventoryRate }}%</span>
             </div>
           </div>
         </div>

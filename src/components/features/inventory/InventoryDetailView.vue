@@ -46,7 +46,11 @@ async function calculateMetrics() {
   try {
     // 1. Calculate Waste
     // We use the new field name item_terbuang
-    const wasteRecords = await db.waste.where('item_terbuang').equals(props.item.id).toArray()
+    const allWaste = await db.waste.toArray()
+    const wasteRecords = allWaste.filter(record => {
+      const terbuangId = typeof record.item_terbuang === 'object' && record.item_terbuang !== null ? record.item_terbuang.id : record.item_terbuang
+      return String(terbuangId) === String(props.item.id)
+    })
     const totalWaste = wasteRecords.reduce((sum, record) => sum + (parseFloat(record.jumlah) || 0), 0)
 
     // 2. Calculate Usage (from kitchen prep)
@@ -59,8 +63,8 @@ async function calculateMetrics() {
         prep.bahan_baku.forEach(ingredient => {
           // Check if ingredient is the current item
           // Sometimes it's an object { raw_materials_id: { id: ... } } due to Directus populate
-          const ingredientId = ingredient.raw_materials_id?.id || ingredient.raw_materials_id
-          if (ingredientId === props.item.id) {
+          const ingredientId = typeof ingredient.raw_materials_id === 'object' && ingredient.raw_materials_id !== null ? ingredient.raw_materials_id.id : ingredient.raw_materials_id
+          if (String(ingredientId) === String(props.item.id)) {
             totalUsage += (parseFloat(ingredient.jumlah_diambil) || 0)
           }
         })
@@ -146,6 +150,12 @@ async function loadHistory() {
   
   try {
     historyLoading.value = true
+    
+    // Check IndexedDB state
+    const allLogs = await db.log_inventaris.toArray()
+    console.log('Total logs in IndexedDB:', allLogs.length)
+    console.log('Looking for item ID:', props.item.id)
+    
     const logs = await db.log_inventaris
       .filter(log => {
         // Handle directus relational object formatting
@@ -154,6 +164,7 @@ async function loadHistory() {
       })
       .toArray()
       
+    console.log('Found logs for item:', logs.length)
     historyRecords.value = logs
     historyPage.value = 1 // Reset page
   } catch (err) {

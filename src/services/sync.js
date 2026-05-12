@@ -640,6 +640,7 @@ export const syncService = {
       await this.pullData('recipe_items', { clearExisting: true })
       await this.pullData('kitchen_prep', { clearExisting: true })
       await this.pullData('waste', { clearExisting: true })
+      await this.pullData('log_inventaris', { clearExisting: true })
   
       // Clear purchase orders dan po_items sebelum pull data baru
       await db.purchase_orders.clear()

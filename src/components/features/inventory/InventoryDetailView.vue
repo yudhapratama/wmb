@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { formatNumber } from '@/utils/helpers'
+import { formatNumber, formatDateTimeIndonesian } from '@/utils/helpers'
 import { useSuppliers } from '@/composables/useSuppliers'
 import db from '@/services/db'
 
@@ -85,6 +85,95 @@ async function calculateMetrics() {
 
 onMounted(calculateMetrics)
 watch(() => props.item?.id, calculateMetrics)
+
+// History state
+const historyRecords = ref([])
+const historyLoading = ref(false)
+const historyPage = ref(1)
+const historyPerPage = ref(10)
+const historySortDesc = ref(true)
+
+// Computed history pagination
+const totalHistoryPages = computed(() => Math.ceil(historyRecords.value.length / historyPerPage.value))
+
+const paginatedHistory = computed(() => {
+  const start = (historyPage.value - 1) * historyPerPage.value
+  const end = start + historyPerPage.value
+  return sortedHistory.value.slice(start, end)
+})
+
+const sortedHistory = computed(() => {
+  return [...historyRecords.value].sort((a, b) => {
+    const dateA = new Date(a.waktu_log || a.cached_at).getTime()
+    const dateB = new Date(b.waktu_log || b.cached_at).getTime()
+    return historySortDesc.value ? dateB - dateA : dateA - dateB
+  })
+})
+
+const historyPaginationInfo = computed(() => {
+  const total = historyRecords.value.length
+  if (total === 0) return { start: 0, end: 0, total: 0 }
+  
+  const start = (historyPage.value - 1) * historyPerPage.value + 1
+  const end = Math.min(start + historyPerPage.value - 1, total)
+  return { start, end, total }
+})
+
+function changeHistoryPage(page) {
+  if (page >= 1 && page <= totalHistoryPages.value) {
+    historyPage.value = page
+  }
+}
+
+function toggleHistorySort() {
+  historySortDesc.value = !historySortDesc.value
+}
+
+// Format transaction type
+function formatTransactionType(type) {
+  const types = {
+    'PENERIMAAN_PO': 'Penerimaan PO',
+    'WASTE': 'Shrinkage / Waste',
+    'STOK_AWAL': 'Stok Awal',
+    'PENJUALAN': 'Penjualan',
+    'KITCHEN_PREP': 'Produksi Dapur'
+  }
+  return types[type] || type
+}
+
+async function loadHistory() {
+  if (!props.item?.id || props.activeTab !== 'history') return
+  
+  try {
+    historyLoading.value = true
+    const logs = await db.log_inventaris
+      .filter(log => {
+        // Handle directus relational object formatting
+        const logItemId = typeof log.item === 'object' && log.item !== null ? log.item.id : log.item
+        return String(logItemId) === String(props.item.id)
+      })
+      .toArray()
+      
+    historyRecords.value = logs
+    historyPage.value = 1 // Reset page
+  } catch (err) {
+    console.error('Error loading history:', err)
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+watch(() => props.activeTab, (newTab) => {
+  if (newTab === 'history') {
+    loadHistory()
+  }
+})
+
+watch(() => props.item?.id, () => {
+  if (props.activeTab === 'history') {
+    loadHistory()
+  }
+})
 
 // Compute assigned suppliers for this item
 const assignedSuppliers = computed(() => {
@@ -289,7 +378,110 @@ const assignedSuppliers = computed(() => {
     <div v-else-if="activeTab === 'history'" class="space-y-4">
       <div class="bg-white rounded-lg border border-gray-100 p-4">
         <h4 class="font-medium text-base mb-3">Stock History</h4>
-        <p class="text-gray-500 text-center py-6 text-sm">No history records available yet.</p>
+        
+        <div v-if="historyLoading" class="text-center py-8">
+          <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="mt-2 text-gray-600 text-sm">Loading history...</p>
+        </div>
+        
+        <div v-else-if="historyRecords.length === 0" class="text-center py-8">
+          <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="text-gray-500 text-sm">No history records available yet.</p>
+        </div>
+        
+        <div v-else class="space-y-4">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th @click="toggleHistorySort" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 group">
+                    <div class="flex items-center gap-1">
+                      Tanggal & Jam
+                      <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-transform" :class="{ 'rotate-180': !historySortDesc }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tipe Transaksi
+                  </th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Perubahan
+                  </th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Stok Akhir
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="record in paginatedHistory" :key="record.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    {{ formatDateTimeIndonesian(record.waktu_log || record.cached_at) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    {{ formatTransactionType(record.tipe_transaksi) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
+                    <div class="flex items-center justify-end gap-1" :class="record.perubahan_jumlah > 0 ? 'text-green-600' : (record.perubahan_jumlah < 0 ? 'text-red-600' : 'text-gray-500')">
+                      <svg v-if="record.perubahan_jumlah > 0" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                      <svg v-else-if="record.perubahan_jumlah < 0" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span v-else class="w-4 h-4 text-center">-</span>
+                      {{ record.perubahan_jumlah > 0 ? '+' : '' }}{{ formatNumber(record.perubahan_jumlah) }} {{ getUnitName(item.unit) }}
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
+                    {{ formatNumber(record.stok_setelah) }} {{ getUnitName(item.unit) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <div v-if="totalHistoryPages > 1" class="flex items-center justify-between mt-4 border-t border-gray-200 pt-4">
+            <div class="text-sm text-gray-700">
+              Menampilkan {{ historyPaginationInfo.start }} - {{ historyPaginationInfo.end }} dari {{ historyPaginationInfo.total }} catatan
+            </div>
+            <div class="flex space-x-1">
+              <button
+                @click="changeHistoryPage(historyPage - 1)"
+                :disabled="historyPage === 1"
+                class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Sebelumnya
+              </button>
+              <button
+                v-for="page in Math.min(totalHistoryPages, 5)"
+                :key="page"
+                @click="changeHistoryPage(page)"
+                :class="[
+                  'px-3 py-1 border text-sm rounded',
+                  historyPage === page
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'border-gray-300 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="changeHistoryPage(historyPage + 1)"
+                :disabled="historyPage === totalHistoryPages"
+                class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     

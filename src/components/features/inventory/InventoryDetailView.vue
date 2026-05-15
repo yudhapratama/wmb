@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, onUnmounted } from 'vue'
 import { formatNumber, formatDateTimeIndonesian } from '@/utils/helpers'
 import { useSuppliers } from '@/composables/useSuppliers'
 import db from '@/services/db'
@@ -24,6 +24,10 @@ const props = defineProps({
   getSupplierName: {
     type: Function,
     required: true
+  },
+  refreshTrigger: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -39,13 +43,15 @@ const metrics = ref({
   inventoryRate: 0
 })
 
+// Flag untuk menandakan apakah debug sudah dipanggil
+let debugLogged = false
+
 // Calculate dynamic metrics
 async function calculateMetrics() {
   if (!props.item?.id) return
 
   try {
     // 1. Calculate Waste
-    // We use the new field name item_terbuang
     const allWaste = await db.waste.toArray()
     const wasteRecords = allWaste.filter(record => {
       const terbuangId = typeof record.item_terbuang === 'object' && record.item_terbuang !== null ? record.item_terbuang.id : record.item_terbuang
@@ -57,25 +63,27 @@ async function calculateMetrics() {
     const preps = await db.kitchen_prep.toArray()
     let totalUsage = 0
     
-    preps.forEach(prep => {
-      // In IndexedDB, we store the full prep object which includes the bahan_baku array
+    for (const prep of preps) {
       if (prep.bahan_baku && Array.isArray(prep.bahan_baku)) {
-        prep.bahan_baku.forEach(ingredient => {
-          // Check if ingredient is the current item
-          // Sometimes it's an object { raw_materials_id: { id: ... } } due to Directus populate
-          const ingredientId = typeof ingredient.raw_materials_id === 'object' && ingredient.raw_materials_id !== null ? ingredient.raw_materials_id.id : ingredient.raw_materials_id
-          if (String(ingredientId) === String(props.item.id)) {
-            totalUsage += (parseFloat(ingredient.jumlah_diambil) || 0)
+        for (const ingredient of prep.bahan_baku) {
+          let ingredientId
+          if (typeof ingredient.raw_materials_id === 'object' && ingredient.raw_materials_id !== null) {
+            ingredientId = ingredient.raw_materials_id.id
+          } else {
+            ingredientId = ingredient.raw_materials_id
           }
-        })
+          
+          if (String(ingredientId) === String(props.item.id)) {
+            const jumlah = parseFloat(ingredient.jumlah_diambil) || 0
+            totalUsage += jumlah
+          }
+        }
       }
-    })
+    }
 
-    // 3. Calculate Inventory Rate
-    // Rate = Usage / (Current Stock + Usage + Waste)
-    const currentStock = parseFloat(props.item.total_stock) || 0
-    const totalInput = currentStock + totalUsage + totalWaste
-    const rate = totalInput > 0 ? (totalUsage / totalInput) * 100 : 0
+    // 3. Calculate Inventory Rate (Efisiensi Penggunaan: Usage / (Usage + Waste))
+    const totalUsageAndWaste = totalUsage + totalWaste
+    const rate = totalUsageAndWaste > 0 ? (totalUsage / totalUsageAndWaste) * 100 : 0
 
     metrics.value = {
       usage: totalUsage,
@@ -87,8 +95,23 @@ async function calculateMetrics() {
   }
 }
 
-onMounted(calculateMetrics)
-watch(() => props.item?.id, calculateMetrics)
+onMounted(() => {
+  calculateMetrics()
+})
+
+watch(() => props.item?.id, () => {
+  debugLogged = false
+  calculateMetrics()
+})
+watch(() => props.refreshTrigger, () => {
+  debugLogged = false
+  calculateMetrics()
+})
+watch(() => props.activeTab, (newTab) => {
+  if (newTab === 'details') {
+    calculateMetrics()
+  }
+})
 
 // History state
 const historyRecords = ref([])
@@ -151,22 +174,14 @@ async function loadHistory() {
   try {
     historyLoading.value = true
     
-    // Check IndexedDB state
     const allLogs = await db.log_inventaris.toArray()
-    console.log('Total logs in IndexedDB:', allLogs.length)
-    console.log('Looking for item ID:', props.item.id)
-    
-    const logs = await db.log_inventaris
-      .filter(log => {
-        // Handle directus relational object formatting
-        const logItemId = typeof log.item === 'object' && log.item !== null ? log.item.id : log.item
-        return String(logItemId) === String(props.item.id)
-      })
-      .toArray()
+    const logs = allLogs.filter(log => {
+      const logItemId = typeof log.item === 'object' && log.item !== null ? log.item.id : log.item
+      return String(logItemId) === String(props.item.id)
+    })
       
-    console.log('Found logs for item:', logs.length)
     historyRecords.value = logs
-    historyPage.value = 1 // Reset page
+    historyPage.value = 1
   } catch (err) {
     console.error('Error loading history:', err)
   } finally {
@@ -297,9 +312,19 @@ const assignedSuppliers = computed(() => {
           </div>
           
           <div class="mt-4">
-            <div class="flex justify-between text-sm">
+            <div class="flex justify-between text-sm items-center mb-2">
               <span class="text-gray-500">Inventory Rate:</span>
               <span class="font-medium">{{ metrics.inventoryRate }}%</span>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <div class="flex gap-2">
+                <svg class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs text-blue-800">
+                  Persentase bahan mentah yang berhasil digunakan dalam produksi, dihitung dari (Usage / (Usage + Waste)) × 100. Semakin tinggi nilai ini, semakin efisien penggunaan bahan.
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -564,7 +564,7 @@ export const syncService = {
             query.params.fields = '*,item_terbuang.*,dicatat_oleh.*'
             break
           case 'kitchen_prep':
-            query.params.fields = '*,bahan_hasil_olahan.*,dicatat_oleh.*,bahan_baku.raw_materials_id.*'
+            query.params.fields = '*,bahan_hasil_olahan.*,dicatat_oleh.*,bahan_baku.*,bahan_baku.raw_materials_id.*'
             break
           case 'log_inventaris':
             query.params.fields = '*,item.*'
@@ -602,6 +602,7 @@ export const syncService = {
 
       // Add cache timestamp to each item
       const timestamp = new Date().getTime();
+      
       const itemsToCache = items.map(item => ({ ...item, cached_at: timestamp }));
       
       // Store in local database
@@ -641,6 +642,8 @@ export const syncService = {
       await this.pullData('expense_categories', { clearExisting: true })
       await this.pullData('products', { clearExisting: true })
       await this.pullData('recipe_items', { clearExisting: true })
+      await this.pullData('cooked_items', { clearExisting: true })
+      await this.pullData('cooked_items_raw_materials', { clearExisting: true })
   
       // Clear purchase orders dan po_items sebelum pull data baru
       await db.purchase_orders.clear()

@@ -70,6 +70,7 @@ const isConfirmDeleteOpen = ref(false)
 const currentItem = ref(null)
 const itemToDelete = ref(null)
 const activeTab = ref('details')
+const detailRefreshTrigger = ref(0)
 
 // Notification state
 const showNotification = ref(false)
@@ -163,6 +164,8 @@ async function handleShrinkageSubmit(formData) {
       showShrinkageModal.value = false
       showSuccessNotification('Shrinkage recorded successfully')
       await loadData()
+      // Trigger refresh for detail view
+      detailRefreshTrigger.value += 1
     } else {
       showErrorNotification(`Failed to record shrinkage: ${result.error || 'Unknown error'}`)
     }
@@ -355,6 +358,7 @@ function showErrorNotification(message) {
       :getUnitName="getUnitName"
       :getSupplierName="getSupplierName"
       v-model:activeTab="activeTab"
+      :refreshTrigger="detailRefreshTrigger"
       @close="showDetailModal = false"
       @edit="editItem"
       @shrinkage="recordShrinkage"

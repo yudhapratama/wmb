@@ -28,6 +28,10 @@ const props = defineProps({
   activeTab: {
     type: String,
     default: 'details'
+  },
+  refreshTrigger: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -53,6 +57,7 @@ const modalTitle = computed(() => {
         :getUnitName="getUnitName"
         :getSupplierName="getSupplierName"
         :activeTab="activeTab"
+        :refreshTrigger="refreshTrigger"
         @update:activeTab="(tab) => emit('update:activeTab', tab)"
         @edit="() => emit('edit', item)"
       />
